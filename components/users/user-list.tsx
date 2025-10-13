@@ -81,7 +81,7 @@ export function UserList() {
   })
 
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+    if (confirm('Apakah Anda yakin ingin menghapus pengguna ini? Tindakan ini tidak dapat dibatalkan.')) {
       deleteMutation.mutate(id)
     }
   }
@@ -97,7 +97,7 @@ export function UserList() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString('id-ID', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -108,21 +108,21 @@ export function UserList() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
-          <p className="text-gray-600">Manage users and their permissions</p>
+          <h1 className="text-2xl font-bold tracking-tight">Manajemen Pengguna</h1>
+          <p className="text-gray-600">Kelola pengguna dan perizinan mereka</p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Add User
+              Tambah Pengguna
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>Add New User</DialogTitle>
+              <DialogTitle>Tambah Pengguna Baru</DialogTitle>
               <DialogDescription>
-                Create a new user account and profile.
+                Buat akun dan profil pengguna baru.
               </DialogDescription>
             </DialogHeader>
             <UserForm
@@ -137,9 +137,9 @@ export function UserList() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Users</CardTitle>
+          <CardTitle>Pengguna</CardTitle>
           <CardDescription>
-            View and manage all registered users
+            Lihat dan kelola semua pengguna terdaftar
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -147,7 +147,7 @@ export function UserList() {
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search users..."
+                placeholder="Cari pengguna..."
                 className="pl-8"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -158,28 +158,28 @@ export function UserList() {
               onChange={(e) => setFilterRole(e.target.value)}
               className="px-3 py-3 border border-black bg-white focus:ring-0 focus:border-black outline-none transition-none h-12 text-sm min-w-[120px]"
             >
-              <option value="">All Roles</option>
+              <option value="">Semua Peran</option>
               <option value="admin">Admin</option>
-              <option value="lab_staff">Lab Staff</option>
-              <option value="lecturer">Lecturer</option>
-              <option value="student">Student</option>
+              <option value="lab_staff">Staff Lab</option>
+              <option value="lecturer">Dosen</option>
+              <option value="student">Mahasiswa</option>
             </select>
           </div>
 
           {isLoading ? (
-            <div className="flex justify-center py-8">Loading user data...</div>
+            <div className="flex justify-center py-8">Memuat data pengguna...</div>
           ) : (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
+                    <TableHead>Nama</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Department</TableHead>
+                    <TableHead>Peran</TableHead>
+                    <TableHead>Departemen</TableHead>
                     <TableHead>ID</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Dibuat</TableHead>
+                    <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -219,7 +219,7 @@ export function UserList() {
                             size="icon"
                             onClick={() => handleDelete(user.id)}
                             disabled={deleteMutation.isPending || user.role === 'admin'}
-                            title={user.role === 'admin' ? 'Cannot delete admin users' : 'Delete user'}
+                            title={user.role === 'admin' ? 'Tidak dapat menghapus pengguna admin' : 'Hapus pengguna'}
                           >
                             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -235,8 +235,8 @@ export function UserList() {
               {users?.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
                   <Users className="mx-auto h-12 w-12 text-gray-400" />
-                  <p className="mt-2">No users found</p>
-                  <p className="text-sm">Try adjusting your search or filters</p>
+                  <p className="mt-2">Tidak ada pengguna ditemukan</p>
+                  <p className="text-sm">Coba sesuaikan pencarian atau filter Anda</p>
                 </div>
               )}
             </div>
@@ -249,9 +249,9 @@ export function UserList() {
         <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>Edit User</DialogTitle>
+              <DialogTitle>Edit Pengguna</DialogTitle>
               <DialogDescription>
-                Update the user&apos;s profile information.
+                Perbarui informasi profil pengguna.
               </DialogDescription>
             </DialogHeader>
             <UserForm
@@ -270,43 +270,43 @@ export function UserList() {
         <Dialog open={!!viewingUser} onOpenChange={() => setViewingUser(null)}>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>User Details</DialogTitle>
+              <DialogTitle>Detail Pengguna</DialogTitle>
               <DialogDescription>
-                View detailed information about this user.
+                Lihat informasi detail tentang pengguna ini.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Full Name</label>
+                  <label className="text-sm font-medium text-gray-700">Nama Lengkap</label>
                   <p className="mt-1 font-semibold">{viewingUser.full_name}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-700">Email</label>
-                  <p className="mt-1">{viewingUser.email || 'N/A'}</p>
+                  <p className="mt-1">{viewingUser.email || 'Tidak Ada'}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Role</label>
+                  <label className="text-sm font-medium text-gray-700">Peran</label>
                   <div className="mt-1">{getRoleBadge(viewingUser.role)}</div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Department</label>
+                  <label className="text-sm font-medium text-gray-700">Departemen</label>
                   <p className="mt-1">{viewingUser.department}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Student/Lecturer ID</label>
+                  <label className="text-sm font-medium text-gray-700">ID Mahasiswa/Dosen</label>
                   <p className="mt-1 font-mono">{viewingUser.nim || viewingUser.nip || '-'}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Phone</label>
+                  <label className="text-sm font-medium text-gray-700">Telepon</label>
                   <p className="mt-1">{viewingUser.phone || '-'}</p>
                 </div>
                 <div className="col-span-2">
-                  <label className="text-sm font-medium text-gray-700">User ID</label>
+                  <label className="text-sm font-medium text-gray-700">ID Pengguna</label>
                   <p className="mt-1 font-mono text-sm">{viewingUser.id}</p>
                 </div>
                 <div className="col-span-2">
-                  <label className="text-sm font-medium text-gray-700">Member Since</label>
+                  <label className="text-sm font-medium text-gray-700">Anggota Sejak</label>
                   <p className="mt-1">{formatDate(viewingUser.created_at)}</p>
                 </div>
               </div>

@@ -6,8 +6,14 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { EquipmentForm } from './equipment-form'
+import { AdvancedSearch } from './advanced-search'
 import { supabase } from '@/lib/supabase'
 import { Search, Plus, Edit, Trash2, Eye, Package } from 'lucide-react'
+import { TableSkeleton } from '@/components/ui/loading-skeleton'
+import { ModernCard, ModernCardHeader, ModernCardContent } from '@/components/ui/modern-card'
+import { ModernBadge } from '@/components/ui/modern-badge'
+import { ModernButton } from '@/components/ui/modern-button'
+import { TablePagination } from '@/components/ui/pagination'
 
 interface Equipment {
   id: string
@@ -31,53 +37,122 @@ interface Category {
   name: string
 }
 
+interface Filters {
+  searchTerm: string
+  status: string
+  categoryId: string
+  condition: string
+  location: string
+  minPrice: string
+  maxPrice: string
+  purchaseDateFrom: string
+  purchaseDateTo: string
+  inMaintenance: boolean
+  availableOnly: boolean
+}
+
 export function EquipmentList() {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterStatus, setFilterStatus] = useState('')
-  const [filterCategory, setFilterCategory] = useState('')
+  const [filters, setFilters] = useState<Filters>({
+    searchTerm: '',
+    status: '',
+    categoryId: '',
+    condition: '',
+    location: '',
+    minPrice: '',
+    maxPrice: '',
+    purchaseDateFrom: '',
+    purchaseDateTo: '',
+    inMaintenance: false,
+    availableOnly: false,
+  })
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null)
   const [viewingEquipment, setViewingEquipment] = useState<Equipment | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize] = useState(20)
 
   const queryClient = useQueryClient()
 
-  // Auto-refetch on mount
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ['equipment'] })
     queryClient.invalidateQueries({ queryKey: ['categories'] })
   }, [queryClient])
 
-  const { data: equipment, isLoading, refetch } = useQuery({
-    queryKey: ['equipment', searchTerm, filterStatus, filterCategory],
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filters])
+
+  const { data: equipmentData, isLoading, refetch } = useQuery({
+    queryKey: ['equipment', filters, currentPage, pageSize],
     queryFn: async () => {
+      // First get the total count
+      let countQuery = supabase
+        .from('equipment')
+        .select('*', { count: 'exact', head: true })
+
+      // Apply the same filters to count query
+      if (filters.searchTerm) {
+        countQuery = countQuery.or(`name.ilike.%${filters.searchTerm}%,serial_number.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`)
+      }
+      if (filters.status) countQuery = countQuery.eq('status', filters.status)
+      if (filters.categoryId) countQuery = countQuery.eq('category_id', filters.categoryId)
+      if (filters.condition) countQuery = countQuery.eq('condition', filters.condition)
+      if (filters.location) countQuery = countQuery.ilike('location', `%${filters.location}%`)
+      if (filters.minPrice) countQuery = countQuery.gte('purchase_price', parseFloat(filters.minPrice))
+      if (filters.maxPrice) countQuery = countQuery.lte('purchase_price', parseFloat(filters.maxPrice))
+      if (filters.purchaseDateFrom) countQuery = countQuery.gte('purchase_date', filters.purchaseDateFrom)
+      if (filters.purchaseDateTo) countQuery = countQuery.lte('purchase_date', filters.purchaseDateTo)
+      if (filters.availableOnly) countQuery = countQuery.eq('status', 'available')
+      if (filters.inMaintenance) countQuery = countQuery.eq('status', 'maintenance')
+
+      const { count: totalCount, error: countError } = await countQuery
+      if (countError) throw countError
+
+      // Then get the paginated data
+      const from = (currentPage - 1) * pageSize
+      const to = from + pageSize - 1
+
       let query = supabase
         .from('equipment')
-        .select('*, categories(name)')
+        .select('*, categories(name)', { count: 'exact' })
         .order('created_at', { ascending: false })
+        .range(from, to)
 
-      if (searchTerm) {
-        query = query.or(`name.ilike.%${searchTerm}%,serial_number.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
+      if (filters.searchTerm) {
+        query = query.or(`name.ilike.%${filters.searchTerm}%,serial_number.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`)
       }
-
-      if (filterStatus) {
-        query = query.eq('status', filterStatus)
-      }
-
-      if (filterCategory) {
-        query = query.eq('category_id', filterCategory)
-      }
+      if (filters.status) query = query.eq('status', filters.status)
+      if (filters.categoryId) query = query.eq('category_id', filters.categoryId)
+      if (filters.condition) query = query.eq('condition', filters.condition)
+      if (filters.location) query = query.ilike('location', `%${filters.location}%`)
+      if (filters.minPrice) query = query.gte('purchase_price', parseFloat(filters.minPrice))
+      if (filters.maxPrice) query = query.lte('purchase_price', parseFloat(filters.maxPrice))
+      if (filters.purchaseDateFrom) query = query.gte('purchase_date', filters.purchaseDateFrom)
+      if (filters.purchaseDateTo) query = query.lte('purchase_date', filters.purchaseDateTo)
+      if (filters.availableOnly) query = query.eq('status', 'available')
+      if (filters.inMaintenance) query = query.eq('status', 'maintenance')
 
       const { data, error } = await query
 
       if (error) {
         throw error
       }
-      return data as Equipment[]
+
+      return {
+        equipment: data as Equipment[],
+        totalCount: totalCount || 0,
+        totalPages: Math.ceil((totalCount || 0) / pageSize)
+      }
     },
-    staleTime: 0, // Data is stale immediately
+    staleTime: 0,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
   })
+
+  const equipment = equipmentData?.equipment || []
+  const totalCount = equipmentData?.totalCount || 0
+  const totalPages = equipmentData?.totalPages || 0
 
   const { data: categories } = useQuery({
     queryKey: ['categories'],
@@ -108,329 +183,260 @@ export function EquipmentList() {
   })
 
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this equipment?')) {
+    if (confirm('Apakah Anda yakin ingin menghapus peralatan ini?')) {
       deleteMutation.mutate(id)
     }
   }
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      available: 'default',
-      borrowed: 'secondary',
-      maintenance: 'outline',
+    const variants: Record<string, "success" | "default" | "warning" | "destructive"> = {
+      available: 'success',
+      borrowed: 'default',
+      maintenance: 'warning',
       lost: 'destructive'
     }
 
     const statusLabels: Record<string, string> = {
       available: 'Tersedia',
       borrowed: 'Dipinjam',
-      maintenance: 'Pemeliharaan',
+      maintenance: 'Dalam Pemeliharaan',
       lost: 'Hilang'
     }
 
-    return <Badge variant={variants[status] || 'outline'}>{statusLabels[status] || status}</Badge>
+    return <ModernBadge variant={variants[status] || 'default'} size="sm">{statusLabels[status] || status}</ModernBadge>
   }
 
   const getConditionBadge = (condition: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      excellent: 'default',
-      good: 'secondary',
-      fair: 'outline',
+    const variants: Record<string, "success" | "default" | "warning" | "destructive"> = {
+      excellent: 'success',
+      good: 'default',
+      fair: 'warning',
       poor: 'destructive'
     }
 
     const conditionLabels: Record<string, string> = {
       excellent: 'Sangat Baik',
       good: 'Baik',
-      fair: 'Cukup',
-      poor: 'Buruk'
+      fair: 'Cukup Baik',
+      poor: 'Rusak'
     }
 
-    return <Badge variant={variants[condition] || 'outline'}>{conditionLabels[condition] || condition}</Badge>
+    return <ModernBadge variant={variants[condition] || 'default'} size="sm">{conditionLabels[condition] || condition}</ModernBadge>
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black">PERALATAN</h1>
-        </div>
+    <div className="space-y-6 lg:space-y-8">
+      <div className="lg:hidden flex justify-end">
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <button className="w-full sm:w-auto border border-black px-4 sm:px-6 py-2 sm:py-3 hover:bg-black hover:text-white transition-none text-sm sm:text-base">
-              <Plus className="inline w-4 h-4 mr-2" />
-              TAMBAH PERALATAN
-            </button>
+            <ModernButton
+              variant="default"
+              size="lg"
+              fullWidth
+              className="w-full button-hover-lift"
+              leftIcon={<Plus className="w-4 h-4" />}
+            >
+              Add Equipment
+            </ModernButton>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px] border border-black">
+          <DialogContent className="border-2 border-black rounded-2xl mx-4 max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold">TAMBAH PERALATAN</DialogTitle>
+              <DialogTitle className="text-xl font-black">Tambah Peralatan Baru</DialogTitle>
             </DialogHeader>
-            <EquipmentForm
-              onSuccess={() => {
-                setIsAddDialogOpen(false)
-                refetch()
-              }}
-            />
+            <div className="py-2">
+              <EquipmentForm
+                onSuccess={() => {
+                  setIsAddDialogOpen(false)
+                  refetch()
+                }}
+              />
+            </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 lg:space-x-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 w-4 h-4" />
-          <Input
-            placeholder="Cari peralatan..."
-            className="pl-10 border border-black focus:ring-0 focus:border-black h-12"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-3 sm:px-4 py-3 border border-black focus:ring-0 focus:border-black min-w-[120px] sm:min-w-[150px] h-12 text-sm"
-        >
-          <option value="">Semua Status</option>
-          <option value="available">Tersedia</option>
-          <option value="borrowed">Dipinjam</option>
-          <option value="maintenance">Pemeliharaan</option>
-          <option value="lost">Hilang</option>
-        </select>
-        <select
-          value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
-          className="px-3 sm:px-4 py-3 border border-black focus:ring-0 focus:border-black min-w-[120px] sm:min-w-[150px] h-12 text-sm"
-        >
-          <option value="">Semua Kategori</option>
-          {categories?.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-      </div>
+    <AdvancedSearch
+        filters={filters}
+        onFiltersChange={setFilters}
+        categories={categories || []}
+      />
 
-      {/* Equipment List */}
-      {isLoading ? (
-        <div className="border border-black p-8 sm:p-12 text-center">
-          <div className="text-base sm:text-lg">Memuat data peralatan...</div>
+    {isLoading ? (
+        <div className="bg-white rounded-2xl border-2 border-black p-6 lg:p-8">
+          <TableSkeleton rows={8} columns={7} />
         </div>
       ) : (
-        <div className="border border-black">
-          {/* Desktop Table View */}
-          <div className="hidden lg:block overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b border-black">
-                <tr>
-                  <th className="text-left p-4 font-medium">Nama</th>
-                  <th className="text-left p-4 font-medium">Kategori</th>
-                  <th className="text-left p-4 font-medium">Nomor Seri</th>
-                  <th className="text-left p-4 font-medium">Kondisi</th>
-                  <th className="text-left p-4 font-medium">Status</th>
-                  <th className="text-left p-4 font-medium">Lokasi</th>
-                  <th className="text-right p-4 font-medium">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {equipment?.map((item) => (
-                  <tr key={item.id} className="border-t border-black hover:bg-gray-50">
-                    <td className="p-4">
-                      <div>
-                        <div className="font-medium">{item.name}</div>
-                        {item.description && (
-                          <div className="text-sm text-gray-600 truncate max-w-xs">
-                            {item.description}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4">{item.category?.name || 'Uncategorized'}</td>
-                    <td className="p-4 font-mono text-sm">{item.serial_number}</td>
-                    <td className="p-4">{getConditionBadge(item.condition)}</td>
-                    <td className="p-4">{getStatusBadge(item.status)}</td>
-                    <td className="p-4">{item.location}</td>
-                    <td className="p-4 text-right">
-                      <div className="flex justify-end space-x-2">
-                        <button
-                          onClick={() => setViewingEquipment(item)}
-                          className="border border-black p-2 hover:bg-black hover:text-white transition-none"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setEditingEquipment(item)}
-                          className="border border-black p-2 hover:bg-black hover:text-white transition-none"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          disabled={deleteMutation.isPending}
-                          className="border border-black p-2 hover:bg-red-600 hover:text-white hover:border-red-600 transition-none"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile/Tablet Card View */}
-          <div className="lg:hidden">
+        <div className="bg-white rounded-2xl border-2 border-black overflow-hidden">
+          {equipment?.length === 0 ? (
+            <div className="text-center py-12 lg:py-16 px-6">
+              <Package className="mx-auto w-16 h-16 lg:w-20 lg:h-20 mb-6 text-gray-400" />
+              <h3 className="font-bold text-lg lg:text-xl text-gray-700 mb-3">Tidak Ada Peralatan Ditemukan</h3>
+              <p className="text-sm lg:text-base text-gray-500 mb-6">Coba sesuaikan pencarian atau filter Anda</p>
+              <ModernButton
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setFilters({
+                    searchTerm: '',
+                    status: '',
+                    categoryId: '',
+                    condition: '',
+                    location: '',
+                    minPrice: '',
+                    maxPrice: '',
+                    purchaseDateFrom: '',
+                    purchaseDateTo: '',
+                    inMaintenance: false,
+                    availableOnly: false,
+                  })
+                }}
+                className="mx-auto"
+              >
+                Hapus Filter
+              </ModernButton>
+            </div>
+          ) : (
             <div className="divide-y divide-black">
               {equipment?.map((item) => (
-                <div key={item.id} className="p-4 space-y-3">
-                  <div className="flex justify-between items-start">
+                <div key={item.id} className="p-4 lg:p-6 hover:bg-gray-50 transition-colors">
+                  <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-3 lg:gap-4 mb-4 lg:mb-6">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-base sm:text-lg truncate">{item.name}</h3>
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4 mb-2 lg:mb-3">
+                        <h3 className="font-semibold text-base lg:text-lg xl:text-xl truncate">{item.name}</h3>
+                        <div className="flex items-center gap-2">
+                          {getStatusBadge(item.status)}
+                        </div>
+                      </div>
                       {item.description && (
-                        <p className="text-sm text-gray-600 truncate mt-1">{item.description}</p>
+                        <p className="text-sm lg:text-base text-gray-600 line-clamp-2">{item.description}</p>
                       )}
                     </div>
-                    <div className="flex space-x-1 ml-2">
-                      {getStatusBadge(item.status)}
+
+                                    <div className="flex gap-1 lg:gap-2">
+                      <button
+                        onClick={() => setViewingEquipment(item)}
+                        className="border border-black p-2 lg:p-2.5 hover:bg-black hover:text-white transition-none rounded-lg"
+                        title="View details"
+                      >
+                        <Eye className="w-4 h-4 lg:w-5 lg:h-5" />
+                      </button>
+                      <button
+                        onClick={() => setEditingEquipment(item)}
+                        className="border border-black p-2 lg:p-2.5 hover:bg-black hover:text-white transition-none rounded-lg"
+                        title="Edit equipment"
+                      >
+                        <Edit className="w-4 h-4 lg:w-5 lg:h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        disabled={deleteMutation.isPending}
+                        className="border border-black p-2 lg:p-2.5 hover:bg-red-600 hover:text-white hover:border-red-600 transition-none rounded-lg"
+                        title="Delete equipment"
+                      >
+                        <Trash2 className="w-4 h-4 lg:w-5 lg:h-5" />
+                      </button>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span className="font-medium">Kategori:</span>
-                      <p className="truncate">{item.category?.name || 'Uncategorized'}</p>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+                    <div className="space-y-1">
+                      <span className="text-xs lg:text-sm font-medium text-gray-500 uppercase tracking-wider">Category</span>
+                      <p className="text-sm lg:text-base font-medium truncate" title={item.category?.name || 'Uncategorized'}>
+                        {item.category?.name || 'Uncategorized'}
+                      </p>
                     </div>
-                    <div>
-                      <span className="font-medium">Nomor Seri:</span>
-                      <p className="font-mono truncate">{item.serial_number}</p>
+                    <div className="space-y-1">
+                      <span className="text-xs lg:text-sm font-medium text-gray-500 uppercase tracking-wider">Serial Number</span>
+                      <p className="text-sm lg:text-base font-mono truncate" title={item.serial_number}>
+                        {item.serial_number}
+                      </p>
                     </div>
-                    <div>
-                      <span className="font-medium">Kondisi:</span>
-                      <div className="mt-1">{getConditionBadge(item.condition)}</div>
+                    <div className="space-y-1">
+                      <span className="text-xs lg:text-sm font-medium text-gray-500 uppercase tracking-wider">Condition</span>
+                      <div>{getConditionBadge(item.condition)}</div>
                     </div>
-                    <div>
-                      <span className="font-medium">Lokasi:</span>
-                      <p className="truncate">{item.location}</p>
+                    <div className="space-y-1">
+                      <span className="text-xs lg:text-sm font-medium text-gray-500 uppercase tracking-wider">Location</span>
+                      <p className="text-sm lg:text-base font-medium truncate" title={item.location}>
+                        {item.location}
+                      </p>
                     </div>
-                  </div>
-
-                  <div className="flex justify-end space-x-2 pt-2 border-t border-black">
-                    <button
-                      onClick={() => setViewingEquipment(item)}
-                      className="border border-black p-2 hover:bg-black hover:text-white transition-none"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setEditingEquipment(item)}
-                      className="border border-black p-2 hover:bg-black hover:text-white transition-none"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      disabled={deleteMutation.isPending}
-                      className="border border-black p-2 hover:bg-red-600 hover:text-white hover:border-red-600 transition-none"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-
-          {equipment?.length === 0 && (
-            <div className="text-center py-8 sm:py-12 px-4">
-              <Package className="mx-auto w-12 h-12 sm:w-16 sm:h-16 mb-3 sm:mb-4" />
-              <h3 className="font-bold text-base sm:text-lg mb-2">Tidak ada peralatan ditemukan</h3>
-              <p className="text-xs sm:text-sm text-gray-600 mb-4">Coba sesuaikan pencarian atau filter Anda</p>
-              <button
-                onClick={() => {
-                  setSearchTerm('')
-                  setFilterStatus('')
-                  setFilterCategory('')
-                }}
-                className="border border-black px-3 sm:px-4 py-2 hover:bg-black hover:text-white transition-none text-xs sm:text-sm"
-              >
-                Hapus Filter
-              </button>
             </div>
           )}
         </div>
       )}
 
-      {/* Edit Dialog */}
       {editingEquipment && (
         <Dialog open={!!editingEquipment} onOpenChange={() => setEditingEquipment(null)}>
-          <DialogContent className="sm:max-w-[600px] border border-black">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold">UBAH PERALATAN</DialogTitle>
+          <DialogContent className="sm:max-w-[600px] border-2 border-black rounded-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="pb-2">
+              <DialogTitle className="text-xl font-bold">Ubah Peralatan</DialogTitle>
             </DialogHeader>
-            <EquipmentForm
-              equipment={editingEquipment}
-              onSuccess={() => {
-                setEditingEquipment(null)
-                refetch()
-              }}
-            />
+            <div className="py-2">
+              <EquipmentForm
+                equipment={editingEquipment}
+                onSuccess={() => {
+                  setEditingEquipment(null)
+                  refetch()
+                }}
+              />
+            </div>
           </DialogContent>
         </Dialog>
       )}
 
-      {/* View Dialog */}
       {viewingEquipment && (
         <Dialog open={!!viewingEquipment} onOpenChange={() => setViewingEquipment(null)}>
-          <DialogContent className="sm:max-w-[600px] border border-black">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold">DETAIL PERALATAN</DialogTitle>
+          <DialogContent className="sm:max-w-[600px] border-2 border-black rounded-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="pb-2">
+              <DialogTitle className="text-xl font-bold">Detail Peralatan</DialogTitle>
             </DialogHeader>
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-6 py-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
-                  <div className="text-sm font-medium mb-2">NAMA</div>
-                  <div>{viewingEquipment.name}</div>
+                  <div className="text-sm font-medium mb-2 text-gray-600 uppercase tracking-wider">Nama</div>
+                  <div className="font-medium">{viewingEquipment.name}</div>
                 </div>
                 <div>
-                  <div className="text-sm font-medium mb-2">NOMOR SERI</div>
+                  <div className="text-sm font-medium mb-2 text-gray-600 uppercase tracking-wider">Nomor Seri</div>
                   <div className="font-mono">{viewingEquipment.serial_number}</div>
                 </div>
                 <div>
-                  <div className="text-sm font-medium mb-2">KATEGORI</div>
+                  <div className="text-sm font-medium mb-2 text-gray-600 uppercase tracking-wider">Kategori</div>
                   <div>{viewingEquipment.category?.name || 'Tidak Berkategori'}</div>
                 </div>
                 <div>
-                  <div className="text-sm font-medium mb-2">LOKASI</div>
+                  <div className="text-sm font-medium mb-2 text-gray-600 uppercase tracking-wider">Lokasi</div>
                   <div>{viewingEquipment.location}</div>
                 </div>
                 <div>
-                  <div className="text-sm font-medium mb-2">KONDISI</div>
+                  <div className="text-sm font-medium mb-2 text-gray-600 uppercase tracking-wider">Kondisi</div>
                   <div>{getConditionBadge(viewingEquipment.condition)}</div>
                 </div>
                 <div>
-                  <div className="text-sm font-medium mb-2">STATUS</div>
+                  <div className="text-sm font-medium mb-2 text-gray-600 uppercase tracking-wider">Status</div>
                   <div>{getStatusBadge(viewingEquipment.status)}</div>
                 </div>
               </div>
 
               {viewingEquipment.description && (
                 <div>
-                  <div className="text-sm font-medium mb-2">DESKRIPSI</div>
-                  <div>{viewingEquipment.description}</div>
+                  <div className="text-sm font-medium mb-2 text-gray-600 uppercase tracking-wider">Deskripsi</div>
+                  <div className="text-gray-700">{viewingEquipment.description}</div>
                 </div>
               )}
 
               {viewingEquipment.image_url && (
                 <div>
-                  <div className="text-sm font-medium mb-2">GAMBAR</div>
-                  <div className="border border-black">
+                  <div className="text-sm font-medium mb-2 text-gray-600 uppercase tracking-wider">Gambar</div>
+                  <div className="border border-black rounded-xl overflow-hidden">
                     <img
                       src={viewingEquipment.image_url}
                       alt={viewingEquipment.name}
-                      className="w-full h-48 object-cover"
+                      className="w-full h-48 sm:h-64 object-cover"
                     />
                   </div>
                 </div>
@@ -438,6 +444,19 @@ export function EquipmentList() {
             </div>
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="mt-6">
+          <TablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalCount}
+            itemsPerPage={pageSize}
+            onPageChange={setCurrentPage}
+          />
+        </div>
       )}
     </div>
   )

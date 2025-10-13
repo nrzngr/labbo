@@ -1,52 +1,65 @@
 'use client'
 
-import { LoginForm } from "@/components/auth/login-form"
-import { useAuth } from "@/components/auth/auth-provider"
+import { CustomLoginForm } from "@/components/auth/custom-login-form"
+import { useCustomAuth } from "@/components/auth/custom-auth-provider"
 import { useSearchParams } from "next/navigation"
 import { useEffect, useState, Suspense } from "react"
 
 function HomeContent() {
-  const { user, loading } = useAuth()
+  const { user, loading, isAuthenticated } = useCustomAuth()
   const searchParams = useSearchParams()
   const [isRedirecting, setIsRedirecting] = useState(false)
   const message = searchParams.get('message')
 
   // Only redirect if user is authenticated and NOT loading
   useEffect(() => {
-    if (user && !loading && !isRedirecting) {
+    if (isAuthenticated && !loading && !isRedirecting) {
       setIsRedirecting(true)
-      // Use window.location for more reliable redirect
-      window.location.href = '/dashboard'
+      // Redirect based on user role
+      if (user?.role === 'student') {
+        window.location.href = '/dashboard/student'
+      } else {
+        window.location.href = '/dashboard'
+      }
     }
-  }, [user, loading, isRedirecting])
+  }, [isAuthenticated, loading, isRedirecting, user])
 
   // Show loading state while checking authentication
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">Loading...</div>
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-black border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="text-lg font-medium">Memeriksa sesi...</div>
+        </div>
       </div>
     )
   }
 
   // If user is authenticated, show loading while redirecting
-  if (user) {
+  if (isAuthenticated) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">Redirecting to dashboard...</div>
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-black border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="text-lg font-medium">Mengarahkan ke dashboard...</div>
+        </div>
       </div>
     )
   }
 
   // Show login form if not authenticated
-  return <LoginForm initialMessage={message} />
+  return <CustomLoginForm />
 }
 
 export default function Home() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">Loading...</div>
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-black border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="text-lg font-medium">Memuat...</div>
+        </div>
       </div>
     }>
       <HomeContent />

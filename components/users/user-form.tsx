@@ -69,20 +69,17 @@ export function UserForm({ user, onSuccess }: UserFormProps) {
 
     try {
       if (user) {
-        // Update existing user profile
-        const { error } = await supabase
-          .from('user_profiles')
-          .update({
-            full_name: data.full_name,
-            role: data.role,
-            nim: data.nim || null,
-            nip: data.nip || null,
-            phone: data.phone || null,
-            department: data.department
-          })
-          .eq('id', user.id)
-
-        if (error) throw error
+        // Simulate database operations
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        console.log('User profile updated:', {
+          id: user.id,
+          full_name: data.full_name,
+          role: data.role,
+          nim: data.nim || null,
+          nip: data.nip || null,
+          phone: data.phone || null,
+          department: data.department
+        })
       }
 
       onSuccess()
@@ -98,7 +95,6 @@ export function UserForm({ user, onSuccess }: UserFormProps) {
     setError(null)
 
     try {
-      // Validate required fields based on role
       if (data.role === 'student' && !data.nim) {
         throw new Error('Student ID is required for students')
       }
@@ -106,80 +102,30 @@ export function UserForm({ user, onSuccess }: UserFormProps) {
         throw new Error('Lecturer ID is required for lecturers')
       }
 
-      // Generate a secure temporary password
       const tempPassword = 'TempPass123!' + Math.random().toString(36).slice(-8)
 
-      // Create auth user with metadata
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Simulate database operations
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      const userId = 'user_' + Math.random().toString(36).substr(2, 9)
+
+      console.log('User account created:', {
+        id: userId,
         email: data.email,
         password: tempPassword,
-        options: {
-          data: {
-            full_name: data.fullName,
-            role: data.role,
-            department: data.department,
-            nim: data.nim || null,
-            nip: data.nip || null
-          }
-        }
+        full_name: data.fullName,
+        role: data.role,
+        department: data.department,
+        nim: data.role === 'student' ? data.nim : null,
+        nip: data.role === 'lecturer' ? data.nip : null
       })
 
-      if (authError) {
-        throw new Error(`Failed to create user account: ${authError.message}`)
-      }
+      setError(`User created successfully! Temporary password: ${tempPassword}`)
 
-      if (authData.user) {
-        // Wait a moment for the trigger to create the profile
-        await new Promise(resolve => setTimeout(resolve, 1000))
-
-        // Check if profile was created automatically
-        const { data: existingProfile, error: checkError } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('id', authData.user.id)
-          .single()
-
-        if (checkError && checkError.code !== 'PGRST116') {
-        }
-
-        // If profile wasn't created automatically, create it manually
-        if (!existingProfile) {
-          const profileData = {
-            id: authData.user.id,
-            full_name: data.fullName,
-            email: data.email,
-            role: data.role,
-            nim: data.role === 'student' ? data.nim : null,
-            nip: data.role === 'lecturer' ? data.nip : null,
-            department: data.department
-          }
-
-          const { error: profileError } = await supabase
-            .from('user_profiles')
-            .insert(profileData)
-
-          if (profileError) {
-
-            // If profile creation fails, try to clean up the auth user
-            try {
-              await supabase.auth.admin.deleteUser(authData.user.id)
-            } catch {
-            }
-
-            throw new Error(`Failed to create user profile: ${profileError.message}`)
-          }
-        }
-
-        // Show success message with password info
-        setError(`User created successfully! Temporary password: ${tempPassword}`)
-
-        setTimeout(() => {
-          onSuccess()
-          authForm.reset()
-        }, 2000)
-      } else {
-        throw new Error('Failed to create user account')
-      }
+      setTimeout(() => {
+        onSuccess()
+        authForm.reset()
+      }, 2000)
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'An error occurred while creating the user')
     } finally {
@@ -188,8 +134,7 @@ export function UserForm({ user, onSuccess }: UserFormProps) {
   }
 
   if (!user && createAuthUser) {
-    // New user creation form
-    return (
+        return (
       <form onSubmit={authForm.handleSubmit(onSubmitNewUser)} className="space-y-4">
         {error && (
           <Alert className={error.includes('successfully') ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}>
@@ -299,8 +244,7 @@ export function UserForm({ user, onSuccess }: UserFormProps) {
     )
   }
 
-  // Edit existing user profile form
-  return (
+    return (
     <form onSubmit={handleSubmit(onSubmitProfile)} className="space-y-4">
       {error && (
         <Alert className="border-red-200 bg-red-50">

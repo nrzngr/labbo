@@ -33,6 +33,22 @@ export interface Database {
         Insert: import('./tables/audit-log').AuditLogInsert
         Update: import('./tables/audit-log').AuditLogUpdate
       }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string | null
+          type: 'due_date_reminder' | 'approval_required' | 'system_maintenance' | 'equipment_alert' | 'safety_compliance'
+          title: string
+          message: string
+          is_read: boolean
+          priority: 'low' | 'medium' | 'high' | 'urgent'
+          data: Json | null
+          created_at: string
+          read_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['notifications']['Row'], 'id' | 'created_at' | 'read_at'>
+        Update: Partial<Database['public']['Tables']['notifications']['Insert']>
+      }
     }
     Views: {
       equipment_status_view: {

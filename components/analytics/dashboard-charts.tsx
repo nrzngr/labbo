@@ -85,7 +85,7 @@ export function DashboardCharts() {
       }
 
       // Process equipment status data
-      const statusCounts = equipmentData.reduce((acc, item) => {
+      const statusCounts = equipmentData.reduce((acc, item: any) => {
         acc[item.status] = (acc[item.status] || 0) + 1
         return acc
       }, {} as Record<string, number>)
@@ -100,18 +100,18 @@ export function DashboardCharts() {
       setEquipmentStatusData(statusChartData)
 
       // Process category data
-      const availableEquipment = equipmentData.filter(item => item.status === 'available')
-      const categoryCounts = categories.map(category => ({
+      const availableEquipment = equipmentData.filter((item: any) => item.status === 'available')
+      const categoryCounts = categories.map((category: any) => ({
         name: category.name,
-        count: availableEquipment.filter(item => item.category_id === category.id).length
-      })).filter(cat => cat.count > 0) // Only show categories with available equipment
+        count: availableEquipment.filter((item: any) => item.category_id === category.id).length
+      })).filter((cat: any) => cat.count > 0) // Only show categories with available equipment
 
       setCategoryData(categoryCounts.slice(0, 6).sort((a, b) => b.count - a.count))
 
       // Process transaction data for line chart
       const days = timeRange === '7days' ? 7 : timeRange === '30days' ? 30 : 90
       const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
-      const recentTransactions = transactions.filter(t =>
+      const recentTransactions = transactions.filter((t: any) =>
         new Date(t.created_at) >= cutoffDate
       )
 
@@ -123,11 +123,11 @@ export function DashboardCharts() {
         date.setDate(date.getDate() - i)
         const dateStr = date.toISOString().split('T')[0]
 
-        const borrowings = recentTransactions.filter(t =>
+        const borrowings = recentTransactions.filter((t: any) =>
           t.created_at.startsWith(dateStr)
         ).length
 
-        const returns = recentTransactions.filter(t =>
+        const returns = recentTransactions.filter((t: any) =>
           t.actual_return_date && t.actual_return_date.startsWith(dateStr)
         ).length
 
@@ -147,7 +147,7 @@ export function DashboardCharts() {
         date.setMonth(date.getMonth() - i)
         const monthStr = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 
-        const newUsers = users.filter(u => {
+        const newUsers = users.filter((u: any) => {
           const userDate = new Date(u.created_at)
           return userDate.getMonth() === date.getMonth() && userDate.getFullYear() === date.getFullYear()
         }).length
@@ -157,8 +157,8 @@ export function DashboardCharts() {
         activeDate.setMonth(activeDate.getMonth() - 1)
         const activeUsers = new Set(
           transactions
-            .filter(t => new Date(t.created_at) >= activeDate)
-            .map(t => t.user_id)
+            .filter((t: any) => new Date(t.created_at) >= activeDate)
+            .map((t: any) => t.user_id)
         ).size
 
         monthlyData.push({
@@ -211,25 +211,33 @@ export function DashboardCharts() {
         </Alert>
       )}
 
-      {/* Header with time range selector */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-2">
-          <h3 className="text-lg font-semibold text-gray-900">Analytics Overview</h3>
-          {!loading && !error && equipmentStatusData.length > 0 && (
-            <Badge variant="outline" className="text-green-600">Live Data</Badge>
-          )}
+      {/* Header with time range selector - Responsive */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 sm:gap-6">
+        {/* Title and badge */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Analytics Overview</h3>
+            {!loading && !error && equipmentStatusData.length > 0 && (
+              <Badge variant="outline" className="text-green-600 text-xs sm:text-sm">Live Data</Badge>
+            )}
+          </div>
+          <p className="text-sm sm:text-base text-gray-600 hidden sm:block">
+            Real-time equipment usage and performance metrics
+          </p>
         </div>
-        <div className="flex items-center space-x-2">
+
+        {/* Controls - Responsive layout */}
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
           <button
             onClick={() => fetchChartData()}
-            className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+            className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors disabled:opacity-50 w-full sm:w-auto order-2 sm:order-1"
             disabled={loading}
           >
-            Refresh
+            {loading ? 'Refreshing...' : 'Refresh'}
           </button>
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
+            <SelectTrigger className="w-full sm:w-40 order-1 sm:order-2">
+              <SelectValue placeholder="Select time range" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="7days">Last 7 days</SelectItem>

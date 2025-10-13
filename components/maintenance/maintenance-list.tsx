@@ -42,7 +42,6 @@ export function MaintenanceList() {
 
   const queryClient = useQueryClient()
 
-  // Auto-refetch on mount
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ['maintenance-records'] })
     queryClient.invalidateQueries({ queryKey: ['equipment'] })
@@ -104,7 +103,7 @@ export function MaintenanceList() {
   })
 
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this maintenance record?')) {
+    if (confirm('Apakah Anda yakin ingin menghapus catatan pemeliharaan ini?')) {
       deleteMutation.mutate(id)
     }
   }
@@ -138,7 +137,6 @@ export function MaintenanceList() {
     }
   }
 
-  // Calculate maintenance statistics
   const stats = {
     total: maintenanceRecords?.length || 0,
     overdue: maintenanceRecords?.filter(r => isOverdue(r.next_maintenance_date)).length || 0,
@@ -148,7 +146,6 @@ export function MaintenanceList() {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black">PEMELIHARAAN</h1>
@@ -174,7 +171,6 @@ export function MaintenanceList() {
         </Dialog>
       </div>
 
-      {/* Statistics Grid */}
       <div className="grid gap-4 sm:gap-6 lg:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <div className="border border-black p-4 sm:p-6">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
@@ -213,7 +209,6 @@ export function MaintenanceList() {
         </div>
       </div>
 
-      {/* Alert for overdue maintenance */}
       {stats.overdue > 0 && (
         <div className="border border-black p-4 sm:p-6">
           <div className="flex items-center mb-2">
@@ -227,7 +222,6 @@ export function MaintenanceList() {
         </div>
       )}
 
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 lg:space-x-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 w-4 h-4" />
@@ -250,14 +244,12 @@ export function MaintenanceList() {
         </select>
       </div>
 
-      {/* Maintenance Records Table */}
       {isLoading ? (
         <div className="border border-black p-8 sm:p-12 text-center">
           <div className="text-base sm:text-lg">Memuat data pemeliharaan...</div>
         </div>
       ) : (
         <div className="border border-black">
-          {/* Desktop Table View */}
           <div className="hidden lg:block overflow-x-auto">
             <table className="w-full">
               <thead className="border-b border-black">
@@ -277,7 +269,7 @@ export function MaintenanceList() {
                   <tr key={record.id} className="border-t border-black hover:bg-gray-50">
                     <td className="p-4">
                       <div>
-                        <div className="font-medium">{record.equipment?.name || 'Unknown Equipment'}</div>
+                        <div className="font-medium">{record.equipment?.name || 'Peralatan Tidak Diketahui'}</div>
                         <div className="text-sm text-gray-600 font-mono">{record.equipment?.serial_number}</div>
                       </div>
                     </td>
@@ -316,7 +308,6 @@ export function MaintenanceList() {
             </table>
           </div>
 
-          {/* Mobile/Tablet Card View */}
           <div className="lg:hidden">
             <div className="divide-y divide-black">
               {maintenanceRecords?.map((record) => (
@@ -389,7 +380,6 @@ export function MaintenanceList() {
         </div>
       )}
 
-      {/* View Dialog */}
       {viewingRecord && (
         <Dialog open={!!viewingRecord} onOpenChange={() => setViewingRecord(null)}>
           <DialogContent className="sm:max-w-[600px] border border-black">
