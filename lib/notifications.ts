@@ -25,7 +25,6 @@ class NotificationService {
   private channel: RealtimeChannel | null = null
   private subscribers: Set<(notifications: Notification[]) => void> = new Set()
 
-  // Subscribe to real-time notifications for a user
   subscribeToUserNotifications(userId: string, callback: (notifications: Notification[]) => void) {
     this.subscribers.add(callback)
 
@@ -52,7 +51,6 @@ class NotificationService {
       )
       .subscribe()
 
-    // Fetch initial notifications
     this.fetchUserNotifications(userId).then(notifications => {
       callback(notifications)
     })
@@ -66,7 +64,6 @@ class NotificationService {
     }
   }
 
-  // Subscribe to system-wide notifications (for admin/lab_staff)
   subscribeToSystemNotifications(callback: (notifications: Notification[]) => void) {
     this.subscribers.add(callback)
 
@@ -93,7 +90,6 @@ class NotificationService {
       )
       .subscribe()
 
-    // Fetch initial system notifications
     this.fetchSystemNotifications().then(notifications => {
       callback(notifications)
     })
@@ -107,14 +103,11 @@ class NotificationService {
     }
   }
 
-  // Fetch user notifications
   async fetchUserNotifications(userId: string, limit = 50): Promise<Notification[]> {
     try {
-      // Simulate database operations
       await new Promise(resolve => setTimeout(resolve, 100))
       console.log('Fetching user notifications for:', { userId, limit })
 
-      // Return mock data
       return []
     } catch (error) {
       console.error('Error in fetchUserNotifications:', error)
@@ -122,14 +115,11 @@ class NotificationService {
     }
   }
 
-  // Fetch system notifications
   async fetchSystemNotifications(limit = 20): Promise<Notification[]> {
     try {
-      // Simulate database operations
       await new Promise(resolve => setTimeout(resolve, 100))
       console.log('Fetching system notifications with limit:', limit)
 
-      // Return mock data
       return []
     } catch (error) {
       console.error('Error in fetchSystemNotifications:', error)
@@ -137,10 +127,8 @@ class NotificationService {
     }
   }
 
-  // Create a notification
   async createNotification(input: NotificationCreateInput): Promise<{ success: boolean; error?: string; id?: string }> {
     try {
-      // Simulate database operations
       await new Promise(resolve => setTimeout(resolve, 100))
       const notificationId = 'notification_' + Math.random().toString(36).substr(2, 9)
 
@@ -159,10 +147,8 @@ class NotificationService {
     }
   }
 
-  // Mark notification as read
   async markAsRead(notificationId: string, userId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      // Simulate database operations
       await new Promise(resolve => setTimeout(resolve, 100))
       console.log('Marking notification as read:', { notificationId, userId })
 
@@ -173,10 +159,8 @@ class NotificationService {
     }
   }
 
-  // Mark all notifications as read for a user
   async markAllAsRead(userId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      // Simulate database operations
       await new Promise(resolve => setTimeout(resolve, 100))
       console.log('Marking all notifications as read for user:', userId)
 
@@ -187,10 +171,8 @@ class NotificationService {
     }
   }
 
-  // Delete a notification
   async deleteNotification(notificationId: string, userId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      // Simulate database operations
       await new Promise(resolve => setTimeout(resolve, 100))
       console.log('Deleting notification:', { notificationId, userId })
 
@@ -201,14 +183,11 @@ class NotificationService {
     }
   }
 
-  // Get unread count for a user
   async getUnreadCount(userId: string): Promise<number> {
     try {
-      // Simulate database operations
       await new Promise(resolve => setTimeout(resolve, 100))
       console.log('Getting unread count for user:', userId)
 
-      // Return mock data
       return 0
     } catch (error) {
       console.error('Error in getUnreadCount:', error)
@@ -216,7 +195,6 @@ class NotificationService {
     }
   }
 
-  // Create due date reminder notifications
   async createDueDateReminder(userId: string, equipmentName: string, dueDate: string, transactionId: string): Promise<{ success: boolean; error?: string }> {
     const dueDateObj = new Date(dueDate)
     const today = new Date()
@@ -253,7 +231,6 @@ class NotificationService {
     })
   }
 
-  // Create borrowing approval notification
   async createApprovalNotification(staffUserId: string, studentName: string, equipmentName: string): Promise<{ success: boolean; error?: string }> {
     return this.createNotification({
       user_id: staffUserId,
@@ -267,7 +244,6 @@ class NotificationService {
     })
   }
 
-  // Create equipment alert notification
   async createEquipmentAlert(title: string, message: string): Promise<{ success: boolean; error?: string }> {
     return this.createNotification({
       type: 'warning',
@@ -279,7 +255,6 @@ class NotificationService {
     })
   }
 
-  // Create system maintenance notification
   async createSystemMaintenanceNotification(title: string, message: string, scheduledDate?: string): Promise<{ success: boolean; error?: string }> {
     return this.createNotification({
       type: 'warning',
@@ -291,7 +266,6 @@ class NotificationService {
     })
   }
 
-  // Cleanup
   unsubscribe() {
     if (this.channel) {
       this.channel.unsubscribe()

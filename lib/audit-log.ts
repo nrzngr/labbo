@@ -13,10 +13,8 @@ export interface AuditLogEntry {
 }
 
 class AuditLogService {
-  // Log an audit event
   async log(entry: Omit<AuditLogEntry, 'id' | 'created_at'>): Promise<{ success: boolean; error?: string }> {
     try {
-      // Simulate database operations
       await new Promise(resolve => setTimeout(resolve, 100))
       console.log('Audit log entry created:', {
         ...entry,
@@ -30,7 +28,6 @@ class AuditLogService {
     }
   }
 
-  // Log equipment operations
   async logEquipmentOperation(
     action: 'INSERT' | 'UPDATE' | 'DELETE',
     recordId: string,
@@ -52,7 +49,6 @@ class AuditLogService {
     })
   }
 
-  // Log user operations
   async logUserOperation(
     action: 'INSERT' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT',
     recordId: string,
@@ -74,7 +70,6 @@ class AuditLogService {
     })
   }
 
-  // Log transaction operations
   async logTransactionOperation(
     action: 'INSERT' | 'UPDATE' | 'DELETE' | 'APPROVE' | 'REJECT',
     recordId: string,
@@ -96,7 +91,6 @@ class AuditLogService {
     })
   }
 
-  // Log maintenance operations
   async logMaintenanceOperation(
     action: 'INSERT' | 'UPDATE' | 'DELETE',
     recordId: string,
@@ -118,7 +112,6 @@ class AuditLogService {
     })
   }
 
-  // Log data export
   async logDataExport(
     userId: string,
     module: string,
@@ -142,7 +135,6 @@ class AuditLogService {
     })
   }
 
-  // Log data access/view
   async logDataAccess(
     userId: string,
     tableName: string,
@@ -161,18 +153,15 @@ class AuditLogService {
     })
   }
 
-  // Get audit logs for a specific record
   async getAuditHistory(
     tableName: string,
     recordId: string,
     limit = 50
   ): Promise<AuditLogEntry[]> {
     try {
-      // Simulate database operations
       await new Promise(resolve => setTimeout(resolve, 100))
       console.log('Fetching audit history for:', { tableName, recordId, limit })
 
-      // Return mock data
       return []
     } catch (error) {
       console.error('Error in getAuditHistory:', error)
@@ -180,17 +169,14 @@ class AuditLogService {
     }
   }
 
-  // Get audit logs for a user
   async getUserAuditHistory(
     userId: string,
     limit = 100
   ): Promise<AuditLogEntry[]> {
     try {
-      // Simulate database operations
       await new Promise(resolve => setTimeout(resolve, 100))
       console.log('Fetching user audit history for:', { userId, limit })
 
-      // Return mock data
       return []
     } catch (error) {
       console.error('Error in getUserAuditHistory:', error)
@@ -198,7 +184,6 @@ class AuditLogService {
     }
   }
 
-  // Get system audit logs (for admin)
   async getSystemAuditHistory(
     filters: {
       startDate?: string
@@ -211,11 +196,9 @@ class AuditLogService {
     } = {}
   ): Promise<{ logs: AuditLogEntry[]; total: number }> {
     try {
-      // Simulate database operations
       await new Promise(resolve => setTimeout(resolve, 100))
       console.log('Fetching system audit history for:', filters)
 
-      // Return mock data
       return { logs: [], total: 0 }
     } catch (error) {
       console.error('Error in getSystemAuditHistory:', error)
@@ -223,7 +206,6 @@ class AuditLogService {
     }
   }
 
-  // Get audit statistics
   async getAuditStats(
     startDate?: string,
     endDate?: string
@@ -234,11 +216,9 @@ class AuditLogService {
     usersByActivity: Record<string, number>
   }> {
     try {
-      // Simulate database operations
       await new Promise(resolve => setTimeout(resolve, 100))
       console.log('Fetching audit statistics for:', { startDate, endDate })
 
-      // Return mock data
       return {
         totalLogs: 0,
         actionsByType: {},

@@ -120,7 +120,6 @@ export function Sidebar() {
     router.push('/')
   }
 
-  // Filter navigation items based on user role
   const filteredNavItems = navItems.filter(item => {
     if (!item.roles) return true
     return user?.role && item.roles.includes(user.role)

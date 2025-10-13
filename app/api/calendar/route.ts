@@ -10,7 +10,6 @@ export async function GET(request: NextRequest) {
     const user_id = searchParams.get('user_id')
     const view = searchParams.get('view') || 'month' // month, week, day
 
-    // Validate required parameters
     if (!start_date || !end_date) {
       return NextResponse.json(
         { error: 'Start date and end date are required' },
@@ -25,7 +24,6 @@ export async function GET(request: NextRequest) {
       .lte('end_time', end_date)
       .order('start_time', { ascending: true })
 
-    // Apply filters
     if (equipment_id) {
       query = query.eq('equipment_id', equipment_id)
     }
@@ -43,7 +41,6 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get maintenance schedules for the same period
     let maintenanceQuery = supabase
       .from('maintenance_schedule_view')
       .select('*')
@@ -59,16 +56,12 @@ export async function GET(request: NextRequest) {
 
     if (maintenanceError) {
       console.error('Error fetching maintenance data:', maintenanceError)
-      // Continue without maintenance data
-    }
+        }
 
-    // Get equipment availability for the period
     let availabilityData = []
     if (equipment_id) {
       const equipmentStartDate = new Date(start_date)
       const equipmentEndDate = new Date(end_date)
-
-      // Generate availability for each day in the range
       for (let date = new Date(equipmentStartDate); date <= equipmentEndDate; date.setDate(date.getDate() + 1)) {
         const dateStr = date.toISOString().split('T')[0]
 
@@ -77,7 +70,7 @@ export async function GET(request: NextRequest) {
             p_equipment_id: equipment_id,
             p_date: dateStr,
             p_slot_duration_minutes: 60
-          })
+          } as any)
 
         if (timeSlots) {
           availabilityData.push({
@@ -88,12 +81,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Process calendar events
-    const events = []
+    const events: any[] = []
 
-    // Add reservation events
+
     if (reservations) {
-      reservations.forEach(reservation => {
+      (reservations as any[]).forEach(reservation => {
         events.push({
           id: reservation.id,
           title: `${reservation.equipment_name} - ${reservation.user_name}`,
@@ -114,9 +106,8 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Add maintenance events
     if (maintenance) {
-      maintenance.forEach(maint => {
+      (maintenance as any[]).forEach(maint => {
         const startDate = new Date(maint.scheduled_date)
         const endDate = new Date(maint.scheduled_date)
         endDate.setHours(endDate.getHours() + (maint.estimated_duration_hours || 2))

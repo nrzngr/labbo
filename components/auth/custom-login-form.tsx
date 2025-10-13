@@ -29,7 +29,6 @@ export function CustomLoginForm() {
     try {
       const result = await login(formData.email, formData.password)
       if (result.success) {
-        // Redirect based on user role after successful login
         setTimeout(() => {
           if (user?.role === 'student') {
             router.push('/dashboard/student')
@@ -58,7 +57,6 @@ export function CustomLoginForm() {
     }
   }
 
-  // Get current temp passwords from localStorage
   const getTempPassword = (email: string) => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem(`tempPassword_${email}`)

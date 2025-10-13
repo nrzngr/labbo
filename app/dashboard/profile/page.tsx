@@ -51,8 +51,6 @@ export default function ProfilePage() {
     mutationFn: async (updates: Partial<UserProfile>) => {
       if (!user) throw new Error('User not authenticated')
 
-      // For now, simulate profile update
-      // In a real implementation, you would update the database
       await new Promise(resolve => setTimeout(resolve, 1000))
       return { ...user, ...updates }
     },

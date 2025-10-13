@@ -36,27 +36,23 @@ export default function MaintenancePage() {
       const firstDayOfMonth = new Date()
       firstDayOfMonth.setDate(1)
 
-      // Get scheduled maintenance (upcoming)
       const { count: scheduledCount } = await supabase
         .from('maintenance_records')
         .select('*', { count: 'exact', head: true })
         .gte('maintenance_date', today)
         .lte('maintenance_date', sevenDaysFromNow.toISOString())
 
-      // Get in progress maintenance
       const { count: inProgressCount } = await supabase
         .from('maintenance_records')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'in_progress')
 
-      // Get overdue maintenance
       const { count: overdueCount } = await supabase
         .from('maintenance_records')
         .select('*', { count: 'exact', head: true })
         .lt('maintenance_date', today)
         .neq('status', 'completed')
 
-      // Get completed maintenance this month
       const { count: completedCount } = await supabase
         .from('maintenance_records')
         .select('*', { count: 'exact', head: true })

@@ -13,7 +13,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get equipment details
     const { data: equipment, error: equipmentError } = await supabase
       .from('equipment')
       .select(`
@@ -30,22 +29,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate QR code
     const qrCode = await QRCodeService.generateEquipmentQR({
-      equipment_id: equipment.id,
-      name: equipment.name,
-      serial_number: equipment.serial_number,
-      category: equipment.categories?.name,
-      location: equipment.location
+      equipment_id: (equipment as any).id,
+      name: (equipment as any).name,
+      serial_number: (equipment as any).serial_number,
+      category: (equipment as any).categories?.name,
+      location: (equipment as any).location
     })
 
     return NextResponse.json({
       success: true,
       qr_code: qrCode,
       equipment: {
-        id: equipment.id,
-        name: equipment.name,
-        serial_number: equipment.serial_number
+        id: (equipment as any).id,
+        name: (equipment as any).name,
+        serial_number: (equipment as any).serial_number
       }
     })
 

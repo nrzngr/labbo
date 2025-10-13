@@ -46,7 +46,6 @@ export function AdvancedSearch({ filters, onFiltersChange, categories }: Advance
   const [localFilters, setLocalFilters] = useState<AdvancedFilters>(filters)
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(filters.searchTerm)
 
-  // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       onFiltersChange({ ...filters, searchTerm: debouncedSearchTerm })
@@ -55,7 +54,6 @@ export function AdvancedSearch({ filters, onFiltersChange, categories }: Advance
     return () => clearTimeout(timer)
   }, [debouncedSearchTerm])
 
-  // Update local filters when props change
   useEffect(() => {
     setLocalFilters(filters)
   }, [filters])

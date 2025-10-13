@@ -31,13 +31,11 @@ export default function TransactionsPage() {
     try {
       const today = new Date().toISOString().split('T')[0]
 
-      // Get active transactions
       const { count: activeCount } = await supabase
         .from('borrowing_transactions')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active')
 
-      // Get returned transactions this month
       const firstDayOfMonth = new Date()
       firstDayOfMonth.setDate(1)
       const { count: returnedCount } = await supabase
@@ -46,14 +44,12 @@ export default function TransactionsPage() {
         .eq('status', 'returned')
         .gte('actual_return_date', firstDayOfMonth.toISOString())
 
-      // Get overdue transactions
       const { count: overdueCount } = await supabase
         .from('borrowing_transactions')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active')
         .lt('expected_return_date', today)
 
-      // Get today's transactions
       const { count: todayCount } = await supabase
         .from('borrowing_transactions')
         .select('*', { count: 'exact', head: true })

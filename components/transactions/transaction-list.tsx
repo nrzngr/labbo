@@ -134,7 +134,6 @@ export function TransactionList() {
     mutationFn: async (transactionId: string) => {
       const now = new Date().toISOString()
 
-      // Simulate database operations
       await new Promise(resolve => setTimeout(resolve, 1000))
       console.log('Transaction returned:', transactionId)
       console.log('Equipment status updated to available:', transactionId)

@@ -63,15 +63,15 @@ export function MaintenanceScheduler({ equipmentId }: MaintenanceSchedulerProps)
   // Form state
   const [formData, setFormData] = useState({
     equipment_id: equipmentId || '',
-    type: 'preventive' as const,
+    type: 'preventive' as 'preventive' | 'corrective' | 'calibration',
     title: '',
     description: '',
     scheduled_date: format(new Date(), 'yyyy-MM-dd'),
     scheduled_time: '09:00',
     estimated_duration: 2,
-    priority: 'medium' as const,
+    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
     assigned_to: '',
-    recurrence_type: 'none' as const,
+    recurrence_type: 'none' as 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly',
     recurrence_interval: 1,
     recurrence_end_date: ''
   })

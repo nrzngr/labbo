@@ -45,7 +45,6 @@ export function ReservationForm({
     setError(null)
     setSuccess(null)
 
-    // Clear validation error for this field
     if (validationErrors[field]) {
       setValidationErrors(prev => {
         const updated = { ...prev }
@@ -119,7 +118,6 @@ export function ReservationForm({
       if (data.success) {
         setSuccess(data.message || 'Reservation created successfully')
 
-        // Reset form
         setFormData({
           title: '',
           description: '',
@@ -142,7 +140,7 @@ export function ReservationForm({
 
   const getCurrentDateTime = () => {
     const now = new Date()
-    now.setMinutes(0) // Round to nearest hour
+    now.setMinutes(0)
     return now.toISOString().slice(0, 16)
   }
 

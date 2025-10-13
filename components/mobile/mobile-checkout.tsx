@@ -44,7 +44,6 @@ export function MobileCheckout({ onClose }: MobileCheckoutProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Form data
   const [borrowerName, setBorrowerName] = useState('')
   const [borrowerId, setBorrowerId] = useState('')
   const [borrowDate, setBorrowDate] = useState(new Date().toISOString().split('T')[0])

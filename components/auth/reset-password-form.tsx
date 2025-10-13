@@ -33,7 +33,6 @@ export function ResetPasswordForm({ email, token, onSuccess, onError }: ResetPas
     try {
       await new Promise(resolve => setTimeout(resolve, 500))
 
-      // Simulate token validation
       const validTokens = ['demo-reset-token', 'test-token', 'valid-token']
 
       if (validTokens.includes(token)) {
@@ -49,22 +48,18 @@ export function ResetPasswordForm({ email, token, onSuccess, onError }: ResetPas
   }
 
   const validatePassword = (password: string): boolean => {
-    // Password must be at least 8 characters long
     if (password.length < 8) {
       return false
     }
 
-    // Must contain at least one uppercase letter
     if (!/[A-Z]/.test(password)) {
       return false
     }
 
-    // Must contain at least one lowercase letter
     if (!/[a-z]/.test(password)) {
       return false
     }
 
-    // Must contain at least one number
     if (!/\d/.test(password)) {
       return false
     }
@@ -102,7 +97,6 @@ export function ResetPasswordForm({ email, token, onSuccess, onError }: ResetPas
     setError(null)
 
     try {
-      // Validate passwords
       if (!validatePassword(password)) {
         setError('Password harus minimal 8 karakter, mengandung huruf besar, huruf kecil, dan angka')
         return

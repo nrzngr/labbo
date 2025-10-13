@@ -17,7 +17,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Hapus session dari database
     await supabase
       .from('user_sessions')
       .delete()

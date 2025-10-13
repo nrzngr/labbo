@@ -88,11 +88,9 @@ export function EquipmentForm({ equipment, onSuccess }: EquipmentFormProps) {
       }
 
       if (equipment) {
-        // Simulate update operation
         await new Promise(resolve => setTimeout(resolve, 1000))
         console.log('Equipment updated:', submitData)
       } else {
-        // Simulate insert operation
         await new Promise(resolve => setTimeout(resolve, 1000))
         console.log('Equipment created:', submitData)
       }

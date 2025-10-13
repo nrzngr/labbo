@@ -44,7 +44,6 @@ export function RealtimeAnalytics() {
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false)
   const [channel, setChannel] = useState<RealtimeChannel | null>(null)
 
-  // Fetch initial stats
   const { data: initialStats, refetch: refetchStats } = useQuery({
     queryKey: ['realtime-stats'],
     queryFn: async () => {
@@ -93,11 +92,9 @@ export function RealtimeAnalytics() {
     refetchInterval: 30000, // Refetch every 30 seconds as fallback
   })
 
-  // Set up real-time subscriptions
   useEffect(() => {
     const setupRealtimeSubscriptions = async () => {
       try {
-        // Subscribe to equipment changes
         const equipmentChannel = supabase
           .channel('equipment-changes')
           .on(
@@ -121,7 +118,6 @@ export function RealtimeAnalytics() {
           )
           .subscribe()
 
-        // Subscribe to transaction changes
         const transactionChannel = supabase
           .channel('transaction-changes')
           .on(
@@ -145,7 +141,6 @@ export function RealtimeAnalytics() {
           )
           .subscribe()
 
-        // Subscribe to user changes
         const userChannel = supabase
           .channel('user-changes')
           .on(
@@ -190,7 +185,6 @@ export function RealtimeAnalytics() {
     }
   }, [])
 
-  // Update stats when initial data changes
   useEffect(() => {
     if (initialStats) {
       setStats(prev => ({
@@ -200,12 +194,10 @@ export function RealtimeAnalytics() {
     }
   }, [initialStats])
 
-  // Add activity event
   const addActivityEvent = useCallback((event: ActivityEvent) => {
     setRecentActivities(prev => [event, ...prev.slice(0, 9)]) // Keep only last 10 events
   }, [])
 
-  // Manual refresh
   const handleRefresh = useCallback(() => {
     refetchStats()
     addActivityEvent({
@@ -217,7 +209,6 @@ export function RealtimeAnalytics() {
     })
   }, [refetchStats, addActivityEvent])
 
-  // Connection status
   const getConnectionStatus = () => {
     if (isRealtimeConnected) {
       return { color: 'bg-green-500', text: 'Connected', icon: Activity }

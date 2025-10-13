@@ -42,8 +42,6 @@ export default function SettingsPage() {
 
   const fetchSettings = async () => {
     try {
-      // For now, use default settings
-      // In a real app, you'd fetch these from a settings table
       setLoading(false)
     } catch (error) {
       setLoading(false)
@@ -55,7 +53,6 @@ export default function SettingsPage() {
     setMessage(null)
 
     try {
-      // Simulate saving settings
       await new Promise(resolve => setTimeout(resolve, 1000))
       setMessage({ type: 'success', text: 'Pengaturan berhasil disimpan!' })
     } catch (error) {

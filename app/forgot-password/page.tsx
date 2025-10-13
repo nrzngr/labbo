@@ -10,8 +10,6 @@ export default function ForgotPasswordPage() {
   const router = useRouter()
 
   const handleForgotSuccess = (email: string) => {
-    // After successful email submission, you could redirect to a confirmation page
-    // or show a success message. For now, we'll redirect back to login after 3 seconds
     setTimeout(() => {
       setCurrentView('login')
     }, 3000)

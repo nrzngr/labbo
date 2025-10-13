@@ -1,7 +1,6 @@
 const bcrypt = require('bcryptjs');
 const { createClient } = require('@supabase/supabase-js');
 
-// Supabase configuration
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://your-project-url.supabase.co';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'your-service-role-key';
 
@@ -19,13 +18,11 @@ async function setupTraditionalAuth() {
 
   for (const user of demoUsers) {
     try {
-      // Hash the password
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash(user.password, saltRounds);
 
       console.log(`Updating ${user.email} with hashed password...`);
 
-      // Update the user with the hashed password
       const { data, error } = await supabase
         .from('users')
         .update({ custom_password: hashedPassword })
@@ -45,5 +42,4 @@ async function setupTraditionalAuth() {
   console.log('Traditional authentication setup complete!');
 }
 
-// Run the setup
 setupTraditionalAuth().catch(console.error);

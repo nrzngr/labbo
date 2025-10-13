@@ -12,7 +12,6 @@ export async function POST(request: NextRequest) {
       priority = 'normal'
     } = body
 
-    // Validate required fields
     if (!equipment_id || !user_id || !requested_start_time || !requested_end_time) {
       return NextResponse.json(
         { error: 'Missing required fields' },
@@ -20,7 +19,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate priority
     const validPriorities = ['low', 'normal', 'high', 'urgent']
     if (!validPriorities.includes(priority)) {
       return NextResponse.json(
@@ -29,8 +27,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if equipment exists
-    const { data: equipment, error: equipmentError } = await supabase
+    const { data: equipment, error: equipmentError } = await (supabase as any)
       .from('equipment')
       .select('id, name, status')
       .eq('id', equipment_id)
@@ -44,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user exists
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await (supabase as any)
       .from('users')
       .select('id, full_name, email')
       .eq('id', user_id)
@@ -58,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user is already in waitlist for this time slot
-    const { data: existingWaitlist, error: waitlistError } = await supabase
+    const { data: existingWaitlist, error: waitlistError } = await (supabase as any)
       .from('reservation_waitlist')
       .select('*')
       .eq('equipment_id', equipment_id)
@@ -75,7 +72,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Add to waitlist
-    const { data: waitlistEntry, error: insertError } = await supabase
+    const { data: waitlistEntry, error: insertError } = await (supabase as any)
       .from('reservation_waitlist')
       .insert({
         equipment_id,
@@ -100,7 +97,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get waitlist position
-    const { data: waitlistPosition } = await supabase
+    const { data: waitlistPosition } = await (supabase as any)
       .from('reservation_waitlist')
       .select('id')
       .eq('equipment_id', equipment_id)
@@ -136,7 +133,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
 
-    let query = supabase
+    let query = (supabase as any)
       .from('reservation_waitlist')
       .select(`
         *,
@@ -146,7 +143,6 @@ export async function GET(request: NextRequest) {
       .order('priority', { ascending: false })
       .order('created_at', { ascending: true })
 
-    // Apply filters
     if (equipment_id) {
       query = query.eq('equipment_id', equipment_id)
     }
@@ -154,7 +150,6 @@ export async function GET(request: NextRequest) {
       query = query.eq('user_id', user_id)
     }
 
-    // Apply pagination
     const from = (page - 1) * limit
     const to = from + limit - 1
     query = query.range(from, to)
@@ -203,7 +198,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    let query = supabase.from('reservation_waitlist')
+    let query = (supabase as any).from('reservation_waitlist')
 
     if (waitlist_id) {
       query = query.delete().eq('id', waitlist_id)

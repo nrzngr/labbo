@@ -66,7 +66,6 @@ export function DashboardCharts() {
       setLoading(true)
       setError(null)
 
-      // Fetch real data using direct Supabase calls
       const [equipmentResult, categoriesResult, transactionsResult, usersResult] = await Promise.allSettled([
         supabase.from('equipment').select('*'),
         supabase.from('categories').select('*'),
@@ -79,12 +78,10 @@ export function DashboardCharts() {
       const transactions = transactionsResult.status === 'fulfilled' ? transactionsResult.value.data || [] : []
       const users = usersResult.status === 'fulfilled' ? usersResult.value.data || [] : []
 
-      // Check if we have sufficient data
       if (equipmentData.length === 0 || categories.length === 0) {
         throw new Error('No equipment or categories data available')
       }
 
-      // Process equipment status data
       const statusCounts = equipmentData.reduce((acc, item: any) => {
         acc[item.status] = (acc[item.status] || 0) + 1
         return acc
@@ -99,7 +96,6 @@ export function DashboardCharts() {
 
       setEquipmentStatusData(statusChartData)
 
-      // Process category data
       const availableEquipment = equipmentData.filter((item: any) => item.status === 'available')
       const categoryCounts = categories.map((category: any) => ({
         name: category.name,
@@ -108,7 +104,6 @@ export function DashboardCharts() {
 
       setCategoryData(categoryCounts.slice(0, 6).sort((a, b) => b.count - a.count))
 
-      // Process transaction data for line chart
       const days = timeRange === '7days' ? 7 : timeRange === '30days' ? 30 : 90
       const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
       const recentTransactions = transactions.filter((t: any) =>
@@ -140,7 +135,6 @@ export function DashboardCharts() {
 
       setTransactionData(processedTransactionData)
 
-      // Process user activity by month (only use real data)
       const monthlyData: UserActivityData[] = []
       for (let i = 5; i >= 0; i--) {
         const date = new Date()
@@ -152,7 +146,6 @@ export function DashboardCharts() {
           return userDate.getMonth() === date.getMonth() && userDate.getFullYear() === date.getFullYear()
         }).length
 
-        // Calculate active users (users with transactions in the last month)
         const activeDate = new Date()
         activeDate.setMonth(activeDate.getMonth() - 1)
         const activeUsers = new Set(
@@ -173,7 +166,6 @@ export function DashboardCharts() {
     } catch (error) {
       setError(`Failed to load analytics data: ${error instanceof Error ? error.message : 'Unknown error'}`)
 
-      // Set empty data arrays - no mock data
       setEquipmentStatusData([])
       setCategoryData([])
       setTransactionData([])

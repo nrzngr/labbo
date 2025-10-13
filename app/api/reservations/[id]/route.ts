@@ -3,12 +3,12 @@ import { supabase } from '@/lib/supabase'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await context.params
 
-    const { data: reservation, error } = await supabase
+    const { data: reservation, error } = await (supabase as any)
       .from('reservation_calendar')
       .select('*')
       .eq('id', id)
@@ -44,10 +44,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await context.params
     const body = await request.json()
     const {
       title,
@@ -59,8 +59,7 @@ export async function PUT(
       approved_by
     } = body
 
-    // Validate if reservation exists
-    const { data: existingReservation, error: fetchError } = await supabase
+    const { data: existingReservation, error: fetchError } = await (supabase as any)
       .from('equipment_reservations')
       .select('*')
       .eq('id', id)
@@ -73,7 +72,6 @@ export async function PUT(
       )
     }
 
-    // Prepare update data
     const updateData: any = {}
     if (title !== undefined) updateData.title = title
     if (description !== undefined) updateData.description = description
@@ -110,7 +108,8 @@ export async function PUT(
       }
     }
 
-    const { data: reservation, error: updateError } = await supabase
+    // Fix TypeScript errors by casting the entire operation
+    const { data: reservation, error: updateError } = await (supabase as any)
       .from('equipment_reservations')
       .update(updateData)
       .eq('id', id)
@@ -155,13 +154,13 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await context.params
 
     // Check if reservation exists
-    const { data: reservation, error: fetchError } = await supabase
+    const { data: reservation, error: fetchError } = await (supabase as any)
       .from('equipment_reservations')
       .select('*')
       .eq('id', id)
@@ -175,7 +174,7 @@ export async function DELETE(
     }
 
     // Check if reservation can be cancelled (not in the past)
-    const startTime = new Date(reservation.start_time)
+    const startTime = new Date((reservation as any).start_time)
     const now = new Date()
     if (startTime <= now) {
       return NextResponse.json(
@@ -185,7 +184,7 @@ export async function DELETE(
     }
 
     // Soft delete by setting status to cancelled
-    const { data: cancelledReservation, error: deleteError } = await supabase
+    const { data: cancelledReservation, error: deleteError } = await (supabase as any)
       .from('equipment_reservations')
       .update({ status: 'cancelled' })
       .eq('id', id)
@@ -202,7 +201,7 @@ export async function DELETE(
 
     // If there are waitlisted users for this equipment, notify them
     // (This would typically be handled by a background job or trigger)
-    await processWaitlist(reservation.equipment_id, reservation.start_time, reservation.end_time)
+    await processWaitlist((reservation as any).equipment_id, (reservation as any).start_time, (reservation as any).end_time)
 
     return NextResponse.json({
       success: true,
@@ -223,7 +222,7 @@ export async function DELETE(
 async function processWaitlist(equipmentId: string, startTime: string, endTime: string) {
   try {
     // Find waitlisted users for the time slot
-    const { data: waitlistEntries } = await supabase
+    const { data: waitlistEntries } = await (supabase as any)
       .from('reservation_waitlist')
       .select('*')
       .eq('equipment_id', equipmentId)
@@ -236,7 +235,7 @@ async function processWaitlist(equipmentId: string, startTime: string, endTime: 
       const firstWaitlisted = waitlistEntries[0]
 
       // Mark as notified
-      await supabase
+      await (supabase as any)
         .from('reservation_waitlist')
         .update({ notified_at: new Date().toISOString() })
         .eq('id', firstWaitlisted.id)

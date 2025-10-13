@@ -82,7 +82,6 @@ export function TransactionForm({ onSuccess }: TransactionFormProps) {
     setError(null)
 
     try {
-      // Simulate database operations
       await new Promise(resolve => setTimeout(resolve, 1000))
       console.log('Transaction created:', {
         user_id: data.user_id,

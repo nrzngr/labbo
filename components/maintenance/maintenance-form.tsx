@@ -75,7 +75,6 @@ export function MaintenanceForm({ onSuccess }: MaintenanceFormProps) {
         notes: data.notes || null
       }
 
-      // Simulate database operation
       await new Promise(resolve => setTimeout(resolve, 1000))
       console.log('Maintenance record created:', submitData)
 

@@ -69,7 +69,6 @@ export function CalendarView({
       const data = await response.json()
 
       if (data.success) {
-        // Convert string dates to Date objects
         const processedEvents = data.calendar.events.map((event: any) => ({
           ...event,
           start: new Date(event.start),

@@ -13,7 +13,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Parse and validate QR data
     let parsedData
     try {
       parsedData = QRCodeService.parseQRData(qr_data)
@@ -24,7 +23,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate QR data structure
     if (!QRCodeService.validateQRData(parsedData)) {
       return NextResponse.json(
         { error: 'Invalid QR code data' },
@@ -32,7 +30,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get equipment details
     const { data: equipment, error: equipmentError } = await supabase
       .from('equipment')
       .select(`
@@ -51,14 +48,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get current status
     const { data: statusData } = await supabase
       .from('equipment_comprehensive_status')
       .select('current_status, return_due_date, calibration_status')
       .eq('id', parsedData.id)
       .single()
 
-    // Get recent maintenance records
     const { data: maintenanceRecords } = await supabase
       .from('maintenance_records')
       .select('*')
@@ -66,7 +61,6 @@ export async function POST(request: NextRequest) {
       .order('maintenance_date', { ascending: false })
       .limit(5)
 
-    // Get active reservations
     const { data: activeReservations } = await supabase
       .from('reservation_calendar')
       .select('*')
@@ -78,16 +72,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       equipment: {
-        id: equipment.id,
-        name: equipment.name,
-        description: equipment.description,
-        serial_number: equipment.serial_number,
-        category: equipment.categories?.name,
-        location: equipment.location,
-        status: statusData?.current_status || 'available',
-        return_due_date: statusData?.return_due_date,
-        calibration_status: statusData?.calibration_status,
-        qr_code_url: equipment.equipment_qr_codes[0]?.qr_code_url
+        id: (equipment as any).id,
+        name: (equipment as any).name,
+        description: (equipment as any).description,
+        serial_number: (equipment as any).serial_number,
+        category: (equipment as any).categories?.name,
+        location: (equipment as any).location,
+        status: (statusData as any)?.current_status || 'available',
+        return_due_date: (statusData as any)?.return_due_date,
+        calibration_status: (statusData as any)?.calibration_status,
+        qr_code_url: (equipment as any).equipment_qr_codes?.[0]?.qr_code_url
       },
       recent_maintenance: maintenanceRecords || [],
       upcoming_reservations: activeReservations || []

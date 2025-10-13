@@ -69,7 +69,7 @@ export function CalibrationTracker({ equipmentId }: CalibrationTrackerProps) {
     calibration_company: '',
     technician_name: '',
     certificate_number: '',
-    results: 'passed' as const,
+    results: 'passed' as 'passed' | 'failed' | 'conditional',
     notes: '',
     cost: ''
   })

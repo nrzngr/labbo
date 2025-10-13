@@ -65,7 +65,6 @@ export default function MyBorrowingsPage() {
 
       if (error) throw error
 
-      // Calculate status for each transaction
       return data?.map((transaction: any) => {
         let status: 'active' | 'returned' | 'overdue' = transaction.status as 'active' | 'returned'
 
@@ -85,8 +84,6 @@ export default function MyBorrowingsPage() {
   const extendBorrowingMutation = useMutation({
     mutationFn: async ({ transactionId, newReturnDate }: { transactionId: string, newReturnDate: string }) => {
       try {
-        // For now, simulate the extension
-        // In a real implementation, you would update the database
         await new Promise(resolve => setTimeout(resolve, 1000))
         return { success: true }
       } catch (error) {

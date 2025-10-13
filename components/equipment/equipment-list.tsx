@@ -78,7 +78,6 @@ export function EquipmentList() {
     queryClient.invalidateQueries({ queryKey: ['categories'] })
   }, [queryClient])
 
-  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
   }, [filters])
@@ -86,12 +85,9 @@ export function EquipmentList() {
   const { data: equipmentData, isLoading, refetch } = useQuery({
     queryKey: ['equipment', filters, currentPage, pageSize],
     queryFn: async () => {
-      // First get the total count
       let countQuery = supabase
         .from('equipment')
         .select('*', { count: 'exact', head: true })
-
-      // Apply the same filters to count query
       if (filters.searchTerm) {
         countQuery = countQuery.or(`name.ilike.%${filters.searchTerm}%,serial_number.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`)
       }
@@ -109,7 +105,6 @@ export function EquipmentList() {
       const { count: totalCount, error: countError } = await countQuery
       if (countError) throw countError
 
-      // Then get the paginated data
       const from = (currentPage - 1) * pageSize
       const to = from + pageSize - 1
 
@@ -446,7 +441,6 @@ export function EquipmentList() {
         </Dialog>
       )}
 
-      {/* Pagination Controls */}
       {totalPages > 1 && (
         <div className="mt-6">
           <TablePagination

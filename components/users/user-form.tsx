@@ -69,7 +69,6 @@ export function UserForm({ user, onSuccess }: UserFormProps) {
 
     try {
       if (user) {
-        // Simulate database operations
         await new Promise(resolve => setTimeout(resolve, 1000))
         console.log('User profile updated:', {
           id: user.id,
@@ -104,7 +103,6 @@ export function UserForm({ user, onSuccess }: UserFormProps) {
 
       const tempPassword = 'TempPass123!' + Math.random().toString(36).slice(-8)
 
-      // Simulate database operations
       await new Promise(resolve => setTimeout(resolve, 1000))
 
       const userId = 'user_' + Math.random().toString(36).substr(2, 9)

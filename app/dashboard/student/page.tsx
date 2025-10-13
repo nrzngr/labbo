@@ -50,7 +50,6 @@ export default function StudentDashboard() {
       if (!user || !isAuthenticated) return
 
       try {
-        // Fetch student's borrowing stats
         const { data: transactionData } = await supabase
           .from('borrowing_transactions')
           .select('*, equipment(name, categories(name))')
@@ -64,8 +63,6 @@ export default function StudentDashboard() {
             new Date(t.expected_return_date) < new Date()
           ).length
           const totalBorrowed = transactionData.length
-
-          // Calculate favorite category
           const categoryCount: Record<string, number> = {}
           transactionData.forEach((t: any) => {
             const categoryName = (t.equipment as { categories?: { name?: string } })?.categories?.name || 'Uncategorized'
@@ -84,7 +81,6 @@ export default function StudentDashboard() {
           })
         }
 
-        // Fetch recent transactions (last 5)
         const recentData = transactionData?.slice(0, 5).map((t: any) => ({
           id: t.id,
           equipment_name: (t.equipment as { name?: string })?.name || 'Unknown Equipment',
@@ -96,7 +92,6 @@ export default function StudentDashboard() {
 
         setRecentTransactions(recentData)
 
-        // Fetch available equipment for quick browse
         const { data: availableData } = await supabase
           .from('equipment')
           .select('id, name, categories(name), image_url')

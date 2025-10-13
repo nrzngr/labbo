@@ -17,7 +17,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Cari user berdasarkan email
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('*')
@@ -60,7 +59,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate session token (simple JWT-like token)
     const sessionToken = Buffer.from(JSON.stringify({
       userId: user.id,
       email: user.email,
@@ -68,7 +66,6 @@ export async function POST(request: NextRequest) {
       timestamp: Date.now()
     })).toString('base64')
 
-    // Simpan session di database (optional, untuk tracking)
     await supabase
       .from('user_sessions')
       .insert({
@@ -78,7 +75,6 @@ export async function POST(request: NextRequest) {
         created_at: new Date().toISOString()
       })
 
-    // Return user data dan session token
     return NextResponse.json({
       success: true,
       user: {

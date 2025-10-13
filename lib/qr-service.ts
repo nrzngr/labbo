@@ -57,14 +57,10 @@ export class QRCodeService {
    */
   static async generateEquipmentQR(equipment: QRCodeData): Promise<GeneratedQRCode> {
     try {
-      // Generate QR data
       const qrData = this.generateQRData(equipment)
-
-      // Generate QR image
       const qrImageUrl = await this.generateQRImage(qrData)
 
-      // Save to database
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('equipment_qr_codes')
         .insert({
           equipment_id: equipment.equipment_id,
@@ -95,7 +91,7 @@ export class QRCodeService {
    */
   static async getEquipmentQR(equipmentId: string): Promise<GeneratedQRCode | null> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('equipment_qr_codes')
         .select('*')
         .eq('equipment_id', equipmentId)
@@ -104,7 +100,6 @@ export class QRCodeService {
 
       if (error) {
         if (error.code === 'PGRST116') {
-          // No QR code found
           return null
         }
         throw error
@@ -163,7 +158,6 @@ export class QRCodeService {
         results.push(qrCode)
       } catch (error) {
         console.error(`Failed to generate QR for equipment ${equipment.name}:`, error)
-        // Continue with other equipment
       }
     }
 
@@ -175,7 +169,7 @@ export class QRCodeService {
    */
   static async deactivateQR(equipmentId: string): Promise<void> {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('equipment_qr_codes')
         .update({ is_active: false })
         .eq('equipment_id', equipmentId)
@@ -194,10 +188,7 @@ export class QRCodeService {
    */
   static async regenerateEquipmentQR(equipment: QRCodeData): Promise<GeneratedQRCode> {
     try {
-      // Deactivate existing QR codes
       await this.deactivateQR(equipment.equipment_id)
-
-      // Generate new QR code
       return await this.generateEquipmentQR(equipment)
     } catch (error) {
       console.error('Error regenerating equipment QR code:', error)

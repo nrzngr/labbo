@@ -11,11 +11,9 @@ function HomeContent() {
   const [isRedirecting, setIsRedirecting] = useState(false)
   const message = searchParams.get('message')
 
-  // Only redirect if user is authenticated and NOT loading
   useEffect(() => {
     if (isAuthenticated && !loading && !isRedirecting) {
       setIsRedirecting(true)
-      // Redirect based on user role
       if (user?.role === 'student') {
         window.location.href = '/dashboard/student'
       } else {
@@ -24,7 +22,7 @@ function HomeContent() {
     }
   }, [isAuthenticated, loading, isRedirecting, user])
 
-  // Show loading state while checking authentication
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -36,7 +34,6 @@ function HomeContent() {
     )
   }
 
-  // If user is authenticated, show loading while redirecting
   if (isAuthenticated) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -48,7 +45,6 @@ function HomeContent() {
     )
   }
 
-  // Show login form if not authenticated
   return <CustomLoginForm />
 }
 

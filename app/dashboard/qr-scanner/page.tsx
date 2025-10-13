@@ -20,7 +20,6 @@ export default function QRScannerPage() {
 
   const handleScanError = (error: string) => {
     console.error('QR scan error:', error)
-    // Could show a toast notification here
   }
 
   const fetchEquipmentDetails = async (equipmentId: string) => {

@@ -17,7 +17,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Cek session di database
     const { data: session, error: sessionError } = await supabase
       .from('user_sessions')
       .select('user_id, expires_at')
@@ -31,9 +30,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Cek apakah session sudah expired
     if (new Date() > new Date(session.expires_at)) {
-      // Hapus session yang expired
       await supabase
         .from('user_sessions')
         .delete()
@@ -45,13 +42,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update last accessed
     await supabase
       .from('user_sessions')
       .update({ last_accessed: new Date().toISOString() })
       .eq('session_token', sessionToken)
 
-    // Ambil data user
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('*')
@@ -65,7 +60,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Cek apakah user aktif
     if (!user.is_active) {
       return NextResponse.json(
         { error: 'Akun tidak aktif' },
@@ -73,7 +67,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update last login
     await supabase
       .from('users')
       .update({ last_login: new Date().toISOString() })

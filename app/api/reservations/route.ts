@@ -12,12 +12,11 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
 
-    let query = supabase
+    let query = (supabase as any)
       .from('reservation_calendar')
       .select('*')
       .order('start_time', { ascending: true })
 
-    // Apply filters
     if (equipment_id) {
       query = query.eq('equipment_id', equipment_id)
     }
@@ -34,7 +33,6 @@ export async function GET(request: NextRequest) {
       query = query.lte('end_time', end_date)
     }
 
-    // Apply pagination
     const from = (page - 1) * limit
     const to = from + limit - 1
     query = query.range(from, to)
@@ -82,7 +80,6 @@ export async function POST(request: NextRequest) {
       approval_required
     } = body
 
-    // Validate required fields
     if (!equipment_id || !user_id || !title || !start_time || !end_time) {
       return NextResponse.json(
         { error: 'Missing required fields' },
@@ -90,7 +87,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate time range
     const startTime = new Date(start_time)
     const endTime = new Date(end_time)
     if (startTime >= endTime) {
@@ -100,8 +96,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if equipment exists
-    const { data: equipment, error: equipmentError } = await supabase
+    const { data: equipment, error: equipmentError } = await (supabase as any)
       .from('equipment')
       .select('id, name, status, purchase_price')
       .eq('id', equipment_id)
@@ -114,8 +109,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if user exists
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await (supabase as any)
       .from('users')
       .select('id, role, full_name')
       .eq('id', user_id)
@@ -129,7 +123,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create reservation (conflict checking is handled by database trigger)
-    const { data: reservation, error: reservationError } = await supabase
+    const { data: reservation, error: reservationError } = await (supabase as any)
       .from('equipment_reservations')
       .insert({
         equipment_id,
@@ -150,7 +144,6 @@ export async function POST(request: NextRequest) {
     if (reservationError) {
       console.error('Error creating reservation:', reservationError)
 
-      // Handle specific errors
       if (reservationError.message?.includes('already reserved')) {
         return NextResponse.json(
           { error: 'Equipment is already reserved for the selected time slot' },

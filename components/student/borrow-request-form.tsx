@@ -65,7 +65,6 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
 
       const borrowDate = new Date().toISOString().split('T')[0]
 
-      // Simulate database operation
       await new Promise(resolve => setTimeout(resolve, 1000))
       console.log('Borrow request created:', {
         user_id: user.id,
@@ -78,7 +77,6 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
       return { id: 'mock-id' }
     },
     onSuccess: async () => {
-      // Update equipment status (simulated)
       if (selectedEquipment) {
         console.log('Equipment status updated to borrowed:', selectedEquipment.id)
       }
