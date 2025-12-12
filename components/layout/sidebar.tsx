@@ -2,14 +2,16 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
+
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import { VisuallyHidden } from '@/components/ui/visually-hidden'
 import { useCustomAuth } from '@/components/auth/custom-auth-provider'
 import { ModernBadge } from '@/components/ui/modern-badge'
-import { ModernCard } from '@/components/ui/modern-card'
+import { ModernButton } from '@/components/ui/modern-button'
+import { LoginAccent } from '@/components/auth/login-accent'
 import {
   LayoutDashboard,
   Package,
@@ -22,7 +24,13 @@ import {
   Wrench,
   Calendar,
   Camera,
-  Target
+  Target,
+  Bell,
+  FileText,
+  Building2,
+  AlertTriangle,
+  UserCheck,
+  CalendarDays
 } from 'lucide-react'
 
 interface NavItem {
@@ -30,9 +38,11 @@ interface NavItem {
   href: string
   icon: React.ComponentType<{ className?: string }>
   roles?: string[]
+  badge?: string
 }
 
 const navItems: NavItem[] = [
+  // === UMUM ===
   {
     title: 'Dashboard',
     href: '/dashboard',
@@ -44,27 +54,20 @@ const navItems: NavItem[] = [
     icon: Package,
   },
   {
-    title: 'Penjadwalan',
-    href: '/dashboard/scheduling',
-    icon: Calendar,
-    roles: ['admin', 'lab_staff', 'lecturer'],
-  },
-  {
-    title: 'Mobile Checkout',
-    href: '/dashboard/checkout',
+    title: 'Scan QR Code',
+    href: '/dashboard/scan',
     icon: Camera,
   },
-  {
-    title: 'QR Scanner',
-    href: '/dashboard/qr-scanner',
-    icon: Camera,
-  },
+
+  // === MAHASISWA/DOSEN ===
   {
     title: 'Peminjaman Saya',
     href: '/dashboard/my-borrowings',
     icon: Activity,
-    roles: ['student', 'lecturer'],
+    roles: ['mahasiswa', 'dosen'],
   },
+
+  // === ADMIN: MANAJEMEN PEMINJAMAN ===
   {
     title: 'Transaksi',
     href: '/dashboard/transactions',
@@ -72,34 +75,63 @@ const navItems: NavItem[] = [
     roles: ['admin', 'lab_staff'],
   },
   {
+    title: 'Permintaan Peminjaman',
+    href: '/dashboard/borrowing-requests',
+    icon: UserCheck,
+    roles: ['admin', 'lab_staff'],
+  },
+  {
+    title: 'Permintaan Pengembalian',
+    href: '/dashboard/return-requests',
+    icon: Package,
+    roles: ['admin', 'lab_staff'],
+  },
+  {
+    title: 'Permintaan Perpanjangan',
+    href: '/dashboard/extension-requests',
+    icon: CalendarDays,
+    roles: ['admin', 'lab_staff'],
+  },
+  {
+    title: 'Denda & Pelanggaran',
+    href: '/dashboard/penalties',
+    icon: AlertTriangle,
+    roles: ['admin', 'lab_staff'],
+  },
+
+  // === ADMIN: MONITORING & REPORTS ===
+  {
+    title: 'Monitoring Mahasiswa',
+    href: '/dashboard/monitoring',
+    icon: Users,
+    roles: ['dosen', 'admin', 'lab_staff'],
+  },
+
+  // === ADMIN: OPERASIONAL ===
+  {
     title: 'Pemeliharaan',
     href: '/dashboard/maintenance',
     icon: Wrench,
     roles: ['admin', 'lab_staff'],
   },
   {
-    title: 'Kalibrasi',
-    href: '/dashboard/calibration',
-    icon: Target,
-    roles: ['admin', 'lab_staff'],
-  },
-  {
-    title: 'Analitik',
-    href: '/dashboard/analytics',
-    icon: BarChart3,
-    roles: ['admin', 'lab_staff'],
-  },
-  {
     title: 'Pengguna',
     href: '/dashboard/users',
     icon: Users,
-    roles: ['admin', 'lab_staff'],
+    roles: ['admin'],
+  },
+
+  // === SEMUA USER ===
+  {
+    title: 'Notifikasi',
+    href: '/dashboard/notifications',
+    icon: Bell,
   },
   {
     title: 'Profil Saya',
     href: '/dashboard/profile',
     icon: Users,
-    roles: ['student', 'lecturer'],
+    roles: ['mahasiswa', 'dosen'],
   },
   {
     title: 'Pengaturan',
@@ -125,24 +157,39 @@ export function Sidebar() {
     return user?.role && item.roles.includes(user.role)
   })
 
+  const displayName = user?.full_name || user?.email || 'Pengguna Tidak Diketahui'
+  const displayEmail = user?.full_name && user?.email ? user.email : ''
+  const userInitial = displayName.charAt(0).toUpperCase()
+
   const NavContent = () => (
-    <div className="flex h-full flex-col bg-white">
-      {/* Enhanced Logo */}
-      <div className="h-20 flex items-center px-8 border-b border-black bg-gradient-to-r from-black to-gray-800">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-white rounded-xl">
-            <Package className="w-6 h-6 text-black" />
-          </div>
-          <div>
-            <div className="text-xl font-black tracking-tight text-white">INVENTORI</div>
-            <div className="text-xs text-gray-300">Sistem Manajemen Lab</div>
-          </div>
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-r-[36px] border border-[#f1d6e6]/70 bg-white/85 backdrop-blur-xl shadow-[0_24px_50px_rgba(17,24,39,0.08)] pointer-events-auto">
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute -top-56 -right-56 hidden xl:block h-[520px] w-[520px] opacity-45 pointer-events-none">
+          <LoginAccent className="h-full w-full opacity-70" />
         </div>
+        <div className="absolute top-[36%] left-[-32%] h-64 w-64 rounded-full bg-[#ff007a]/16 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-[-28%] right-[-18%] h-72 w-72 rounded-full bg-[#4f46e5]/12 blur-3xl pointer-events-none" />
       </div>
 
-      {/* Enhanced Navigation */}
-      <nav className="flex-1 py-6">
-        <div className="px-4 space-y-2">
+      <div className="relative z-10 flex h-[4.5rem] items-center justify-center px-6 py-3 border-b border-[#f1d6e6]/70 pointer-events-auto">
+        <Link
+          href="/dashboard"
+          className="flex items-center justify-center rounded-[18px] px-4 py-2 transition-colors duration-200 hover:bg-white/50 pointer-events-auto"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <Image
+            src="/logo.svg"
+            alt="Labbo"
+            width={140}
+            height={40}
+            priority
+            className="h-10 w-auto"
+          />
+        </Link>
+      </div>
+
+      <nav className="relative z-10 flex-1 px-4 py-4 pointer-events-auto">
+        <div className="space-y-0.5 pb-1">
           {filteredNavItems.map((item) => {
             const isActive = pathname === item.href
             return (
@@ -150,22 +197,26 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'group flex items-center px-4 py-3 text-sm font-medium rounded-2xl transition-all duration-200 hover:scale-105',
+                  'group flex items-center gap-2.5 rounded-[14px] px-3 py-2 text-sm font-semibold transition-all duration-200 pointer-events-auto',
                   isActive
-                    ? 'bg-black text-white shadow-lg'
-                    : 'text-gray-700 hover:bg-gray-100 hover:text-black'
+                    ? 'bg-[#ff007a] text-white shadow-[0_18px_40px_rgba(255,0,122,0.35)]'
+                    : 'text-[#6d7079] hover:bg-[#ffe4f2] hover:text-[#ff007a]'
                 )}
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <div className={cn(
-                  'p-2 rounded-xl mr-3 transition-colors',
-                  isActive ? 'bg-white text-black' : 'bg-gray-100 text-gray-600 group-hover:bg-gray-200'
-                )}>
-                  <item.icon className="w-4 h-4" />
+                <div
+                  className={cn(
+                    'flex h-8 w-8 items-center justify-center rounded-[12px] border border-transparent bg-[#eef0f8] text-[#8b8f99] transition-all duration-200',
+                    isActive
+                      ? 'bg-white text-[#ff007a]'
+                      : 'group-hover:border-[#ff007a]/40 group-hover:bg-white group-hover:text-[#ff007a]'
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
                 </div>
-                <span className="flex-1">{item.title}</span>
+                <span className="flex-1 leading-tight">{item.title}</span>
                 {isActive && (
-                  <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white/90 shadow-[0_0_12px_rgba(255,255,255,0.75)]" />
                 )}
               </Link>
             )
@@ -173,38 +224,37 @@ export function Sidebar() {
         </div>
       </nav>
 
-      {/* Enhanced User Info */}
-      <div className="border-t border-black bg-gray-50 px-6 py-4">
-        <ModernCard variant="default" className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center text-white font-bold">
-                {(user?.full_name || user?.email || 'U')?.charAt(0).toUpperCase()}
+      <div className="relative z-10 border-t border-[#f1d6e6]/70 bg-white/70 px-4 py-4 backdrop-blur-xl pointer-events-auto">
+        <div className="rounded-[20px] border border-[#ffe0f2] bg-white/85 p-3.5 shadow-[0_18px_36px_rgba(255,0,122,0.1)]">
+          <div className="flex items-center gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-gradient-to-br from-[#ff88c4] to-[#ff007a] text-sm font-semibold text-white shadow-[0_12px_22px_rgba(255,0,122,0.22)]">
+              {userInitial}
+            </div>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold text-[#111827]">
+                {displayName}
               </div>
-              <div>
-                <div className="text-sm font-bold text-gray-900 truncate max-w-[120px]">
-                  {user?.full_name || user?.email || 'Pengguna Tidak Diketahui'}
+              {displayEmail && (
+                <div className="truncate text-xs font-medium text-[#6d7079]">
+                  {displayEmail}
                 </div>
-                <ModernBadge
-                  variant="default"
-                  size="sm"
-                  className="capitalize mt-1"
-                >
-                  {user?.role || 'user'}
-                </ModernBadge>
-              </div>
+              )}
+              <ModernBadge variant="secondary" size="sm" className="mt-2 capitalize">
+                {user?.role || 'user'}
+              </ModernBadge>
             </div>
           </div>
-          <Button
+          <ModernButton
             variant="outline"
             size="sm"
-            className="w-full border-black text-black hover:bg-black hover:text-white transition-colors font-medium"
+            fullWidth
+            className="mt-3 pointer-events-auto"
             onClick={handleSignOut}
+            leftIcon={<LogOut className="h-4 w-4" />}
           >
-            <LogOut className="w-4 h-4 mr-2" />
             Keluar
-          </Button>
-        </ModernCard>
+          </ModernButton>
+        </div>
       </div>
     </div>
   )
@@ -212,28 +262,40 @@ export function Sidebar() {
   return (
     <>
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0">
+      <div className="hidden lg:flex lg:fixed lg:inset-y-0 lg:w-72 xl:w-[21rem] lg:flex-col lg:z-50">
         <NavContent />
       </div>
 
       {/* Enhanced Mobile Header */}
-      <div className="lg:hidden flex items-center justify-between h-20 px-4 border-b border-black bg-gradient-to-r from-black to-gray-800">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-white rounded-xl">
-            <Package className="w-5 h-5 text-black" />
-          </div>
-          <div>
-            <div className="text-lg font-black tracking-tight text-white">INVENTORI</div>
-            <div className="text-xs text-gray-300">Manajemen Lab</div>
-          </div>
-        </div>
+      <div className="relative lg:hidden flex h-20 w-full items-center border-b border-[#f1d6e6]/70 bg-white/90 px-4 backdrop-blur-xl shadow-[0_12px_28px_rgba(17,24,39,0.08)]">
+        <Link
+          href="/dashboard"
+          className="mx-auto flex items-center justify-center rounded-[16px] px-3 py-2 transition-colors duration-200 hover:bg-white/60"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <Image
+            src="/logo.svg"
+            alt="Labbo"
+            width={132}
+            height={40}
+            className="h-9 w-auto"
+            priority
+          />
+        </Link>
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="sm" className="p-2 text-white hover:bg-white/20">
+            <ModernButton
+              variant="ghost"
+              size="sm"
+              className="absolute right-4 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full p-0 text-[#ff007a] hover:bg-[#ffe4f2]"
+            >
               <Menu className="w-5 h-5" />
-            </Button>
+            </ModernButton>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-72 bg-white">
+          <SheetContent
+            side="left"
+            className="w-80 border-r border-[#f1d6e6]/70 bg-white/90 p-0 backdrop-blur-xl"
+          >
             <VisuallyHidden>
               <SheetTitle>Menu Navigasi</SheetTitle>
             </VisuallyHidden>

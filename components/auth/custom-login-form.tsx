@@ -1,14 +1,23 @@
 'use client'
 
-import { useState } from 'react'
-import { useCustomAuth } from './custom-auth-provider'
-import { useRouter } from 'next/navigation'
-import { ModernCard } from '@/components/ui/modern-card'
-import { ModernButton } from '@/components/ui/modern-button'
-import { ModernInput } from '@/components/ui/modern-input'
-import { ModernBadge } from '@/components/ui/modern-badge'
-import { Eye, EyeOff, Mail, Lock, AlertTriangle, CheckCircle } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Eye, EyeOff, User, Key } from 'lucide-react'
+
+import { LoginAccent } from './login-accent'
+import { useCustomAuth } from './custom-auth-provider'
+
+interface DemoAccount {
+  email: string
+  password: string
+  role: string
+  description: string
+  full_name: string
+  isDatabase: boolean
+  created_at?: string
+}
 
 export function CustomLoginForm() {
   const { login, loading, user } = useCustomAuth()
@@ -20,219 +29,264 @@ export function CustomLoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [demoAccounts, setDemoAccounts] = useState<DemoAccount[]>([])
+  const [loadingDemo, setLoadingDemo] = useState(true)
+  const [showDemoPasswords, setShowDemoPasswords] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // Fetch demo accounts from database
+  useEffect(() => {
+    const fetchDemoAccounts = async () => {
+      try {
+        const response = await fetch('/api/demo-accounts')
+        if (response.ok) {
+          const data = await response.json()
+          setDemoAccounts(data.demoAccounts || [])
+        } else {
+          console.error('Failed to fetch demo accounts')
+        }
+      } catch (error) {
+        console.error('Error fetching demo accounts:', error)
+      } finally {
+        setLoadingDemo(false)
+      }
+    }
+
+    fetchDemoAccounts()
+  }, [])
+
+  const handleDemoAccountClick = (account: DemoAccount) => {
+    setFormData({
+      email: account.email,
+      password: account.password
+    })
+    setShowPassword(true)
+  }
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
     setError('')
     setIsSubmitting(true)
 
     try {
       const result = await login(formData.email, formData.password)
       if (result.success) {
-        setTimeout(() => {
-          if (user?.role === 'student') {
-            router.push('/dashboard/student')
-          } else {
-            router.push('/dashboard')
-          }
-        }, 500)
+        const target = user?.role === 'student' ? '/dashboard/student' : '/dashboard'
+        setTimeout(() => router.push(target), 400)
       } else {
         setError(result.error || 'Login gagal')
       }
-    } catch (error) {
+    } catch (submitError) {
+      console.error(submitError)
       setError('Terjadi kesalahan. Silakan coba lagi.')
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target
+    setFormData(previous => ({
+      ...previous,
       [name]: value
     }))
+
     if (error) {
       setError('')
     }
   }
 
-  const getTempPassword = (email: string) => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(`tempPassword_${email}`)
-    }
-    return null
-  }
-
-  const demoAccounts = [
-    {
-      email: 'admin@example.com',
-      password: getTempPassword('admin@example.com') || 'admin123',
-      role: 'Admin',
-      description: 'Akses penuh sistem'
-    },
-    {
-      email: 'student@example.com',
-      password: getTempPassword('student@example.com') || 'student123',
-      role: 'Student',
-      description: 'Mahasiswa biasa'
-    },
-    {
-      email: 'lecturer@example.com',
-      password: getTempPassword('lecturer@example.com') || 'lecturer123',
-      role: 'Lecturer',
-      description: 'Dosen pengajar'
-    },
-    {
-      email: 'labstaff@example.com',
-      password: getTempPassword('labstaff@example.com') || 'labstaff123',
-      role: 'Lab Staff',
-      description: 'Staff laboratorium'
-    }
-  ]
+  const isBusy = isSubmitting || loading
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-black rounded-xl mb-4">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-black text-gray-900 mb-2">Lab Inventory</h1>
-          <p className="text-gray-600 font-medium">Sistem Manajemen Peralatan Laboratorium</p>
-        </div>
+    <div className="flex min-h-screen w-full flex-col bg-[#f7f6fb] text-[#111827] lg:flex-row">
+      <div className="flex flex-1 flex-col px-8 py-12 sm:px-16 lg:px-20 xl:px-28">
+        <Link href="/" className="flex w-fit items-center" aria-label="Labbo home">
+          <Image
+            src="/logo.svg"
+            alt="Labbo"
+            width={160}
+            height={48}
+            priority
+            className="h-10 w-auto"
+          />
+        </Link>
 
-        <ModernCard variant="elevated" padding="lg" className="mb-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 uppercase tracking-wider mb-2">
-                Email
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <ModernInput
+        <div className="mt-16 flex flex-1 flex-col sm:mt-24">
+          <div className="max-w-[420px]">
+            <h1 className="text-[38px] font-semibold leading-tight text-[#111827] sm:text-[44px]">
+              Back to work, genius!
+            </h1>
+            <p className="mt-4 text-[17px] text-[#6d7079]">
+              Let&apos;s make some science happen
+            </p>
+
+            <form onSubmit={handleSubmit} className="mt-12 space-y-6">
+              <div>
+                <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  placeholder="nama@email.com"
-                  className="pl-10"
+                  placeholder="Email"
+                  autoComplete="email"
                   required
-                  disabled={isSubmitting}
+                  className="w-full rounded-[16px] border border-[#dfe2ec] bg-[#eef0f8] px-5 py-4 text-[15px] text-[#1f2937] shadow-sm outline-none transition focus:border-[#ff007a] focus:ring-4 focus:ring-[rgba(255,0,122,0.16)] placeholder:text-[#9aa1b3]"
                 />
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-bold text-gray-700 uppercase tracking-wider mb-2">
-                Password
-              </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <ModernInput
+                <input
                   type={showPassword ? 'text' : 'password'}
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  placeholder="Masukkan password"
-                  className="pl-10 pr-10"
+                  placeholder="Password"
+                  autoComplete="current-password"
                   required
-                  disabled={isSubmitting}
+                  className="w-full rounded-[16px] border border-[#dfe2ec] bg-[#eef0f8] px-5 py-4 text-[15px] text-[#1f2937] shadow-sm outline-none transition focus:border-[#ff007a] focus:ring-4 focus:ring-[rgba(255,0,122,0.16)] placeholder:text-[#9aa1b3]"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  disabled={isSubmitting}
+                  onClick={() => setShowPassword(previous => !previous)}
+                  className="absolute inset-y-0 right-4 flex items-center text-[#8b8f99] transition hover:text-[#ff007a]"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
-            </div>
 
-            {error && (
-              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                <span className="text-sm text-red-700">{error}</span>
-              </div>
-            )}
-
-            <ModernButton
-              type="submit"
-              variant="default"
-              size="lg"
-              loading={isSubmitting}
-              disabled={isSubmitting || !formData.email || !formData.password}
-              className="w-full"
-            >
-              {isSubmitting ? 'Masuk...' : 'Masuk'}
-            </ModernButton>
-
-            <div className="text-center">
-              <Link
-                href="/forgot-password"
-                className="text-sm text-blue-600 hover:text-blue-800 hover:underline transition-colors"
-              >
-                Lupa Password?
-              </Link>
-            </div>
-          </form>
-        </ModernCard>
-
-      <ModernCard variant="default" padding="lg">
-          <div className="space-y-4">
-            <div className="text-center">
-              <h3 className="font-bold text-lg mb-2">Akun Demo</h3>
-              <p className="text-sm text-gray-600">Gunakan akun berikut untuk testing:</p>
-              <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
-                <p className="text-xs text-yellow-800">
-                  💡 Mode Development - Login dengan demo account langsung tersedia
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {demoAccounts.map((account, index) => (
-                <div
-                  key={index}
-                  className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer"
-                  onClick={() => {
-                    setFormData({
-                      email: account.email,
-                      password: account.password
-                    })
-                    setError('')
-                  }}
+              <div className="flex justify-end text-[#6d7079]">
+                <Link
+                  href="/forgot-password"
+                  className="text-sm font-medium transition hover:text-[#ff007a]"
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <ModernBadge variant="default" size="sm">
-                        {account.role}
-                      </ModernBadge>
-                      <span className="font-mono text-sm">{account.email}</span>
-                    </div>
-                    <CheckCircle className="w-4 h-4 text-green-600 opacity-0 hover:opacity-100 transition-opacity" />
-                  </div>
-                  <div className="text-xs text-gray-600">
-                    Password: <span className="font-mono">{account.password}</span>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {account.description}
-                  </div>
-                </div>
-              ))}
-            </div>
+                  Forgot Password?
+                </Link>
+              </div>
 
-            <div className="text-center text-xs text-gray-500 pt-2 border-t">
-              Klik pada akun demo untuk mengisi form secara otomatis
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isBusy}
+                  className="inline-flex items-center justify-center rounded-[14px] bg-[#ff007a] px-12 py-3 text-base font-semibold text-white shadow-[0_25px_45px_rgba(255,0,122,0.35)] transition hover:bg-[#e6006f] focus:outline-none focus:ring-2 focus:ring-[#ff007a] focus:ring-offset-2 focus:ring-offset-[#f7f6fb] disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isBusy ? 'Signing In...' : 'Sign In'}
+                </button>
+              </div>
+
+              {error && (
+                <p className="text-sm text-[#f04438]" role="alert">
+                  {error}
+                </p>
+              )}
+            </form>
+
+            {/* Demo Accounts Section */}
+            <div className="mt-12">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-[#6d7079]">
+                  Demo Accounts
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowDemoPasswords(!showDemoPasswords)}
+                  className="text-xs text-[#ff007a] hover:text-[#e6006f] transition-colors"
+                >
+                  {showDemoPasswords ? 'Hide' : 'Show'} Passwords
+                </button>
+              </div>
+
+              {loadingDemo ? (
+                <div className="space-y-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="animate-pulse">
+                      <div className="h-16 bg-[#eef0f8] rounded-xl"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : demoAccounts.length > 0 ? (
+                <div className="space-y-2">
+                  {demoAccounts.map((account, index) => (
+                    <div
+                      key={index}
+                      onClick={() => handleDemoAccountClick(account)}
+                      className="group relative overflow-hidden rounded-xl border border-[#dfe2ec] bg-[#eef0f8] p-3 cursor-pointer transition-all hover:shadow-md hover:border-[#ff007a] hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#ff007a]/10 group-hover:bg-[#ff007a]/20 transition-colors">
+                            <User className="w-4 h-4 text-[#ff007a]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2">
+                              <p className="text-sm font-medium text-[#1f2937] truncate">
+                                {account.full_name}
+                              </p>
+                              {account.isDatabase && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-[#ff007a]/10 text-[#ff007a]">
+                                  DB
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-[#6d7079] truncate">
+                              {account.email}
+                            </p>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[#dfe2ec] text-[#6d7079]">
+                                {account.role}
+                              </span>
+                              <span className="text-xs text-[#9aa1b3]">
+                                {account.description}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {showDemoPasswords && (
+                            <div className="flex items-center space-x-1 bg-[#1f2937] px-2 py-1 rounded-lg">
+                              <Key className="w-3 h-3 text-[#9aa1b3]" />
+                              <span className="text-xs text-[#eef0f8] font-mono">
+                                {account.password}
+                              </span>
+                            </div>
+                          )}
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="w-6 h-6 rounded-full bg-[#ff007a] flex items-center justify-center">
+                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <p className="text-sm text-[#9aa1b3]">
+                    No demo accounts available
+                  </p>
+                </div>
+              )}
             </div>
           </div>
-        </ModernCard>
 
-        <div className="text-center text-sm text-gray-600">
-          <p>Belum punya akun? Hubungi administrator laboratorium</p>
+          <div className="mt-20 text-sm text-[#6c6f78]">
+            Don&apos;t have an account?{' '}
+            <Link
+              href="/register"
+              className="font-medium text-[#ff007a] transition hover:text-[#e6006f]"
+            >
+              Register
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative hidden items-center justify-center bg-[#f7f6fb] lg:flex lg:w-[48%] xl:w-[52%]">
+        <div className="relative w-full max-w-[700px] rounded-[72px] bg-[#ff007a] shadow-[0_45px_110px_rgba(255,0,122,0.35)] aspect-[442/550] overflow-hidden">
+          <LoginAccent className="absolute inset-0 scale-[1.04]" aria-hidden="true" />
         </div>
       </div>
     </div>

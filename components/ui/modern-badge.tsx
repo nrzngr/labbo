@@ -3,19 +3,19 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const modernBadgeVariants = cva(
-  "inline-flex items-center gap-2 rounded-full border-2 px-3 py-1.5 text-xs font-bold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[rgba(255,0,122,0.25)] focus:ring-offset-2 focus:ring-offset-[#f7f6fb]",
   {
     variants: {
       variant: {
-        default: "border-black bg-black text-white shadow-md hover:shadow-lg",
-        secondary: "border-gray-300 bg-gray-100 text-gray-800 hover:bg-gray-200",
-        destructive: "border-red-600 bg-red-600 text-white shadow-md hover:bg-red-700 hover:shadow-lg",
-        outline: "border-black bg-transparent text-black hover:bg-black hover:text-white",
-        success: "border-green-600 bg-green-600 text-white shadow-md hover:bg-green-700 hover:shadow-lg",
-        warning: "border-yellow-500 bg-yellow-500 text-black shadow-md hover:bg-yellow-600 hover:shadow-lg",
-        info: "border-blue-600 bg-blue-600 text-white shadow-md hover:bg-blue-700 hover:shadow-lg",
-        glass: "glass-morphism border-black/20 text-black hover:border-black/40",
-        gradient: "gradient-bg border-black text-black hover:border-gray-800",
+        default: "border-[#ff007a] bg-[#ff007a] text-white shadow-[0_12px_24px_rgba(255,0,122,0.25)] hover:shadow-[0_14px_28px_rgba(255,0,122,0.3)]",
+        secondary: "border-transparent bg-[#f3f4fb] text-[#4b5563] hover:bg-[#e9ebf5]",
+        destructive: "border-transparent bg-[#f04438] text-white shadow-[0_10px_22px_rgba(240,68,56,0.25)] hover:bg-[#d63a30]",
+        outline: "border-[#ff007a] bg-transparent text-[#ff007a] hover:bg-[#ffe4f2]",
+        success: "border-transparent bg-[#22c55e] text-white shadow-[0_10px_22px_rgba(34,197,94,0.28)] hover:bg-[#1eab53]",
+        warning: "border-transparent bg-[#facc15] text-[#111827] shadow-[0_10px_22px_rgba(250,204,21,0.25)] hover:bg-[#f4bf0f]",
+        info: "border-transparent bg-[#0ea5e9] text-white shadow-[0_10px_22px_rgba(14,165,233,0.28)] hover:bg-[#0989c4]",
+        glass: "glass-morphism border-white/40 text-[#111827] hover:border-[#ff007a] hover:text-[#ff007a]",
+        gradient: "bg-[linear-gradient(135deg,#ff88c4_0%,#ff007a_100%)] text-white border-transparent shadow-[0_14px_30px_rgba(255,0,122,0.28)]",
       },
       size: {
         sm: "px-2 py-1 text-xs",
@@ -53,16 +53,7 @@ const ModernBadge = React.forwardRef<HTMLDivElement, ModernBadgeProps>(
         {...props}
       >
         {dot && (
-          <div
-            className={cn(
-              "w-2 h-2 rounded-full",
-              variant === "success" && "bg-green-400",
-              variant === "warning" && "bg-yellow-400",
-              variant === "destructive" && "bg-red-400",
-              variant === "info" && "bg-blue-400",
-              variant === "default" && "bg-white"
-            )}
-          />
+          <div className="w-2 h-2 rounded-full bg-white/80" />
         )}
         <span>{children}</span>
         {removable && (

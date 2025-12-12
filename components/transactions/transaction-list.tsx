@@ -1,432 +1,419 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { TransactionForm } from './transaction-form'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { Search, Filter, Plus, Eye, RotateCcw } from 'lucide-react'
+import {
+  Search,
+  Filter,
+  Eye,
+  Calendar,
+  User,
+  Package,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  HourglassIcon,
+  ChevronDown
+} from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ModernCard } from '@/components/ui/modern-card'
+import { ModernButton } from '@/components/ui/modern-button'
 
 interface Transaction {
   id: string
-  user: {
-    full_name: string
-    email: string
-    role: string
-  }
-  equipment: {
-    name: string
-    serial_number: string
-  }
+  user_id: string
+  equipment_id: string
   borrow_date: string
   expected_return_date: string
   actual_return_date: string | null
   status: string
-  notes: string
+  notes: string | null
   created_at: string
-}
-
-interface User {
-  id: string
-  full_name: string
-  email: string
-  role: string
-}
-
-interface Equipment {
-  id: string
-  name: string
-  serial_number: string
-  status: string
+  user: {
+    full_name: string
+    email: string
+    role: string
+  } | null
+  equipment: {
+    name: string
+    serial_number: string
+  } | null
 }
 
 export function TransactionList() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [viewingTransaction, setViewingTransaction] = useState<Transaction | null>(null)
 
   const queryClient = useQueryClient()
 
-  useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ['transactions'] })
-    queryClient.invalidateQueries({ queryKey: ['users'] })
-    queryClient.invalidateQueries({ queryKey: ['available-equipment'] })
-  }, [queryClient])
-
-  const { data: transactions, isLoading, refetch, error } = useQuery({
+  const { data: transactions, isLoading, error } = useQuery({
     queryKey: ['transactions', searchTerm, filterStatus],
     queryFn: async () => {
+      console.log('[DEBUG] Fetching transactions...')
+
+      // Use explicit foreign key references to avoid join issues
       let query = supabase
         .from('borrowing_transactions')
         .select(`
-          *,
-          user:users(full_name, email, role),
-          equipment:equipment(name, serial_number, status)
+          id,
+          user_id,
+          equipment_id,
+          borrow_date,
+          expected_return_date,
+          actual_return_date,
+          status,
+          notes,
+          created_at,
+          user:users!borrowing_transactions_user_id_fkey(full_name, email, role),
+          equipment:equipment!borrowing_transactions_equipment_id_fkey(name, serial_number)
         `)
         .order('created_at', { ascending: false })
 
-      if (searchTerm) {
-        query = query.or(`user.full_name.ilike.%${searchTerm}%,equipment.name.ilike.%${searchTerm}%,equipment.serial_number.ilike.%${searchTerm}%`)
-      }
-
       if (filterStatus) {
-        query = query.eq('status', filterStatus)
+        query = query.eq('status', filterStatus as any)
       }
 
       const { data, error } = await query
 
+      console.log('[DEBUG] Transactions result:', data, 'error:', error)
+
       if (error) {
+        console.error('Query error:', error)
         throw error
       }
-      return data as Transaction[]
+
+      // Apply client-side search filter
+      let result = (data || []) as Transaction[]
+
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase()
+        result = result.filter(t =>
+          t.user?.full_name?.toLowerCase().includes(search) ||
+          t.user?.email?.toLowerCase().includes(search) ||
+          t.equipment?.name?.toLowerCase().includes(search) ||
+          t.equipment?.serial_number?.toLowerCase().includes(search)
+        )
+      }
+
+      return result
     },
     staleTime: 0,
     refetchOnWindowFocus: true,
-    refetchOnMount: true,
   })
 
-  const { data: users } = useQuery({
-    queryKey: ['users'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('full_name')
-
-
-      if (error) {
-        throw error
+  const getStatusConfig = (status: string) => {
+    const config: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
+      pending: {
+        label: 'Menunggu',
+        color: 'text-amber-700',
+        bg: 'bg-amber-100',
+        icon: <HourglassIcon className="w-3.5 h-3.5" />
+      },
+      active: {
+        label: 'Aktif',
+        color: 'text-blue-700',
+        bg: 'bg-blue-100',
+        icon: <Clock className="w-3.5 h-3.5" />
+      },
+      returned: {
+        label: 'Dikembalikan',
+        color: 'text-green-700',
+        bg: 'bg-green-100',
+        icon: <CheckCircle className="w-3.5 h-3.5" />
+      },
+      overdue: {
+        label: 'Terlambat',
+        color: 'text-red-700',
+        bg: 'bg-red-100',
+        icon: <AlertTriangle className="w-3.5 h-3.5" />
+      },
+      rejected: {
+        label: 'Ditolak',
+        color: 'text-gray-700',
+        bg: 'bg-gray-100',
+        icon: <XCircle className="w-3.5 h-3.5" />
       }
-      return data as User[]
-    },
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
-  })
-
-  const { data: availableEquipment } = useQuery({
-    queryKey: ['available-equipment'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('equipment')
-        .select('*')
-        .eq('status', 'available')
-        .order('name')
-
-
-      if (error) {
-        throw error
-      }
-      return data as Equipment[]
-    },
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
-  })
-
-  const returnMutation = useMutation({
-    mutationFn: async (transactionId: string) => {
-      const now = new Date().toISOString()
-
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      console.log('Transaction returned:', transactionId)
-      console.log('Equipment status updated to available:', transactionId)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] })
-      queryClient.invalidateQueries({ queryKey: ['equipment'] })
     }
-  })
-
-  const handleReturn = async (transactionId: string) => {
-    if (confirm('Apakah Anda yakin ingin menandai item ini sebagai dikembalikan?')) {
-      returnMutation.mutate(transactionId)
-    }
-  }
-
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      active: 'default',
-      returned: 'secondary',
-      overdue: 'destructive'
-    }
-
-    const statusLabels: Record<string, string> = {
-      active: 'Aktif',
-      returned: 'Dikembalikan',
-      overdue: 'Terlambat'
-    }
-
-    return <Badge variant={variants[status] || 'outline'}>{statusLabels[status] || status}</Badge>
+    return config[status] || config.pending
   }
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('id-ID', {
-      year: 'numeric',
+      day: 'numeric',
       month: 'short',
-      day: 'numeric'
+      year: 'numeric'
     })
   }
 
-  const isOverdue = (expectedReturnDate: string, actualReturnDate: string | null) => {
-    if (actualReturnDate) return false
+  const isOverdue = (expectedReturnDate: string, status: string) => {
+    if (status !== 'active') return false
     return new Date(expectedReturnDate) < new Date()
   }
 
+  if (isLoading) {
+    return (
+      <ModernCard variant="default" padding="lg">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="relative w-12 h-12 mx-auto mb-4">
+              <div className="absolute inset-0 rounded-full border-4 border-pink-200"></div>
+              <div className="absolute inset-0 rounded-full border-4 border-pink-500 border-t-transparent animate-spin"></div>
+            </div>
+            <p className="text-gray-500 font-medium">Memuat transaksi...</p>
+          </div>
+        </div>
+      </ModernCard>
+    )
+  }
+
+  if (error) {
+    return (
+      <ModernCard variant="default" padding="lg">
+        <div className="text-center py-12">
+          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 font-medium">Gagal memuat data transaksi</p>
+          <p className="text-gray-500 text-sm mt-2">{(error as Error).message}</p>
+        </div>
+      </ModernCard>
+    )
+  }
+
   return (
-    <div className="space-y-6 sm:space-y-8">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black">TRANSAKSI</h1>
-        </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <button className="w-full sm:w-auto border border-black px-4 sm:px-6 py-2 sm:py-3 hover:bg-black hover:text-white transition-none text-sm sm:text-base">
-              <Plus className="inline w-4 h-4 mr-2" />
-              PINJAM BARU
-            </button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px] border border-black">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold">PINJAM BARU</DialogTitle>
-            </DialogHeader>
-            <TransactionForm
-              onSuccess={() => {
-                setIsAddDialogOpen(false)
-                refetch()
-              }}
-            />
-          </DialogContent>
-        </Dialog>
-      </div>
+    <>
+      <ModernCard variant="default" padding="none" className="overflow-hidden">
+        {/* Header */}
+        <div className="p-4 sm:p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+          <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">TRANSAKSI</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                {transactions?.length || 0} transaksi ditemukan
+              </p>
+            </div>
+            <ModernButton
+              variant="default"
+              size="sm"
+              className="w-full sm:w-auto"
+            >
+              + PINJAM BARU
+            </ModernButton>
+          </div>
 
-      <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 lg:space-x-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 w-4 h-4" />
-          <Input
-            placeholder="Cari transaksi..."
-            className="pl-10 border border-black focus:ring-0 focus:border-black h-12"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          {/* Search and Filter */}
+          <div className="flex flex-col sm:flex-row gap-3 mt-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Cari transaksi..."
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none transition-all text-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="relative">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="appearance-none w-full sm:w-40 px-4 py-2.5 pr-10 bg-white border border-gray-200 rounded-xl focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none transition-all text-sm cursor-pointer"
+              >
+                <option value="">Semua Status</option>
+                <option value="pending">Menunggu</option>
+                <option value="active">Aktif</option>
+                <option value="returned">Dikembalikan</option>
+                <option value="rejected">Ditolak</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
         </div>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-3 sm:px-4 py-3 border border-black focus:ring-0 focus:border-black min-w-[120px] sm:min-w-[150px] h-12 text-sm"
-        >
-          <option value="">Semua Status</option>
-          <option value="active">Aktif</option>
-          <option value="returned">Dikembalikan</option>
-          <option value="overdue">Terlambat</option>
-        </select>
-      </div>
 
-      {isLoading ? (
-        <div className="border border-black p-8 sm:p-12 text-center">
-          <div className="text-base sm:text-lg">Memuat data transaksi...</div>
-        </div>
-      ) : (
-        <div className="border border-black">
-          <div className="hidden lg:block overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b border-black">
-                <tr>
-                  <th className="text-left p-4 font-medium">Peminjam</th>
-                  <th className="text-left p-4 font-medium">Peralatan</th>
-                  <th className="text-left p-4 font-medium">Tanggal Pinjam</th>
-                  <th className="text-left p-4 font-medium">Batas Kembali</th>
-                  <th className="text-left p-4 font-medium">Tanggal Kembali</th>
-                  <th className="text-left p-4 font-medium">Status</th>
-                  <th className="text-right p-4 font-medium">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions?.map((transaction) => (
-                  <tr key={transaction.id} className="border-t border-black hover:bg-gray-50">
-                    <td className="p-4">
-                      <div>
-                        <div className="font-medium">{transaction.user?.full_name || 'Tidak Diketahui'}</div>
-                        <div className="text-sm text-gray-600">{transaction.user?.email}</div>
-                        <div className="text-xs text-gray-500 capitalize">{transaction.user?.role}</div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div>
-                        <div className="font-medium">{transaction.equipment?.name || 'Peralatan Tidak Diketahui'}</div>
-                        <div className="text-sm text-gray-600 font-mono">{transaction.equipment?.serial_number}</div>
-                      </div>
-                    </td>
-                    <td className="p-4">{formatDate(transaction.borrow_date)}</td>
-                    <td className="p-4">
-                      <div className={isOverdue(transaction.expected_return_date, transaction.actual_return_date) ? 'text-red-600 font-bold' : ''}>
-                        {formatDate(transaction.expected_return_date)}
-                        {isOverdue(transaction.expected_return_date, transaction.actual_return_date) && (
-                          <div className="text-xs font-bold">TERLAMBAT</div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      {transaction.actual_return_date ? formatDate(transaction.actual_return_date) : '-'}
-                    </td>
-                    <td className="p-4">{getStatusBadge(transaction.status)}</td>
-                    <td className="p-4 text-right">
-                      <div className="flex justify-end space-x-2">
-                        <button
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-100">
+                <th className="text-left py-3 px-4 sm:px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Peminjam</th>
+                <th className="text-left py-3 px-4 sm:px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Peralatan</th>
+                <th className="text-left py-3 px-4 sm:px-6 text-xs font-bold text-gray-500 uppercase tracking-wider hidden md:table-cell">Tanggal Pinjam</th>
+                <th className="text-left py-3 px-4 sm:px-6 text-xs font-bold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Batas Kembali</th>
+                <th className="text-left py-3 px-4 sm:px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="text-right py-3 px-4 sm:px-6 text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {transactions && transactions.length > 0 ? (
+                transactions.map((transaction) => {
+                  const statusConfig = getStatusConfig(
+                    isOverdue(transaction.expected_return_date, transaction.status)
+                      ? 'overdue'
+                      : transaction.status
+                  )
+
+                  return (
+                    <tr
+                      key={transaction.id}
+                      className="hover:bg-gray-50/50 transition-colors"
+                    >
+                      <td className="py-4 px-4 sm:px-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                            {transaction.user?.full_name?.charAt(0) || '?'}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-gray-900 truncate">
+                              {transaction.user?.full_name || 'N/A'}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {transaction.user?.email || '-'}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 sm:px-6">
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 truncate">
+                            {transaction.equipment?.name || 'N/A'}
+                          </p>
+                          <p className="text-xs text-gray-500 font-mono">
+                            {transaction.equipment?.serial_number || '-'}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 sm:px-6 hidden md:table-cell">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Calendar className="w-4 h-4 text-gray-400" />
+                          {formatDate(transaction.borrow_date)}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 sm:px-6 hidden lg:table-cell">
+                        <div className={`flex items-center gap-2 text-sm ${isOverdue(transaction.expected_return_date, transaction.status)
+                            ? 'text-red-600 font-medium'
+                            : 'text-gray-600'
+                          }`}>
+                          <Clock className="w-4 h-4" />
+                          {formatDate(transaction.expected_return_date)}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 sm:px-6">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${statusConfig.bg} ${statusConfig.color}`}>
+                          {statusConfig.icon}
+                          {statusConfig.label}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 sm:px-6 text-right">
+                        <ModernButton
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setViewingTransaction(transaction)}
-                          className="border border-black p-2 hover:bg-black hover:text-white transition-none"
+                          className="text-gray-500 hover:text-pink-600"
                         >
                           <Eye className="w-4 h-4" />
-                        </button>
-                        {transaction.status === 'active' && (
-                          <button
-                            onClick={() => handleReturn(transaction.id)}
-                            disabled={returnMutation.isPending}
-                            className="border border-black p-2 hover:bg-black hover:text-white transition-none"
-                            title="Tandai sebagai dikembalikan"
-                          >
-                            <RotateCcw className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="lg:hidden">
-            <div className="divide-y divide-black">
-              {transactions?.map((transaction) => (
-                <div key={transaction.id} className="p-4 space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-base sm:text-lg truncate">{transaction.user?.full_name}</h3>
-                      <p className="text-sm text-gray-600 truncate">{transaction.user?.email}</p>
-                      <p className="text-xs text-gray-500 capitalize">{transaction.user?.role}</p>
-                    </div>
-                    <div className="flex space-x-1 ml-2">
-                      {getStatusBadge(transaction.status)}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div>
-                      <span className="font-medium text-sm">Peralatan:</span>
-                      <p className="font-medium">{transaction.equipment?.name}</p>
-                      <p className="text-sm text-gray-600 font-mono">{transaction.equipment?.serial_number}</p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="font-medium">Pinjam:</span>
-                        <p>{formatDate(transaction.borrow_date)}</p>
-                      </div>
-                      <div>
-                        <span className="font-medium">Kembali:</span>
-                        <p>{transaction.actual_return_date ? formatDate(transaction.actual_return_date) : '-'}</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <span className="font-medium text-sm">Batas Kembali:</span>
-                      <div className={isOverdue(transaction.expected_return_date, transaction.actual_return_date) ? 'text-red-600 font-bold' : ''}>
-                        <p>{formatDate(transaction.expected_return_date)}</p>
-                        {isOverdue(transaction.expected_return_date, transaction.actual_return_date) && (
-                          <div className="text-xs font-bold">TERLAMBAT</div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end space-x-2 pt-2 border-t border-black">
-                    <button
-                      onClick={() => setViewingTransaction(transaction)}
-                      className="border border-black p-2 hover:bg-black hover:text-white transition-none"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    {transaction.status === 'active' && (
-                      <button
-                        onClick={() => handleReturn(transaction.id)}
-                        disabled={returnMutation.isPending}
-                        className="border border-black p-2 hover:bg-black hover:text-white transition-none"
-                        title="Tandai sebagai dikembalikan"
-                      >
-                        <RotateCcw className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {transactions?.length === 0 && (
-            <div className="text-center py-8 sm:py-12 px-4">
-              <p className="font-bold text-base sm:text-lg mb-2">Tidak ada transaksi ditemukan</p>
-              <p className="text-xs sm:text-sm text-gray-600">Coba sesuaikan pencarian atau filter Anda</p>
-            </div>
-          )}
+                        </ModernButton>
+                      </td>
+                    </tr>
+                  )
+                })
+              ) : (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center">
+                    <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500 font-medium">Tidak ada transaksi ditemukan</p>
+                    <p className="text-gray-400 text-sm mt-1">
+                      {filterStatus ? 'Coba ubah filter status' : 'Belum ada data transaksi'}
+                    </p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </ModernCard>
 
-      {viewingTransaction && (
-        <Dialog open={!!viewingTransaction} onOpenChange={() => setViewingTransaction(null)}>
-          <DialogContent className="sm:max-w-[600px] border border-black">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold">DETAIL TRANSAKSI</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
+      {/* Detail Dialog */}
+      <Dialog open={!!viewingTransaction} onOpenChange={() => setViewingTransaction(null)}>
+        <DialogContent className="max-w-lg rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Detail Transaksi</DialogTitle>
+          </DialogHeader>
+          {viewingTransaction && (
+            <div className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="text-sm font-medium mb-2">PEMINJAM</div>
-                  <div className="font-bold">{viewingTransaction.user?.full_name}</div>
-                  <div className="text-sm text-gray-600">{viewingTransaction.user?.email}</div>
-                  <div className="text-xs text-gray-500 capitalize">{viewingTransaction.user?.role}</div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Peminjam</label>
+                  <p className="font-medium text-gray-900 mt-1">
+                    {viewingTransaction.user?.full_name || 'N/A'}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {viewingTransaction.user?.email || '-'}
+                  </p>
                 </div>
                 <div>
-                  <div className="text-sm font-medium mb-2">PERALATAN</div>
-                  <div className="font-bold">{viewingTransaction.equipment?.name}</div>
-                  <div className="text-sm text-gray-600 font-mono">{viewingTransaction.equipment?.serial_number}</div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Peralatan</label>
+                  <p className="font-medium text-gray-900 mt-1">
+                    {viewingTransaction.equipment?.name || 'N/A'}
+                  </p>
+                  <p className="text-sm text-gray-500 font-mono">
+                    {viewingTransaction.equipment?.serial_number || '-'}
+                  </p>
                 </div>
                 <div>
-                  <div className="text-sm font-medium mb-2">TANGGAL PINJAM</div>
-                  <div>{formatDate(viewingTransaction.borrow_date)}</div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Tanggal Pinjam</label>
+                  <p className="font-medium text-gray-900 mt-1">
+                    {formatDate(viewingTransaction.borrow_date)}
+                  </p>
                 </div>
                 <div>
-                  <div className="text-sm font-medium mb-2">BATAS KEMBALI</div>
-                  <div>{formatDate(viewingTransaction.expected_return_date)}</div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Batas Kembali</label>
+                  <p className={`font-medium mt-1 ${isOverdue(viewingTransaction.expected_return_date, viewingTransaction.status)
+                      ? 'text-red-600'
+                      : 'text-gray-900'
+                    }`}>
+                    {formatDate(viewingTransaction.expected_return_date)}
+                  </p>
                 </div>
-                <div>
-                  <div className="text-sm font-medium mb-2">TANGGAL KEMBALI</div>
+                {viewingTransaction.actual_return_date && (
                   <div>
-                    {viewingTransaction.actual_return_date ? formatDate(viewingTransaction.actual_return_date) : 'Belum dikembalikan'}
+                    <label className="text-xs font-semibold text-gray-500 uppercase">Tanggal Kembali</label>
+                    <p className="font-medium text-green-600 mt-1">
+                      {formatDate(viewingTransaction.actual_return_date)}
+                    </p>
                   </div>
-                </div>
+                )}
                 <div>
-                  <div className="text-sm font-medium mb-2">STATUS</div>
-                  <div>{getStatusBadge(viewingTransaction.status)}</div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Status</label>
+                  <div className="mt-1">
+                    {(() => {
+                      const config = getStatusConfig(
+                        isOverdue(viewingTransaction.expected_return_date, viewingTransaction.status)
+                          ? 'overdue'
+                          : viewingTransaction.status
+                      )
+                      return (
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${config.bg} ${config.color}`}>
+                          {config.icon}
+                          {config.label}
+                        </span>
+                      )
+                    })()}
+                  </div>
                 </div>
               </div>
-
               {viewingTransaction.notes && (
                 <div>
-                  <div className="text-sm font-medium mb-2">CATATAN</div>
-                  <div>{viewingTransaction.notes}</div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Catatan</label>
+                  <p className="text-gray-700 mt-1 p-3 bg-gray-50 rounded-lg text-sm">
+                    {viewingTransaction.notes}
+                  </p>
                 </div>
               )}
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
-    </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

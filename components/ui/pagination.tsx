@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button'
+import { ModernButton } from '@/components/ui/modern-button'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
 
 interface PaginationProps {
@@ -63,7 +63,7 @@ export function Pagination({
     <div className={`flex items-center justify-center space-x-1 ${className}`}>
       {/* First page */}
       {showEdges && totalPages > 3 && (
-        <Button
+        <ModernButton
           variant="outline"
           size="sm"
           onClick={() => onPageChange(1)}
@@ -71,11 +71,11 @@ export function Pagination({
           className="h-8 w-8 p-0"
         >
           <ChevronsLeft className="h-4 w-4" />
-        </Button>
+        </ModernButton>
       )}
 
       {/* Previous page */}
-      <Button
+      <ModernButton
         variant="outline"
         size="sm"
         onClick={() => onPageChange(currentPage - 1)}
@@ -83,7 +83,7 @@ export function Pagination({
         className="h-8 w-8 p-0"
       >
         <ChevronLeft className="h-4 w-4" />
-      </Button>
+      </ModernButton>
 
       {/* Page numbers */}
       <div className="flex items-center space-x-1">
@@ -98,7 +98,7 @@ export function Pagination({
 
           const pageNumber = page as number
           return (
-            <Button
+            <ModernButton
               key={pageNumber}
               variant={currentPage === pageNumber ? "default" : "outline"}
               size="sm"
@@ -106,13 +106,13 @@ export function Pagination({
               className="h-8 w-8 p-0"
             >
               {pageNumber}
-            </Button>
+            </ModernButton>
           )
         })}
       </div>
 
       {/* Next page */}
-      <Button
+      <ModernButton
         variant="outline"
         size="sm"
         onClick={() => onPageChange(currentPage + 1)}
@@ -120,11 +120,11 @@ export function Pagination({
         className="h-8 w-8 p-0"
       >
         <ChevronRight className="h-4 w-4" />
-      </Button>
+      </ModernButton>
 
       {/* Last page */}
       {showEdges && totalPages > 3 && (
-        <Button
+        <ModernButton
           variant="outline"
           size="sm"
           onClick={() => onPageChange(totalPages)}
@@ -132,7 +132,7 @@ export function Pagination({
           className="h-8 w-8 p-0"
         >
           <ChevronsRight className="h-4 w-4" />
-        </Button>
+        </ModernButton>
       )}
     </div>
   )

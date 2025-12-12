@@ -3,14 +3,16 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Button } from '@/components/ui/button'
+import { ModernButton } from '@/components/ui/modern-button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { ImageUpload } from '@/components/equipment/image-upload'
 import { supabase } from '@/lib/supabase'
 import { equipmentSchema, EquipmentFormValues } from '@/lib/validations'
+import { Upload } from 'lucide-react'
 
 interface Category {
   id: string
@@ -40,6 +42,8 @@ export function EquipmentForm({ equipment, onSuccess }: EquipmentFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
+  const [createdEquipmentId, setCreatedEquipmentId] = useState<string | null>(null)
+  const [showImageUpload, setShowImageUpload] = useState(false)
 
   const {
     register,
@@ -83,7 +87,6 @@ export function EquipmentForm({ equipment, onSuccess }: EquipmentFormProps) {
         ...data,
         purchase_price: data.purchase_price ? parseFloat(data.purchase_price) : null,
         purchase_date: data.purchase_date || null,
-        image_url: data.image_url && data.image_url.trim() !== '' ? data.image_url : null,
         description: data.description || null
       }
 
@@ -145,7 +148,7 @@ export function EquipmentForm({ equipment, onSuccess }: EquipmentFormProps) {
           {...register('description')}
           placeholder="Masukkan deskripsi peralatan"
           rows={3}
-          className="resize-none"
+          variant="filled"
         />
       </div>
 
@@ -246,33 +249,62 @@ export function EquipmentForm({ equipment, onSuccess }: EquipmentFormProps) {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="image_url" className="text-sm font-medium">URL Gambar</Label>
-        <Input
-          id="image_url"
-          {...register('image_url')}
-          placeholder="Masukkan URL gambar"
-          className="h-10 sm:h-11"
-        />
-        {errors.image_url && <p className="text-xs sm:text-sm text-red-500">{errors.image_url.message}</p>}
-      </div>
+      {/* Image Upload Section - Only for New Equipment */}
+      {!equipment && (
+        <div className="space-y-3 pt-4 border-t">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm font-medium">Foto Peralatan</Label>
+              <p className="text-xs text-gray-500 mt-1">Upload foto peralatan (opsional, maks 5 foto)</p>
+            </div>
+            {!showImageUpload && (
+              <ModernButton
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowImageUpload(true)}
+                className="flex items-center gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                Tambah Foto
+              </ModernButton>
+            )}
+          </div>
+
+          {showImageUpload && createdEquipmentId && (
+            <ImageUpload
+              equipmentId={createdEquipmentId}
+              maxFiles={5}
+              onUploadComplete={() => {
+                // Optionally refresh or show success
+              }}
+            />
+          )}
+
+          {showImageUpload && !createdEquipmentId && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
+              💡 Simpan data Peralatan terlebih dahulu, kemudian upload foto
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 pt-4 border-t">
-        <Button
+        <ModernButton
           type="button"
           variant="outline"
           onClick={() => onSuccess()}
           className="w-full sm:w-auto h-10 sm:h-11"
         >
           Batal
-        </Button>
-        <Button
+        </ModernButton>
+        <ModernButton
           type="submit"
           disabled={isLoading}
           className="w-full sm:w-auto h-10 sm:h-11"
         >
           {isLoading ? 'Menyimpan...' : equipment ? 'Perbarui' : 'Simpan'}
-        </Button>
+        </ModernButton>
       </div>
     </form>
   )

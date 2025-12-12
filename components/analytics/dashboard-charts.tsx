@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ModernCard, ModernCardContent, ModernCardHeader } from '@/components/ui/modern-card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { ModernBadge } from '@/components/ui/modern-badge'
 import {
   BarChart,
   Bar,
@@ -70,7 +69,7 @@ export function DashboardCharts() {
         supabase.from('equipment').select('*'),
         supabase.from('categories').select('*'),
         supabase.from('borrowing_transactions').select('*'),
-        supabase.from('user_profiles').select('*')
+        supabase.from('users').select('*')
       ])
 
       const equipmentData = equipmentResult.status === 'fulfilled' ? equipmentResult.value.data || [] : []
@@ -88,10 +87,10 @@ export function DashboardCharts() {
       }, {} as Record<string, number>)
 
       const statusChartData: ChartData[] = [
-        { name: 'Available', value: statusCounts.available || 0, fill: '#10b981' },
-        { name: 'Borrowed', value: statusCounts.borrowed || 0, fill: '#3b82f6' },
-        { name: 'Maintenance', value: statusCounts.maintenance || 0, fill: '#f59e0b' },
-        { name: 'Lost', value: statusCounts.lost || 0, fill: '#ef4444' }
+        { name: 'Tersedia', value: statusCounts.available || 0, fill: '#10b981' },
+        { name: 'Dipinjam', value: statusCounts.borrowed || 0, fill: '#3b82f6' },
+        { name: 'Perawatan', value: statusCounts.maintenance || 0, fill: '#f59e0b' },
+        { name: 'Hilang', value: statusCounts.lost || 0, fill: '#ef4444' }
       ]
 
       setEquipmentStatusData(statusChartData)
@@ -187,20 +186,20 @@ export function DashboardCharts() {
     <div className="space-y-6">
       {/* Error Alert */}
       {error && (
-        <Alert className="border-red-200 bg-red-50">
-          <AlertDescription className="text-red-800">
+        <ModernCard variant="default" className="border-red-200 bg-red-50 p-4">
+          <p className="text-red-800">
             {error}
-          </AlertDescription>
-        </Alert>
+          </p>
+        </ModernCard>
       )}
 
       {/* No Data Alert */}
       {!loading && !error && (equipmentStatusData.length === 0 || categoryData.length === 0) && (
-        <Alert className="border-blue-200 bg-blue-50">
-          <AlertDescription className="text-blue-800">
-            No data available. Please add equipment and categories to see analytics.
-          </AlertDescription>
-        </Alert>
+        <ModernCard variant="default" className="border-blue-200 bg-blue-50 p-4">
+          <p className="text-blue-800">
+            Data tidak tersedia. Silakan tambahkan peralatan dan kategori untuk melihat analitik.
+          </p>
+        </ModernCard>
       )}
 
       {/* Header with time range selector - Responsive */}
@@ -208,13 +207,13 @@ export function DashboardCharts() {
         {/* Title and badge */}
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2 sm:gap-3">
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Analytics Overview</h3>
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Ringkasan Analitik</h3>
             {!loading && !error && equipmentStatusData.length > 0 && (
-              <Badge variant="outline" className="text-green-600 text-xs sm:text-sm">Live Data</Badge>
+              <ModernBadge variant="outline" className="text-green-600 border-green-200 bg-green-50 text-xs sm:text-sm">Data Langsung</ModernBadge>
             )}
           </div>
           <p className="text-sm sm:text-base text-gray-600 hidden sm:block">
-            Real-time equipment usage and performance metrics
+            Metrik penggunaan dan performa peralatan secara real-time
           </p>
         </div>
 
@@ -225,284 +224,293 @@ export function DashboardCharts() {
             className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors disabled:opacity-50 w-full sm:w-auto order-2 sm:order-1"
             disabled={loading}
           >
-            {loading ? 'Refreshing...' : 'Refresh'}
+            {loading ? 'Memuat...' : 'Segarkan'}
           </button>
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-full sm:w-40 order-1 sm:order-2">
-              <SelectValue placeholder="Select time range" />
+              <SelectValue placeholder="Pilih rentang waktu" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="7days">Last 7 days</SelectItem>
-              <SelectItem value="30days">Last 30 days</SelectItem>
-              <SelectItem value="90days">Last 90 days</SelectItem>
+              <SelectItem value="7days">7 hari terakhir</SelectItem>
+              <SelectItem value="30days">30 hari terakhir</SelectItem>
+              <SelectItem value="90days">90 hari terakhir</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
-          {/* Analytics Content */}
+      {/* Analytics Content */}
       {equipmentStatusData.length > 0 || categoryData.length > 0 || transactionData.length > 0 || userActivityData.length > 0 ? (
         <>
           {/* Charts Grid */}
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
             {/* Equipment Status Pie Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Equipment Status</CardTitle>
-                <CardDescription>Distribution of equipment by current status</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie
-                      data={equipmentStatusData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }: { name?: string; percent?: number }) => {
-                        if (name && percent !== undefined) {
-                          return `${name} ${(percent * 100).toFixed(0)}%`
-                        }
-                        return ''
-                      }}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {equipmentStatusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill || COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="mt-4 flex flex-wrap gap-2 justify-center">
+            <ModernCard className="min-h-[350px] sm:min-h-[400px]">
+              <ModernCardHeader>
+                <h3 className="text-sm sm:text-base font-bold text-gray-900">Status Peralatan</h3>
+                <p className="text-xs sm:text-sm text-gray-600">Distribusi peralatan berdasarkan status saat ini</p>
+              </ModernCardHeader>
+              <ModernCardContent className="px-2 sm:px-4">
+                <div className="w-full h-[250px] sm:h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={equipmentStatusData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }: { name?: string; percent?: number }) => {
+                          if (name && percent !== undefined && percent > 0.05) {
+                            return `${name} ${(percent * 100).toFixed(0)}%`
+                          }
+                          return ''
+                        }}
+                        outerRadius={60}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {equipmentStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill || COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-1 sm:gap-2 justify-center">
                   {equipmentStatusData.map((item, index) => (
-                    <div key={item.name} className="flex items-center space-x-2">
+                    <div key={item.name} className="flex items-center space-x-1 sm:space-x-2">
                       <div
-                        className="w-3 h-3 rounded-full"
+                        className="w-2 h-2 sm:w-3 sm:h-3 rounded-full flex-shrink-0"
                         style={{ backgroundColor: item.fill || COLORS[index % COLORS.length] }}
                       ></div>
-                      <span className="text-sm text-gray-600">{item.name}: {item.value}</span>
+                      <span className="text-xs sm:text-sm text-gray-600">{item.name}: {item.value}</span>
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </ModernCardContent>
+            </ModernCard>
 
             {/* Equipment Categories Bar Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Equipment by Category</CardTitle>
-                <CardDescription>Number of available equipment by category</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={categoryData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="name"
-                      angle={-45}
-                      textAnchor="end"
-                      height={80}
-                      interval={0}
-                    />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#3b82f6" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            <ModernCard className="min-h-[350px] sm:min-h-[400px]">
+              <ModernCardHeader>
+                <h3 className="text-sm sm:text-base font-bold text-gray-900">Peralatan per Kategori</h3>
+                <p className="text-xs sm:text-sm text-gray-600">Jumlah peralatan tersedia per kategori</p>
+              </ModernCardHeader>
+              <ModernCardContent className="px-2 sm:px-4">
+                <div className="w-full h-[250px] sm:h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={categoryData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="name"
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                        interval={0}
+                        tick={{ fontSize: 10 }}
+                      />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip />
+                      <Bar dataKey="count" fill="#3b82f6" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </ModernCardContent>
+            </ModernCard>
 
             {/* Transaction Trend Line Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Transaction Trends</CardTitle>
-                <CardDescription>Daily borrowing and return activity</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={transactionData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="date"
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      interval={Math.floor(transactionData.length / 5)}
-                    />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="borrowings"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      name="Borrowings"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="returns"
-                      stroke="#10b981"
-                      strokeWidth={2}
-                      name="Returns"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            <ModernCard className="min-h-[350px] sm:min-h-[400px]">
+              <ModernCardHeader>
+                <h3 className="text-sm sm:text-base font-bold text-gray-900">Tren Transaksi</h3>
+                <p className="text-xs sm:text-sm text-gray-600">Aktivitas peminjaman dan pengembalian harian</p>
+              </ModernCardHeader>
+              <ModernCardContent className="px-2 sm:px-4">
+                <div className="w-full h-[250px] sm:h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={transactionData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="date"
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                        interval={Math.max(1, Math.floor(transactionData.length / 3))}
+                        tick={{ fontSize: 10 }}
+                      />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Line
+                        type="monotone"
+                        dataKey="borrowings"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        name="Peminjaman"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="returns"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        name="Pengembalian"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </ModernCardContent>
+            </ModernCard>
 
             {/* User Activity Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle>User Activity</CardTitle>
-                <CardDescription>Monthly user registration and activity</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={userActivityData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="new" fill="#8b5cf6" name="New Users" />
-                    <Bar dataKey="active" fill="#10b981" name="Active Users" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            <ModernCard className="min-h-[350px] sm:min-h-[400px]">
+              <ModernCardHeader>
+                <h3 className="text-sm sm:text-base font-bold text-gray-900">Aktivitas Pengguna</h3>
+                <p className="text-xs sm:text-sm text-gray-600">Registrasi dan aktivitas pengguna bulanan</p>
+              </ModernCardHeader>
+              <ModernCardContent className="px-2 sm:px-4">
+                <div className="w-full h-[250px] sm:h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={userActivityData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Bar dataKey="new" fill="#8b5cf6" name="Pengguna Baru" />
+                      <Bar dataKey="active" fill="#10b981" name="Pengguna Aktif" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </ModernCardContent>
+            </ModernCard>
           </div>
 
           {/* Summary Stats */}
-          <div className="grid gap-4 md:grid-cols-4">
-            <Card>
-              <CardContent className="p-4">
+          <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-4">
+            <ModernCard>
+              <ModernCardContent className="p-3 sm:p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Total Transactions</p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">Total Transaksi</p>
+                    <p className="text-xl sm:text-2xl font-bold text-gray-900">
                       {transactionData.reduce((sum, day) => sum + day.borrowings + day.returns, 0)}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {timeRange === '7days' ? 'Last 7 days' : timeRange === '30days' ? 'Last 30 days' : 'Last 90 days'}
+                      {timeRange === '7days' ? '7 hari terakhir' : timeRange === '30days' ? '30 hari terakhir' : '90 hari terakhir'}
                     </p>
                   </div>
-                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <div className="w-5 h-5 bg-blue-600 rounded-full"></div>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="w-3 h-3 sm:w-5 sm:h-5 bg-blue-600 rounded-full"></div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </ModernCardContent>
+            </ModernCard>
 
-            <Card>
-              <CardContent className="p-4">
+            <ModernCard>
+              <ModernCardContent className="p-3 sm:p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Avg Daily Borrowings</p>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">Rata-rata Harian</p>
+                    <p className="text-xl sm:text-2xl font-bold text-gray-900">
                       {transactionData.length > 0
                         ? Math.round(transactionData.reduce((sum, day) => sum + day.borrowings, 0) / transactionData.length)
                         : 0
                       }
                     </p>
                     <p className="text-xs text-gray-500">
-                      {transactionData.length > 0 ? 'Per day average' : 'No data'}
+                      {transactionData.length > 0 ? 'Per hari' : 'Tidak ada data'}
                     </p>
                   </div>
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <div className="w-5 h-5 bg-green-600 rounded-full"></div>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="w-3 h-3 sm:w-5 sm:h-5 bg-green-600 rounded-full"></div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </ModernCardContent>
+            </ModernCard>
 
-            <Card>
-              <CardContent className="p-4">
+            <ModernCard>
+              <ModernCardContent className="p-3 sm:p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Available Equipment</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {equipmentStatusData.find(item => item.name === 'Available')?.value || 0}
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">Tersedia</p>
+                    <p className="text-xl sm:text-2xl font-bold text-gray-900">
+                      {equipmentStatusData.find(item => item.name === 'Tersedia')?.value || 0}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Ready for borrowing
+                      Siap dipinjam
                     </p>
                   </div>
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <div className="w-5 h-5 bg-green-600 rounded-full"></div>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="w-3 h-3 sm:w-5 sm:h-5 bg-green-600 rounded-full"></div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </ModernCardContent>
+            </ModernCard>
 
-            <Card>
-              <CardContent className="p-4">
+            <ModernCard>
+              <ModernCardContent className="p-3 sm:p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Top Category</p>
-                    <p className="text-lg font-bold text-gray-900 truncate">
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">Kategori Teratas</p>
+                    <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">
                       {categoryData.length > 0 ? categoryData[0]?.name : 'N/A'}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {categoryData.length > 0 ? `${categoryData[0]?.count} items` : 'No data'}
+                      {categoryData.length > 0 ? `${categoryData[0]?.count} item` : 'Tidak ada data'}
                     </p>
                   </div>
-                  <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                    <div className="w-5 h-5 bg-purple-600 rounded-full"></div>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="w-3 h-3 sm:w-5 sm:h-5 bg-purple-600 rounded-full"></div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </ModernCardContent>
+            </ModernCard>
           </div>
 
           {/* Additional Insights */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardContent className="p-4">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
+            <ModernCard>
+              <ModernCardContent className="p-3 sm:p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Equipment Utilization</p>
-                    <p className="text-lg font-bold text-gray-900">
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">Utilisasi Peralatan</p>
+                    <p className="text-sm sm:text-lg font-bold text-gray-900">
                       {equipmentStatusData.length > 0
-                        ? Math.round(((equipmentStatusData.find(item => item.name === 'Borrowed')?.value || 0) /
-                                    equipmentStatusData.reduce((sum, item) => sum + item.value, 0)) * 100)
+                        ? Math.round(((equipmentStatusData.find(item => item.name === 'Dipinjam')?.value || 0) /
+                          equipmentStatusData.reduce((sum, item) => sum + item.value, 0)) * 100)
                         : 0}%
                     </p>
                     <p className="text-xs text-gray-500">
-                      Currently borrowed / total
+                      Sedang dipinjam / total
                     </p>
                   </div>
-                  <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                    <div className="w-5 h-5 bg-orange-600 rounded-full"></div>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="w-3 h-3 sm:w-5 sm:h-5 bg-orange-600 rounded-full"></div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </ModernCardContent>
+            </ModernCard>
 
-            <Card>
-              <CardContent className="p-4">
+            <ModernCard>
+              <ModernCardContent className="p-3 sm:p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Monthly Active Users</p>
-                    <p className="text-lg font-bold text-gray-900">
+                    <p className="text-xs sm:text-sm font-medium text-gray-600">Pengguna Aktif Bulanan</p>
+                    <p className="text-sm sm:text-lg font-bold text-gray-900">
                       {userActivityData.length > 0
                         ? userActivityData[userActivityData.length - 1]?.active || 0
                         : 0
                       }
                     </p>
                     <p className="text-xs text-gray-500">
-                      Last 30 days activity
+                      Aktivitas 30 hari terakhir
                     </p>
                   </div>
-                  <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                    <div className="w-5 h-5 bg-indigo-600 rounded-full"></div>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="w-3 h-3 sm:w-5 sm:h-5 bg-indigo-600 rounded-full"></div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </ModernCardContent>
+            </ModernCard>
           </div>
         </>
       ) : null}

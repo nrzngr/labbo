@@ -11,11 +11,11 @@ interface ModernCardProps extends React.HTMLAttributes<HTMLDivElement> {
 export const ModernCard = React.forwardRef<HTMLDivElement, ModernCardProps>(
   ({ className, variant = "default", padding = "lg", hover = false, children, ...props }, ref) => {
     const variantStyles = {
-      default: "bg-white border-2 border-black shadow-md",
-      glass: "glass-morphism border border-black/20",
-      elevated: "bg-white border-2 border-black shadow-xl",
-      gradient: "gradient-bg border-2 border-black",
-      outline: "bg-transparent border-2 border-black"
+      default: "bg-white border border-[#dfe2ec] shadow-[0_25px_55px_rgba(17,24,39,0.06)]",
+      glass: "glass-morphism border border-white/40 shadow-[0_25px_55px_rgba(17,24,39,0.04)]",
+      elevated: "bg-white border border-[#d6dae7] shadow-[0_35px_70px_rgba(17,24,39,0.08)]",
+      gradient: "bg-[linear-gradient(135deg,#ffeaf5_0%,#ffffff_40%,#eef0f8_100%)] border border-transparent shadow-[0_35px_70px_rgba(255,0,122,0.12)]",
+      outline: "bg-transparent border border-[#ff007a]/40"
     }
 
     const paddingStyles = {

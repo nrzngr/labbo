@@ -1,19 +1,33 @@
-'use client'
+"use client"
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { useCustomAuth } from "@/components/auth/custom-auth-provider"
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Badge } from "@/components/ui/badge"
-import { Package, Calendar, Clock, AlertTriangle, CheckCircle, RefreshCw, Search } from "lucide-react"
+import {
+  Package,
+  Clock,
+  AlertTriangle,
+  CheckCircle,
+  RefreshCw,
+  Search,
+  Plus,
+  Timer,
+  CalendarDays,
+  MapPin,
+  Tag,
+  Eye,
+  Sparkles,
+  X,
+  HourglassIcon,
+  XCircle,
+  FileDown
+} from "lucide-react"
 import { supabase } from '@/lib/supabase'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
-import { ModernCard, ModernCardHeader, ModernCardContent } from '@/components/ui/modern-card'
-import { ModernBadge } from '@/components/ui/modern-badge'
-import { ModernButton } from '@/components/ui/modern-button'
-import { ModernInput } from '@/components/ui/modern-input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { BorrowRequestForm } from '@/components/student/borrow-request-form'
+import { generateBorrowingLetter } from '@/lib/pdf-generator'
+
 
 interface BorrowingTransaction {
   id: string
@@ -22,33 +36,46 @@ interface BorrowingTransaction {
     name: string
     serial_number: string
     category?: { name: string }
+    location?: string
+    condition?: string
+    image_url?: string
   }
   borrow_date: string
   expected_return_date: string
   actual_return_date: string | null
-  status: 'active' | 'returned' | 'overdue'
+  status: 'pending' | 'active' | 'returned' | 'overdue' | 'rejected'
   notes?: string
+  created_at?: string
 }
 
 export default function MyBorrowingsPage() {
   const { user } = useCustomAuth()
-  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false)
+  const [selectedTransaction, setSelectedTransaction] = useState<BorrowingTransaction | null>(null)
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
+  const [isExtensionDialogOpen, setIsExtensionDialogOpen] = useState(false)
+  const [extensionDate, setExtensionDate] = useState('')
+  const [extensionReason, setExtensionReason] = useState('')
 
   const queryClient = useQueryClient()
 
   const { data: transactions, isLoading, refetch } = useQuery({
-    queryKey: ['my-borrowings', searchTerm, statusFilter],
+    queryKey: ['my-borrowings', searchTerm, statusFilter, user?.id],
     queryFn: async () => {
-      if (!user) return []
+      if (!user) {
+        console.log('[DEBUG] No user, returning empty array')
+        return []
+      }
+
+      console.log('[DEBUG] Fetching borrowings for user:', user.id, user.email)
 
       let query = supabase
         .from('borrowing_transactions')
         .select(`
           *,
-          equipment:equipment(id, name, serial_number, categories(name))
+          equipment(id, name, serial_number, location, condition)
         `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
@@ -58,16 +85,19 @@ export default function MyBorrowingsPage() {
       }
 
       if (statusFilter) {
-        query = query.eq('status', statusFilter)
+        query = query.eq('status', statusFilter as any)
       }
 
       const { data, error } = await query
 
+      console.log('[DEBUG] Query result - data:', data, 'error:', error)
+
       if (error) throw error
 
       return data?.map((transaction: any) => {
-        let status: 'active' | 'returned' | 'overdue' = transaction.status as 'active' | 'returned'
+        let status = transaction.status
 
+        // Check if active item is overdue
         if (transaction.status === 'active' && new Date(transaction.expected_return_date) < new Date()) {
           status = 'overdue'
         }
@@ -83,15 +113,76 @@ export default function MyBorrowingsPage() {
 
   const extendBorrowingMutation = useMutation({
     mutationFn: async ({ transactionId, newReturnDate }: { transactionId: string, newReturnDate: string }) => {
-      try {
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        return { success: true }
-      } catch (error) {
-        throw error
-      }
+      const { error } = await supabase
+        .from('borrowing_transactions')
+        .update({ expected_return_date: newReturnDate })
+        .eq('id', transactionId)
+
+      if (error) throw error
+      return { success: true }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-borrowings'] })
+    }
+  })
+
+  const cancelBorrowingMutation = useMutation({
+    mutationFn: async (transactionId: string) => {
+      const { error } = await supabase
+        .from('borrowing_transactions')
+        .delete()
+        .eq('id', transactionId)
+
+      if (error) throw error
+      return { success: true }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-borrowings'] })
+      setIsDetailDialogOpen(false)
+    }
+  })
+
+  // Request return mutation
+  const requestReturnMutation = useMutation({
+    mutationFn: async (transactionId: string) => {
+      const { error } = await supabase
+        .from('borrowing_transactions')
+        .update({
+          return_requested: true,
+          return_requested_at: new Date().toISOString()
+        } as any)
+        .eq('id', transactionId)
+
+      if (error) throw error
+      // Skip notification insert - admin will see in return-requests page
+
+      return { success: true }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-borrowings'] })
+      setIsDetailDialogOpen(false)
+    }
+  })
+
+  // Request extension mutation
+  const requestExtensionMutation = useMutation({
+    mutationFn: async ({ transactionId, newDate, reason }: { transactionId: string, newDate: string, reason: string }) => {
+      const { error } = await supabase
+        .from('borrowing_transactions')
+        .update({
+          extension_requested: true,
+          extension_new_date: newDate,
+          extension_reason: reason,
+          extension_status: 'pending'
+        } as any)
+        .eq('id', transactionId)
+
+      if (error) throw error
+      return { success: true }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-borrowings'] })
+      setIsExtensionDialogOpen(false)
     }
   })
 
@@ -99,7 +190,10 @@ export default function MyBorrowingsPage() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">Please log in to continue...</div>
+          <div className="text-center">
+            <div className="animate-spin w-8 h-8 border-4 border-[#ff007a] border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-gray-500">Memuat...</p>
+          </div>
         </div>
       </DashboardLayout>
     )
@@ -108,52 +202,98 @@ export default function MyBorrowingsPage() {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('id-ID', {
       day: 'numeric',
-      month: 'short',
+      month: 'long',
       year: 'numeric'
     })
   }
 
-  const getStatusBadge = (status: string, expectedReturnDate: string) => {
-    const isOverdue = status === 'active' && new Date(expectedReturnDate) < new Date()
-
-    if (isOverdue) {
-      return <ModernBadge variant="destructive" size="sm">Overdue</ModernBadge>
-    }
-
-    const variants: Record<string, "default" | "success" | "warning" | "destructive"> = {
-      active: 'success',
-      returned: 'default'
-    }
-
-    const statusLabels: Record<string, string> = {
-      active: 'Active',
-      returned: 'Returned'
-    }
-
-    return <ModernBadge variant={variants[status] || 'default'} size="sm">{statusLabels[status] || status}</ModernBadge>
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
 
-  const getDaysLeft = (expectedReturnDate: string) => {
+  const getDaysInfo = (expectedReturnDate: string, status: string) => {
+    if (status === 'pending') {
+      return { text: 'Menunggu Persetujuan', color: 'text-amber-600', bg: 'bg-amber-50' }
+    }
+    if (status === 'rejected') {
+      return { text: 'Ditolak', color: 'text-red-600', bg: 'bg-red-50' }
+    }
+    if (status === 'returned') {
+      return { text: 'Selesai', color: 'text-gray-500', bg: 'bg-gray-100' }
+    }
+
     const today = new Date()
     const dueDate = new Date(expectedReturnDate)
     const diffTime = dueDate.getTime() - today.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
-    if (diffDays < 0) return { text: `${Math.abs(diffDays)} days overdue`, color: 'text-red-600' }
-    if (diffDays === 0) return { text: 'Due today', color: 'text-orange-600' }
-    if (diffDays <= 3) return { text: `${diffDays} days left`, color: 'text-yellow-600' }
-    return { text: `${diffDays} days left`, color: 'text-green-600' }
+    if (diffDays < 0) {
+      return { text: `${Math.abs(diffDays)} hari terlambat`, color: 'text-red-600', bg: 'bg-red-50' }
+    }
+    if (diffDays === 0) {
+      return { text: 'Hari ini', color: 'text-orange-600', bg: 'bg-orange-50' }
+    }
+    if (diffDays <= 3) {
+      return { text: `${diffDays} hari lagi`, color: 'text-amber-600', bg: 'bg-amber-50' }
+    }
+    return { text: `${diffDays} hari lagi`, color: 'text-emerald-600', bg: 'bg-emerald-50' }
+  }
+
+  const getStatusConfig = (status: string) => {
+    const config: Record<string, { label: string; color: string; bg: string; border: string; icon: React.ReactNode }> = {
+      pending: {
+        label: 'Menunggu',
+        color: 'text-amber-700',
+        bg: 'bg-amber-50',
+        border: 'border-amber-200',
+        icon: <HourglassIcon className="w-3.5 h-3.5" />
+      },
+      active: {
+        label: 'Aktif',
+        color: 'text-emerald-700',
+        bg: 'bg-emerald-50',
+        border: 'border-emerald-200',
+        icon: <Package className="w-3.5 h-3.5" />
+      },
+      returned: {
+        label: 'Dikembalikan',
+        color: 'text-gray-600',
+        bg: 'bg-gray-100',
+        border: 'border-gray-200',
+        icon: <CheckCircle className="w-3.5 h-3.5" />
+      },
+      overdue: {
+        label: 'Terlambat',
+        color: 'text-red-700',
+        bg: 'bg-red-50',
+        border: 'border-red-200',
+        icon: <AlertTriangle className="w-3.5 h-3.5" />
+      },
+      rejected: {
+        label: 'Ditolak',
+        color: 'text-red-700',
+        bg: 'bg-red-50',
+        border: 'border-red-200',
+        icon: <XCircle className="w-3.5 h-3.5" />
+      }
+    }
+    return config[status] || config.pending
   }
 
   const handleExtendBorrowing = async (transactionId: string) => {
     const transaction = transactions?.find(t => t.id === transactionId)
     if (!transaction) return
 
-    const currentDate = new Date()
     const newReturnDate = new Date(transaction.expected_return_date)
-    newReturnDate.setDate(newReturnDate.getDate() + 7) // Extend by 7 days
+    newReturnDate.setDate(newReturnDate.getDate() + 7)
 
-    if (confirm('Do you want to extend this borrowing by 7 days?')) {
+    if (confirm('Perpanjang peminjaman selama 7 hari?')) {
       extendBorrowingMutation.mutate({
         transactionId,
         newReturnDate: newReturnDate.toISOString().split('T')[0]
@@ -161,105 +301,135 @@ export default function MyBorrowingsPage() {
     }
   }
 
+  const handleCancelBorrowing = async (transactionId: string) => {
+    if (confirm('Batalkan permintaan peminjaman ini?')) {
+      cancelBorrowingMutation.mutate(transactionId)
+    }
+  }
+
+  const handleViewDetails = (transaction: BorrowingTransaction) => {
+    setSelectedTransaction(transaction)
+    setIsDetailDialogOpen(true)
+  }
+
+  const handleDownloadPDF = (transaction: BorrowingTransaction) => {
+    // Extract purpose from notes if present (format: [PURPOSE] notes)
+    const purposeMatch = transaction.notes?.match(/^\[(\w+)\]/)
+    const purpose = purposeMatch ? purposeMatch[1].toLowerCase() : 'lainnya'
+    const cleanNotes = transaction.notes?.replace(/^\[\w+\]\s*/, '') || ''
+
+    generateBorrowingLetter({
+      id: transaction.id,
+      borrowerName: user?.full_name || '',
+      borrowerNim: user?.nim || user?.nip || '',
+      borrowerDepartment: user?.department || '',
+      equipmentName: transaction.equipment?.name || '',
+      serialNumber: transaction.equipment?.serial_number || '',
+      borrowDate: transaction.borrow_date,
+      expectedReturnDate: transaction.expected_return_date,
+      purpose: purpose,
+      notes: cleanNotes
+    })
+  }
+
+  const pendingCount = transactions?.filter(t => t.status === 'pending').length || 0
   const activeCount = transactions?.filter(t => t.status === 'active').length || 0
   const overdueCount = transactions?.filter(t => t.status === 'overdue').length || 0
   const returnedCount = transactions?.filter(t => t.status === 'returned').length || 0
 
   return (
     <DashboardLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 page-gradient min-h-screen">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-h-screen bg-gradient-to-br from-[#f8f7fc] via-white to-[#fff5f9]">
+
         {/* Header */}
-        <ModernCard variant="elevated" padding="lg" className="mb-6 sm:mb-8 fade-in">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 sm:gap-6">
-            <div>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black text-gray-900 mb-1 sm:mb-2">
-                My Borrowings
-              </h1>
-              <p className="text-sm sm:text-base text-gray-600 font-medium">Track your equipment borrowing history</p>
-            </div>
-            <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
-              <DialogTrigger asChild>
-                <ModernButton
-                  variant="default"
-                  size="lg"
-                  leftIcon={<Package className="w-5 h-5" />}
-                  className="w-full sm:w-auto button-hover-lift"
-                >
-                  New Borrow Request
-                </ModernButton>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px] border-2 border-black rounded-2xl">
-                <DialogHeader>
-                  <DialogTitle className="text-2xl font-black">Request New Equipment</DialogTitle>
-                </DialogHeader>
-                <BorrowRequestForm
-                  onSuccess={() => {
-                    setIsRequestDialogOpen(false)
-                    refetch()
-                  }}
-                />
-              </DialogContent>
-            </Dialog>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+              Peminjaman Saya
+            </h1>
+            <p className="text-gray-500">Kelola dan pantau peralatan yang Anda pinjam</p>
           </div>
-        </ModernCard>
-
-        {/* Stats Overview */}
-        <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4 mb-6 sm:mb-8">
-          <ModernCard variant="default" hover className="stats-card p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <span className="text-xs sm:text-sm font-bold text-gray-600 uppercase tracking-wider">Active</span>
-              <div className="p-1.5 sm:p-2 bg-blue-100 rounded-xl">
-                <Package className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
-              </div>
-            </div>
-            <div className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-900 mb-1">{activeCount}</div>
-            <div className="text-xs sm:text-sm text-gray-600 font-medium">Currently borrowed</div>
-          </ModernCard>
-
-          <ModernCard variant="default" hover className="stats-card p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <span className="text-xs sm:text-sm font-bold text-gray-600 uppercase tracking-wider">Overdue</span>
-              <div className="p-1.5 sm:p-2 bg-red-100 rounded-xl">
-                <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4 text-red-600" />
-              </div>
-            </div>
-            <div className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-900 mb-1">{overdueCount}</div>
-            <div className="text-xs sm:text-sm text-red-600 font-medium">
-              {overdueCount > 0 ? 'Return immediately' : 'All clear'}
-            </div>
-          </ModernCard>
-
-          <ModernCard variant="default" hover className="stats-card p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <span className="text-xs sm:text-sm font-bold text-gray-600 uppercase tracking-wider">Returned</span>
-              <div className="p-1.5 sm:p-2 bg-green-100 rounded-xl">
-                <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
-              </div>
-            </div>
-            <div className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-900 mb-1">{returnedCount}</div>
-            <div className="text-xs sm:text-sm text-gray-600 font-medium">Completed</div>
-          </ModernCard>
-
-          <ModernCard variant="default" hover className="stats-card p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
-              <span className="text-xs sm:text-sm font-bold text-gray-600 uppercase tracking-wider">Total</span>
-              <div className="p-1.5 sm:p-2 bg-purple-100 rounded-xl">
-                <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-purple-600" />
-              </div>
-            </div>
-            <div className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-900 mb-1">{transactions?.length || 0}</div>
-            <div className="text-xs sm:text-sm text-gray-600 font-medium">All time</div>
-          </ModernCard>
+          <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+            <DialogTrigger asChild>
+              <button className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-[#ff007a] to-[#ff4d9e] text-white rounded-2xl font-semibold shadow-lg shadow-[rgba(255,0,122,0.3)] hover:shadow-xl hover:shadow-[rgba(255,0,122,0.4)] transition-all flex items-center justify-center gap-2">
+                <Plus className="w-5 h-5" />
+                Pinjam Peralatan
+              </button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto border-0 rounded-3xl p-6">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-bold text-gray-900">Pinjam Peralatan Baru</DialogTitle>
+              </DialogHeader>
+              <BorrowRequestForm
+                onSuccess={() => {
+                  setIsRequestDialogOpen(false)
+                  refetch()
+                }}
+              />
+            </DialogContent>
+          </Dialog>
         </div>
 
-        {/* Filters */}
-        <ModernCard variant="default" padding="sm" className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+          {/* Pending */}
+          <div className="group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:shadow-amber-500/5 transition-all duration-300">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
+                <HourglassIcon className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-3 py-1 rounded-full">MENUNGGU</span>
+            </div>
+            <div className="text-3xl font-bold text-gray-900 mb-1">{pendingCount}</div>
+            <div className="text-sm text-amber-600">{pendingCount > 0 ? 'Menunggu persetujuan' : 'Tidak ada'}</div>
+          </div>
+
+          {/* Active */}
+          <div className="group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                <Package className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">AKTIF</span>
+            </div>
+            <div className="text-3xl font-bold text-gray-900 mb-1">{activeCount}</div>
+            <div className="text-sm text-gray-500">Sedang dipinjam</div>
+          </div>
+
+          {/* Overdue */}
+          <div className="group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:shadow-red-500/5 transition-all duration-300">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/30">
+                <AlertTriangle className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-xs font-semibold text-red-600 bg-red-50 px-3 py-1 rounded-full">TERLAMBAT</span>
+            </div>
+            <div className="text-3xl font-bold text-gray-900 mb-1">{overdueCount}</div>
+            <div className="text-sm text-red-500">{overdueCount > 0 ? 'Segera kembalikan' : 'Tidak ada'}</div>
+          </div>
+
+          {/* Returned */}
+          <div className="group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:shadow-emerald-500/5 transition-all duration-300">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                <CheckCircle className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">SELESAI</span>
+            </div>
+            <div className="text-3xl font-bold text-gray-900 mb-1">{returnedCount}</div>
+            <div className="text-sm text-gray-500">Dikembalikan</div>
+          </div>
+        </div>
+
+        {/* Search and Filter */}
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm mb-6">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <ModernInput
-                placeholder="Search equipment name or serial number..."
-                className="pl-10"
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Cari nama peralatan atau nomor seri..."
+                className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:bg-white focus:ring-4 focus:ring-[rgba(255,0,122,0.08)] outline-none transition-all text-sm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -267,122 +437,303 @@ export default function MyBorrowingsPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-3 border border-black focus:ring-0 focus:border-black min-w-[120px] sm:min-w-[150px] text-sm bg-white"
+              className="px-4 py-3.5 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:ring-4 focus:ring-[rgba(255,0,122,0.08)] outline-none transition-all text-sm min-w-[150px]"
             >
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="returned">Returned</option>
-              <option value="overdue">Overdue</option>
+              <option value="">Semua Status</option>
+              <option value="pending">Menunggu</option>
+              <option value="active">Aktif</option>
+              <option value="returned">Dikembalikan</option>
+              <option value="overdue">Terlambat</option>
             </select>
           </div>
-        </ModernCard>
+        </div>
 
-        {/* Transactions List */}
+        {/* Borrowings List */}
         {isLoading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin w-8 h-8 border-4 border-black border-t-transparent rounded-full mx-auto mb-4"></div>
-            <div className="text-lg font-medium">Loading borrowings...</div>
+          <div className="text-center py-16">
+            <div className="relative w-16 h-16 mx-auto mb-4">
+              <div className="absolute inset-0 rounded-full border-4 border-[#ff007a]/20"></div>
+              <div className="absolute inset-0 rounded-full border-4 border-[#ff007a] border-t-transparent animate-spin"></div>
+            </div>
+            <div className="text-gray-500 font-medium">Memuat peminjaman...</div>
           </div>
-        ) : (
-          <ModernCard variant="default" padding="none">
-            {transactions && transactions.length > 0 ? (
-              <div className="divide-y divide-black">
-                {transactions.map((transaction) => (
-                  <div key={transaction.id} className="p-4 sm:p-6">
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start gap-3 sm:gap-4">
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-black rounded-xl flex items-center justify-center flex-shrink-0">
-                            <Package className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+        ) : transactions && transactions.length > 0 ? (
+          <div className="space-y-4">
+            {transactions.map((transaction) => {
+              const statusConfig = getStatusConfig(transaction.status)
+              const daysInfo = getDaysInfo(transaction.expected_return_date, transaction.status)
+
+              return (
+                <div
+                  key={transaction.id}
+                  className={`group bg-white rounded-2xl border shadow-sm hover:shadow-xl hover:shadow-gray-100 transition-all duration-300 overflow-hidden ${transaction.status === 'pending' ? 'border-amber-200' : 'border-gray-100'
+                    }`}
+                >
+                  <div className="p-5 sm:p-6">
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-5">
+                      {/* Equipment Info */}
+                      <div className="flex items-start gap-4 flex-1 min-w-0">
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${transaction.status === 'pending'
+                          ? 'bg-gradient-to-br from-amber-100 to-amber-50'
+                          : 'bg-gradient-to-br from-[#ff007a]/10 to-[#ff007a]/5'
+                          }`}>
+                          {transaction.status === 'pending' ? (
+                            <HourglassIcon className="w-7 h-7 text-amber-500" />
+                          ) : (
+                            <Package className="w-7 h-7 text-[#ff007a]" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="font-bold text-lg text-gray-900 truncate">{transaction.equipment.name}</h3>
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${statusConfig.bg} ${statusConfig.color} ${statusConfig.border}`}>
+                              {statusConfig.icon}
+                              {statusConfig.label}
+                            </span>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-lg sm:text-xl mb-1 truncate">{transaction.equipment.name}</h3>
-                            <div className="space-y-1 sm:space-y-2">
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm">
-                                <span className="text-gray-600">
-                                  Serial: <span className="font-mono">{transaction.equipment.serial_number}</span>
-                                </span>
-                                <span className="text-gray-600">
-                                  Category: {transaction.equipment.category?.name || 'Uncategorized'}
-                                </span>
-                              </div>
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm">
-                                <span className="text-gray-600">
-                                  Borrowed: {formatDate(transaction.borrow_date)}
-                                </span>
-                                <span className="text-gray-600">
-                                  Due: {formatDate(transaction.expected_return_date)}
-                                </span>
-                                {transaction.actual_return_date && (
-                                  <span className="text-gray-600">
-                                    Returned: {formatDate(transaction.actual_return_date)}
-                                  </span>
-                                )}
-                              </div>
-                              {transaction.notes && (
-                                <div className="text-xs sm:text-sm text-gray-600">
-                                  Notes: {transaction.notes}
-                                </div>
-                              )}
-                            </div>
+
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
+                            <span className="flex items-center gap-1.5">
+                              <Tag className="w-3.5 h-3.5" />
+                              {transaction.equipment.category?.name || 'Tidak berkategori'}
+                            </span>
+                            <span className="flex items-center gap-1.5 font-mono text-xs">
+                              SN: {transaction.equipment.serial_number}
+                            </span>
+                            {transaction.equipment.location && (
+                              <span className="flex items-center gap-1.5">
+                                <MapPin className="w-3.5 h-3.5" />
+                                {transaction.equipment.location}
+                              </span>
+                            )}
                           </div>
+
+                          {/* Dates */}
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-sm">
+                            <span className="flex items-center gap-1.5 text-gray-500">
+                              <CalendarDays className="w-3.5 h-3.5" />
+                              Diajukan: <span className="font-medium text-gray-700">{formatDate(transaction.borrow_date)}</span>
+                            </span>
+                            <span className="flex items-center gap-1.5 text-gray-500">
+                              <Timer className="w-3.5 h-3.5" />
+                              Batas: <span className="font-medium text-gray-700">{formatDate(transaction.expected_return_date)}</span>
+                            </span>
+                          </div>
+
+                          {transaction.notes && (
+                            <p className="mt-3 text-sm text-gray-400 bg-gray-50 px-3 py-2 rounded-lg">
+                              {transaction.notes}
+                            </p>
+                          )}
                         </div>
                       </div>
 
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-                        <div className="flex flex-col items-start sm:items-center gap-2">
-                          {getStatusBadge(transaction.status, transaction.expected_return_date)}
-                          {transaction.status === 'active' && (
-                            <span className={`text-xs font-medium ${getDaysLeft(transaction.expected_return_date).color}`}>
-                              {getDaysLeft(transaction.expected_return_date).text}
-                            </span>
-                          )}
+                      {/* Right Side - Status & Actions */}
+                      <div className="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-end gap-3">
+                        {/* Days indicator */}
+                        <div className={`px-4 py-2 rounded-xl text-sm font-semibold ${daysInfo.bg} ${daysInfo.color}`}>
+                          {daysInfo.text}
                         </div>
 
+                        {/* Action buttons */}
                         <div className="flex gap-2">
+                          {transaction.status === 'pending' && (
+                            <button
+                              onClick={() => handleCancelBorrowing(transaction.id)}
+                              disabled={cancelBorrowingMutation.isPending}
+                              className="px-4 py-2.5 bg-red-100 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-200 transition-all flex items-center gap-2 disabled:opacity-50"
+                            >
+                              <X className="w-4 h-4" />
+                              Batalkan
+                            </button>
+                          )}
                           {transaction.status === 'active' && (
-                            <ModernButton
-                              variant="outline"
-                              size="sm"
-                              leftIcon={<RefreshCw className="w-4 h-4" />}
+                            <button
                               onClick={() => handleExtendBorrowing(transaction.id)}
                               disabled={extendBorrowingMutation.isPending}
-                              className="text-xs sm:text-sm"
+                              className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-all flex items-center gap-2 disabled:opacity-50"
                             >
-                              Extend
-                            </ModernButton>
+                              <RefreshCw className="w-4 h-4" />
+                              Perpanjang
+                            </button>
                           )}
-                          <ModernButton
-                            variant="outline"
-                            size="sm"
-                            onClick={() => router.push(`/dashboard/equipment?item=${transaction.equipment.id}`)}
-                            className="text-xs sm:text-sm"
+                          {(transaction.status === 'active' || transaction.status === 'pending') && (
+                            <button
+                              onClick={() => handleDownloadPDF(transaction)}
+                              className="px-4 py-2.5 bg-emerald-100 text-emerald-700 rounded-xl text-sm font-semibold hover:bg-emerald-200 transition-all flex items-center gap-2"
+                              title="Download Surat Peminjaman"
+                            >
+                              <FileDown className="w-4 h-4" />
+                              Surat
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleViewDetails(transaction)}
+                            className="px-4 py-2.5 bg-[#ff007a]/10 text-[#ff007a] rounded-xl text-sm font-semibold hover:bg-[#ff007a]/20 transition-all flex items-center gap-2"
                           >
-                            View Details
-                          </ModernButton>
+                            <Eye className="w-4 h-4" />
+                            Detail
+                          </button>
                         </div>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 sm:py-16 px-4">
-                <Package className="mx-auto w-12 h-12 sm:w-16 sm:h-16 mb-4 text-gray-400" />
-                <h3 className="font-bold text-lg sm:text-xl text-gray-700 mb-2">No borrowing history found</h3>
-                <p className="text-sm text-gray-600 mb-6">Start by requesting your first equipment borrow</p>
-                <ModernButton
-                  variant="default"
-                  size="lg"
-                  leftIcon={<Package className="w-5 h-5" />}
-                  onClick={() => setIsRequestDialogOpen(true)}
-                >
-                  Request Equipment
-                </ModernButton>
-              </div>
-            )}
-          </ModernCard>
+
+                  {/* Progress bar for active items */}
+                  {transaction.status === 'active' && (
+                    <div className="h-1 bg-gray-100">
+                      <div
+                        className="h-full bg-gradient-to-r from-[#ff007a] to-[#ff4d9e] transition-all duration-500"
+                        style={{
+                          width: `${Math.max(0, Math.min(100,
+                            ((new Date().getTime() - new Date(transaction.borrow_date).getTime()) /
+                              (new Date(transaction.expected_return_date).getTime() - new Date(transaction.borrow_date).getTime())) * 100
+                          ))}%`
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Pending indicator bar */}
+                  {transaction.status === 'pending' && (
+                    <div className="h-1 bg-amber-100 overflow-hidden">
+                      <div className="h-full w-20 bg-amber-400 animate-pulse" />
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center">
+            <div className="w-24 h-24 bg-gradient-to-br from-[#ff007a]/10 to-[#ff007a]/5 rounded-3xl flex items-center justify-center mx-auto mb-6">
+              <Sparkles className="w-12 h-12 text-[#ff007a]" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Belum ada peminjaman</h3>
+            <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+              Mulai pinjam peralatan laboratorium yang Anda butuhkan untuk proyek Anda
+            </p>
+            <button
+              onClick={() => setIsRequestDialogOpen(true)}
+              className="px-6 py-3.5 bg-gradient-to-r from-[#ff007a] to-[#ff4d9e] text-white rounded-2xl font-semibold shadow-lg shadow-[rgba(255,0,122,0.3)] hover:shadow-xl hover:shadow-[rgba(255,0,122,0.4)] transition-all inline-flex items-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              Pinjam Peralatan Pertama
+            </button>
+          </div>
         )}
+
+        {/* Detail Dialog */}
+        <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+          <DialogContent className="sm:max-w-[500px] border-0 rounded-3xl p-0 overflow-hidden">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Detail Peminjaman</DialogTitle>
+            </DialogHeader>
+            {selectedTransaction && (
+              <>
+                {/* Header with gradient */}
+                <div className={`p-6 ${selectedTransaction.status === 'pending' ? 'bg-gradient-to-br from-amber-400 to-amber-500' :
+                  selectedTransaction.status === 'active' ? 'bg-gradient-to-br from-emerald-400 to-emerald-500' :
+                    selectedTransaction.status === 'overdue' ? 'bg-gradient-to-br from-red-400 to-red-500' :
+                      selectedTransaction.status === 'rejected' ? 'bg-gradient-to-br from-red-400 to-red-500' :
+                        'bg-gradient-to-br from-gray-400 to-gray-500'
+                  }`}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
+                      <Package className="w-8 h-8 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-white">{selectedTransaction.equipment.name}</h3>
+                      <p className="text-white/80 text-sm font-mono">SN: {selectedTransaction.equipment.serial_number}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Details */}
+                <div className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">Status</span>
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold border ${getStatusConfig(selectedTransaction.status).bg} ${getStatusConfig(selectedTransaction.status).color} ${getStatusConfig(selectedTransaction.status).border}`}>
+                      {getStatusConfig(selectedTransaction.status).icon}
+                      {getStatusConfig(selectedTransaction.status).label}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">Kategori</span>
+                    <span className="font-medium text-gray-900">{selectedTransaction.equipment.category?.name || '-'}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">Lokasi</span>
+                    <span className="font-medium text-gray-900">{selectedTransaction.equipment.location || '-'}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">Kondisi</span>
+                    <span className="font-medium text-gray-900">{selectedTransaction.equipment.condition || '-'}</span>
+                  </div>
+
+                  <hr className="border-gray-100" />
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">Tanggal Pengajuan</span>
+                    <span className="font-medium text-gray-900">{formatDate(selectedTransaction.borrow_date)}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">Batas Pengembalian</span>
+                    <span className="font-medium text-gray-900">{formatDate(selectedTransaction.expected_return_date)}</span>
+                  </div>
+
+                  {selectedTransaction.actual_return_date && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500">Tanggal Dikembalikan</span>
+                      <span className="font-medium text-gray-900">{formatDate(selectedTransaction.actual_return_date)}</span>
+                    </div>
+                  )}
+
+                  {selectedTransaction.notes && (
+                    <div className="pt-2">
+                      <span className="text-gray-500 text-sm block mb-2">Catatan</span>
+                      <p className="text-gray-700 bg-gray-50 p-3 rounded-xl text-sm">{selectedTransaction.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Pending message */}
+                  {selectedTransaction.status === 'pending' && (
+                    <div className="flex gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                      <HourglassIcon className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                      <p className="text-sm text-amber-800">
+                        Permintaan peminjaman Anda sedang menunggu persetujuan dari admin lab. Anda akan mendapat notifikasi setelah disetujui.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer actions */}
+                <div className="p-6 pt-0 flex gap-3">
+                  {selectedTransaction.status === 'pending' && (
+                    <button
+                      onClick={() => handleCancelBorrowing(selectedTransaction.id)}
+                      disabled={cancelBorrowingMutation.isPending}
+                      className="flex-1 py-3 bg-red-100 text-red-600 rounded-xl font-semibold hover:bg-red-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      <X className="w-4 h-4" />
+                      Batalkan Permintaan
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setIsDetailDialogOpen(false)}
+                    className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   )

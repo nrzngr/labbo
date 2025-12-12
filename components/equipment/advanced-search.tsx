@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { ModernButton } from '@/components/ui/modern-button'
+import { ModernBadge } from '@/components/ui/modern-badge'
 import { Search, Filter, X, Calendar, MapPin, DollarSign } from 'lucide-react'
 import {
   Dialog,
@@ -147,18 +147,18 @@ export function AdvancedSearch({ filters, onFiltersChange, categories }: Advance
 
         <Dialog open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen}>
           <DialogTrigger asChild>
-            <Button
+            <ModernButton
               variant="outline"
               className="border border-black hover:bg-black hover:text-white transition-none h-12 px-4"
             >
               <Filter className="w-4 h-4 mr-2" />
               Filters
               {hasActiveFilters && (
-                <Badge variant="default" className="ml-2 h-5 w-5 rounded-full p-0 text-xs">
+                <ModernBadge variant="default" className="ml-2 h-5 w-5 rounded-full p-0 text-xs">
                   {getActiveFiltersCount()}
-                </Badge>
+                </ModernBadge>
               )}
-            </Button>
+            </ModernButton>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px] border border-black max-h-[80vh] overflow-y-auto">
             <DialogHeader>
@@ -317,33 +317,33 @@ export function AdvancedSearch({ filters, onFiltersChange, categories }: Advance
 
               {/* Action Buttons */}
               <div className="flex gap-2 pt-4">
-                <Button
+                <ModernButton
                   onClick={handleAdvancedFilterApply}
                   className="flex-1 bg-black text-white hover:bg-gray-800"
                 >
                   Apply Filters
-                </Button>
-                <Button
+                </ModernButton>
+                <ModernButton
                   variant="outline"
                   onClick={handleAdvancedFilterReset}
                   className="border border-black hover:bg-black hover:text-white"
                 >
                   Reset
-                </Button>
+                </ModernButton>
               </div>
             </div>
           </DialogContent>
         </Dialog>
 
         {hasActiveFilters && (
-          <Button
+          <ModernButton
             variant="outline"
             onClick={clearAllFilters}
             className="border border-black hover:bg-red-600 hover:text-white hover:border-red-600 transition-none h-12 px-4"
           >
             <X className="w-4 h-4 mr-2" />
             Clear All
-          </Button>
+          </ModernButton>
         )}
       </div>
 
@@ -351,58 +351,58 @@ export function AdvancedSearch({ filters, onFiltersChange, categories }: Advance
       {hasActiveFilters && (
         <div className="flex flex-wrap gap-2">
           {filters.status && filters.status !== 'all' && (
-            <Badge variant="secondary" className="gap-1">
+            <ModernBadge variant="secondary" className="gap-1">
               Status: {filters.status}
               <X
                 className="w-3 h-3 cursor-pointer"
                 onClick={() => onFiltersChange({ ...filters, status: 'all' })}
               />
-            </Badge>
+            </ModernBadge>
           )}
           {filters.categoryId && filters.categoryId !== 'all' && (
-            <Badge variant="secondary" className="gap-1">
+            <ModernBadge variant="secondary" className="gap-1">
               Category: {categories.find(c => c.id === filters.categoryId)?.name || filters.categoryId}
               <X
                 className="w-3 h-3 cursor-pointer"
                 onClick={() => onFiltersChange({ ...filters, categoryId: 'all' })}
               />
-            </Badge>
+            </ModernBadge>
           )}
           {filters.condition && filters.condition !== 'all' && (
-            <Badge variant="secondary" className="gap-1">
+            <ModernBadge variant="secondary" className="gap-1">
               Condition: {filters.condition}
               <X
                 className="w-3 h-3 cursor-pointer"
                 onClick={() => onFiltersChange({ ...filters, condition: 'all' })}
               />
-            </Badge>
+            </ModernBadge>
           )}
           {filters.location && (
-            <Badge variant="secondary" className="gap-1">
+            <ModernBadge variant="secondary" className="gap-1">
               Location: {filters.location}
               <X
                 className="w-3 h-3 cursor-pointer"
                 onClick={() => onFiltersChange({ ...filters, location: '' })}
               />
-            </Badge>
+            </ModernBadge>
           )}
           {filters.availableOnly && (
-            <Badge variant="secondary" className="gap-1">
+            <ModernBadge variant="secondary" className="gap-1">
               Available Only
               <X
                 className="w-3 h-3 cursor-pointer"
                 onClick={() => onFiltersChange({ ...filters, availableOnly: false })}
               />
-            </Badge>
+            </ModernBadge>
           )}
           {filters.inMaintenance && (
-            <Badge variant="secondary" className="gap-1">
+            <ModernBadge variant="secondary" className="gap-1">
               Under Maintenance
               <X
                 className="w-3 h-3 cursor-pointer"
                 onClick={() => onFiltersChange({ ...filters, inMaintenance: false })}
               />
-            </Badge>
+            </ModernBadge>
           )}
         </div>
       )}

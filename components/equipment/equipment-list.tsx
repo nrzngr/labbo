@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
+import { useCustomAuth } from '@/components/auth/custom-auth-provider'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { EquipmentForm } from './equipment-form'
+import { EquipmentDetailModal } from './equipment-detail-modal'
 import { AdvancedSearch } from './advanced-search'
 import { supabase } from '@/lib/supabase'
 import { Search, Plus, Edit, Trash2, Eye, Package } from 'lucide-react'
@@ -14,6 +14,8 @@ import { ModernCard, ModernCardHeader, ModernCardContent } from '@/components/ui
 import { ModernBadge } from '@/components/ui/modern-badge'
 import { ModernButton } from '@/components/ui/modern-button'
 import { TablePagination } from '@/components/ui/pagination'
+import { useRouter } from 'next/navigation'
+import { Printer } from 'lucide-react'
 
 interface Equipment {
   id: string
@@ -52,6 +54,11 @@ interface Filters {
 }
 
 export function EquipmentList() {
+  const { user } = useCustomAuth()
+
+  // Only admin and lab_staff can manage equipment
+  const canManageEquipment = user?.role === 'admin' || user?.role === 'lab_staff'
+
   const [filters, setFilters] = useState<Filters>({
     searchTerm: '',
     status: '',
@@ -70,6 +77,8 @@ export function EquipmentList() {
   const [viewingEquipment, setViewingEquipment] = useState<Equipment | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(20)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const router = useRouter()
 
   const queryClient = useQueryClient()
 
@@ -91,7 +100,7 @@ export function EquipmentList() {
       if (filters.searchTerm) {
         countQuery = countQuery.or(`name.ilike.%${filters.searchTerm}%,serial_number.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`)
       }
-      if (filters.status) countQuery = countQuery.eq('status', filters.status)
+      if (filters.status) countQuery = countQuery.eq('status', filters.status as 'available' | 'borrowed' | 'maintenance' | 'retired')
       if (filters.categoryId) countQuery = countQuery.eq('category_id', filters.categoryId)
       if (filters.condition) countQuery = countQuery.eq('condition', filters.condition)
       if (filters.location) countQuery = countQuery.ilike('location', `%${filters.location}%`)
@@ -100,24 +109,22 @@ export function EquipmentList() {
       if (filters.purchaseDateFrom) countQuery = countQuery.gte('purchase_date', filters.purchaseDateFrom)
       if (filters.purchaseDateTo) countQuery = countQuery.lte('purchase_date', filters.purchaseDateTo)
       if (filters.availableOnly) countQuery = countQuery.eq('status', 'available')
-      if (filters.inMaintenance) countQuery = countQuery.eq('status', 'maintenance')
 
-      const { count: totalCount, error: countError } = await countQuery
-      if (countError) throw countError
-
-      const from = (currentPage - 1) * pageSize
-      const to = from + pageSize - 1
+      const { count } = await countQuery
 
       let query = supabase
         .from('equipment')
-        .select('*, categories(name)', { count: 'exact' })
+        .select(`
+          *,
+          category:categories (name)
+        `)
         .order('created_at', { ascending: false })
-        .range(from, to)
+        .range((currentPage - 1) * pageSize, currentPage * pageSize - 1)
 
       if (filters.searchTerm) {
         query = query.or(`name.ilike.%${filters.searchTerm}%,serial_number.ilike.%${filters.searchTerm}%,description.ilike.%${filters.searchTerm}%`)
       }
-      if (filters.status) query = query.eq('status', filters.status)
+      if (filters.status) query = query.eq('status', filters.status as 'available' | 'borrowed' | 'maintenance' | 'retired')
       if (filters.categoryId) query = query.eq('category_id', filters.categoryId)
       if (filters.condition) query = query.eq('condition', filters.condition)
       if (filters.location) query = query.ilike('location', `%${filters.location}%`)
@@ -126,28 +133,12 @@ export function EquipmentList() {
       if (filters.purchaseDateFrom) query = query.gte('purchase_date', filters.purchaseDateFrom)
       if (filters.purchaseDateTo) query = query.lte('purchase_date', filters.purchaseDateTo)
       if (filters.availableOnly) query = query.eq('status', 'available')
-      if (filters.inMaintenance) query = query.eq('status', 'maintenance')
 
       const { data, error } = await query
-
-      if (error) {
-        throw error
-      }
-
-      return {
-        equipment: data as Equipment[],
-        totalCount: totalCount || 0,
-        totalPages: Math.ceil((totalCount || 0) / pageSize)
-      }
-    },
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
+      if (error) throw error
+      return { data: data as unknown as Equipment[], totalCount: count || 0 }
+    }
   })
-
-  const equipment = equipmentData?.equipment || []
-  const totalCount = equipmentData?.totalCount || 0
-  const totalPages = equipmentData?.totalPages || 0
 
   const { data: categories } = useQuery({
     queryKey: ['categories'],
@@ -156,28 +147,25 @@ export function EquipmentList() {
         .from('categories')
         .select('*')
         .order('name')
-
-
-      if (error) {
-        throw error
-      }
+      if (error) throw error
       return data as Category[]
-    },
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    }
   })
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await supabase.from('equipment').delete().eq('id', id)
+      const { error } = await supabase
+        .from('equipment')
+        .delete()
+        .eq('id', id)
+      if (error) throw error
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment'] })
     }
   })
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     if (confirm('Apakah Anda yakin ingin menghapus peralatan ini?')) {
       deleteMutation.mutate(id)
     }
@@ -186,16 +174,16 @@ export function EquipmentList() {
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "success" | "default" | "warning" | "destructive"> = {
       available: 'success',
-      borrowed: 'default',
-      maintenance: 'warning',
-      lost: 'destructive'
+      borrowed: 'warning',
+      maintenance: 'default',
+      retired: 'destructive'
     }
 
     const statusLabels: Record<string, string> = {
       available: 'Tersedia',
       borrowed: 'Dipinjam',
       maintenance: 'Dalam Pemeliharaan',
-      lost: 'Hilang'
+      retired: 'Tidak Aktif'
     }
 
     return <ModernBadge variant={variants[status] || 'default'} size="sm">{statusLabels[status] || status}</ModernBadge>
@@ -219,139 +207,218 @@ export function EquipmentList() {
     return <ModernBadge variant={variants[condition] || 'default'} size="sm">{conditionLabels[condition] || condition}</ModernBadge>
   }
 
-  return (
-    <div className="space-y-6 lg:space-y-8">
-      <div className="lg:hidden flex justify-end">
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <ModernButton
-              variant="default"
-              size="lg"
-              fullWidth
-              className="w-full button-hover-lift"
-              leftIcon={<Plus className="w-4 h-4" />}
-            >
-              Add Equipment
-            </ModernButton>
-          </DialogTrigger>
-          <DialogContent className="border-2 border-black rounded-2xl mx-4 max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-black">Tambah Peralatan Baru</DialogTitle>
-            </DialogHeader>
-            <div className="py-2">
-              <EquipmentForm
-                onSuccess={() => {
-                  setIsAddDialogOpen(false)
-                  refetch()
-                }}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+  const toggleSelection = (id: string) => {
+    const newSelected = new Set(selectedIds)
+    if (newSelected.has(id)) {
+      newSelected.delete(id)
+    } else {
+      newSelected.add(id)
+    }
+    setSelectedIds(newSelected)
+  }
 
-    <AdvancedSearch
+  const handleBulkPrint = () => {
+    if (selectedIds.size === 0) return
+    const ids = Array.from(selectedIds).join(',')
+    router.push(`/dashboard/equipment/print-labels?ids=${ids}`)
+  }
+
+  const toggleSelectAll = () => {
+    if (equipmentData?.data?.length === 0) return
+
+    if (selectedIds.size === equipmentData?.data?.length) {
+      setSelectedIds(new Set())
+    } else {
+      const allIds = equipmentData?.data?.map(item => item.id) || []
+      setSelectedIds(new Set(allIds))
+    }
+  }
+
+  return (
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+      {/* Add Equipment Button - Only for admin/lab_staff */}
+      {canManageEquipment && (
+        <div className="lg:hidden flex justify-end">
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <ModernButton
+                variant="default"
+                size="lg"
+                fullWidth
+                className="w-full button-hover-lift"
+                leftIcon={<Plus className="w-4 h-4" />}
+              >
+                Tambah Peralatan
+              </ModernButton>
+            </DialogTrigger>
+            <DialogContent className="mx-4 max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Tambah Peralatan Baru</DialogTitle>
+              </DialogHeader>
+              <div className="py-2">
+                <EquipmentForm
+                  onSuccess={() => {
+                    setIsAddDialogOpen(false)
+                    refetch()
+                  }}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
+
+      {/* Search and Filters */}
+      <AdvancedSearch
         filters={filters}
-        onFiltersChange={setFilters}
         categories={categories || []}
+        onFiltersChange={setFilters}
       />
 
-    {isLoading ? (
-        <div className="bg-white rounded-2xl border-2 border-black p-6 lg:p-8">
-          <TableSkeleton rows={8} columns={7} />
-        </div>
+      {/* Equipment List */}
+      {isLoading ? (
+        <TableSkeleton rows={5} columns={4} />
       ) : (
-        <div className="bg-white rounded-2xl border-2 border-black overflow-hidden">
-          {equipment?.length === 0 ? (
-            <div className="text-center py-12 lg:py-16 px-6">
-              <Package className="mx-auto w-16 h-16 lg:w-20 lg:h-20 mb-6 text-gray-400" />
-              <h3 className="font-bold text-lg lg:text-xl text-gray-700 mb-3">Tidak Ada Peralatan Ditemukan</h3>
-              <p className="text-sm lg:text-base text-gray-500 mb-6">Coba sesuaikan pencarian atau filter Anda</p>
-              <ModernButton
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setFilters({
-                    searchTerm: '',
-                    status: '',
-                    categoryId: '',
-                    condition: '',
-                    location: '',
-                    minPrice: '',
-                    maxPrice: '',
-                    purchaseDateFrom: '',
-                    purchaseDateTo: '',
-                    inMaintenance: false,
-                    availableOnly: false,
-                  })
-                }}
-                className="mx-auto"
-              >
-                Hapus Filter
-              </ModernButton>
+        <div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
+            <div className="flex items-center gap-4 text-sm text-gray-600 font-medium">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-gray-300 text-[#ff007a] focus:ring-[#ff007a]"
+                  checked={(equipmentData?.data?.length ?? 0) > 0 && selectedIds.size === (equipmentData?.data?.length ?? 0)}
+                  onChange={toggleSelectAll}
+                />
+                <span>Pilih Semua</span>
+              </div>
+              <span className="w-px h-4 bg-gray-300"></span>
+              <span>
+                Menampilkan {equipmentData?.data?.length || 0} dari {equipmentData?.totalCount || 0} peralatan
+              </span>
             </div>
+            {canManageEquipment && (
+              <div className="hidden lg:block">
+                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                  <DialogTrigger asChild>
+                    <ModernButton
+                      variant="default"
+                      size="lg"
+                      className="button-hover-lift"
+                      leftIcon={<Plus className="w-5 h-5" />}
+                    >
+                      Tambah Peralatan
+                    </ModernButton>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[600px] mx-4 max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Tambah Peralatan Baru</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-2">
+                      <EquipmentForm
+                        onSuccess={() => {
+                          setIsAddDialogOpen(false)
+                          refetch()
+                        }}
+                      />
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            )}
+          </div>
+
+          {equipmentData?.data && equipmentData.data.length === 0 ? (
+            <ModernCard variant="default" padding="lg" className="text-center">
+              <Package className="mx-auto w-12 h-12 sm:w-16 sm:h-16 mb-4 text-gray-400" />
+              <h3 className="font-bold text-lg sm:text-xl text-gray-700 mb-2">Tidak ada peralatan ditemukan</h3>
+              <p className="text-sm text-gray-500 mb-6">Coba ubah filter atau tambahkan peralatan baru</p>
+              {canManageEquipment && (
+                <ModernButton
+                  variant="default"
+                  leftIcon={<Plus className="w-5 h-5" />}
+                  onClick={() => setIsAddDialogOpen(true)}
+                >
+                  Tambah Peralatan
+                </ModernButton>
+              )}
+            </ModernCard>
           ) : (
-            <div className="divide-y divide-black">
-              {equipment?.map((item) => (
-                <div key={item.id} className="p-4 lg:p-6 hover:bg-gray-50 transition-colors">
-                  <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-3 lg:gap-4 mb-4 lg:mb-6">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4 mb-2 lg:mb-3">
-                        <h3 className="font-semibold text-base lg:text-lg xl:text-xl truncate">{item.name}</h3>
-                        <div className="flex items-center gap-2">
-                          {getStatusBadge(item.status)}
-                        </div>
+            <div className="space-y-3 sm:space-y-4">
+              {equipmentData?.data?.map((item) => (
+                <div key={item.id} className={`bg-white rounded-2xl border transition-all duration-300 p-4 sm:p-5 lg:p-6 ${selectedIds.has(item.id) ? 'border-[#ff007a] ring-1 ring-[#ff007a] bg-[#fff0f7]' : 'border-gray-100 hover:shadow-lg'}`}>
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-4">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="pt-1">
+                        <input
+                          type="checkbox"
+                          className="w-5 h-5 rounded border-gray-300 text-[#ff007a] focus:ring-[#ff007a] cursor-pointer"
+                          checked={selectedIds.has(item.id)}
+                          onChange={() => toggleSelection(item.id)}
+                        />
                       </div>
-                      {item.description && (
-                        <p className="text-sm lg:text-base text-gray-600 line-clamp-2">{item.description}</p>
-                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1 sm:mb-2">
+                          <h3 className="font-semibold text-base lg:text-lg xl:text-xl truncate">{item.name}</h3>
+                          <div className="flex items-center gap-2">
+                            {getStatusBadge(item.status)}
+                          </div>
+                        </div>
+                        {item.description && (
+                          <p className="text-sm lg:text-base text-gray-600 line-clamp-2">{item.description}</p>
+                        )}
+                      </div>
                     </div>
 
-                                    <div className="flex gap-1 lg:gap-2">
+                    <div className="flex gap-1 lg:gap-2">
                       <button
                         onClick={() => setViewingEquipment(item)}
-                        className="border border-black p-2 lg:p-2.5 hover:bg-black hover:text-white transition-none rounded-lg"
-                        title="View details"
+                        className="border border-[#dfe2ec] p-2 lg:p-2.5 hover:border-[#ff007a] hover:bg-[#ffe4f2] hover:text-[#ff007a] transition-all rounded-lg"
+                        title="Lihat detail"
                       >
                         <Eye className="w-4 h-4 lg:w-5 lg:h-5" />
                       </button>
-                      <button
-                        onClick={() => setEditingEquipment(item)}
-                        className="border border-black p-2 lg:p-2.5 hover:bg-black hover:text-white transition-none rounded-lg"
-                        title="Edit equipment"
-                      >
-                        <Edit className="w-4 h-4 lg:w-5 lg:h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        disabled={deleteMutation.isPending}
-                        className="border border-black p-2 lg:p-2.5 hover:bg-red-600 hover:text-white hover:border-red-600 transition-none rounded-lg"
-                        title="Delete equipment"
-                      >
-                        <Trash2 className="w-4 h-4 lg:w-5 lg:h-5" />
-                      </button>
+                      {/* Only show edit/delete for admin and lab_staff */}
+                      {canManageEquipment && (
+                        <>
+                          <button
+                            onClick={() => setEditingEquipment(item)}
+                            className="border border-[#dfe2ec] p-2 lg:p-2.5 hover:border-[#ff007a] hover:bg-[#ffe4f2] hover:text-[#ff007a] transition-all rounded-lg"
+                            title="Ubah peralatan"
+                          >
+                            <Edit className="w-4 h-4 lg:w-5 lg:h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item.id)}
+                            disabled={deleteMutation.isPending}
+                            className="border border-[#dfe2ec] p-2 lg:p-2.5 hover:border-red-600 hover:bg-red-50 hover:text-red-600 transition-all rounded-lg"
+                            title="Hapus peralatan"
+                          >
+                            <Trash2 className="w-4 h-4 lg:w-5 lg:h-5" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
 
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
                     <div className="space-y-1">
-                      <span className="text-xs lg:text-sm font-medium text-gray-500 uppercase tracking-wider">Category</span>
-                      <p className="text-sm lg:text-base font-medium truncate" title={item.category?.name || 'Uncategorized'}>
-                        {item.category?.name || 'Uncategorized'}
+                      <span className="text-xs lg:text-sm font-medium text-gray-500 uppercase tracking-wider">Kategori</span>
+                      <p className="text-sm lg:text-base font-medium truncate" title={item.category?.name || 'Tidak Berkategori'}>
+                        {item.category?.name || 'Tidak Berkategori'}
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <span className="text-xs lg:text-sm font-medium text-gray-500 uppercase tracking-wider">Serial Number</span>
+                      <span className="text-xs lg:text-sm font-medium text-gray-500 uppercase tracking-wider">Nomor Seri</span>
                       <p className="text-sm lg:text-base font-mono truncate" title={item.serial_number}>
                         {item.serial_number}
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <span className="text-xs lg:text-sm font-medium text-gray-500 uppercase tracking-wider">Condition</span>
+                      <span className="text-xs lg:text-sm font-medium text-gray-500 uppercase tracking-wider">Kondisi</span>
                       <div>{getConditionBadge(item.condition)}</div>
                     </div>
                     <div className="space-y-1">
-                      <span className="text-xs lg:text-sm font-medium text-gray-500 uppercase tracking-wider">Location</span>
+                      <span className="text-xs lg:text-sm font-medium text-gray-500 uppercase tracking-wider">Lokasi</span>
                       <p className="text-sm lg:text-base font-medium truncate" title={item.location}>
                         {item.location}
                       </p>
@@ -364,11 +431,12 @@ export function EquipmentList() {
         </div>
       )}
 
-      {editingEquipment && (
+      {/* Edit Dialog - Only for admin/lab_staff */}
+      {canManageEquipment && editingEquipment && (
         <Dialog open={!!editingEquipment} onOpenChange={() => setEditingEquipment(null)}>
-          <DialogContent className="sm:max-w-[600px] border-2 border-black rounded-2xl mx-4 max-h-[90vh] overflow-y-auto">
-            <DialogHeader className="pb-2">
-              <DialogTitle className="text-xl font-bold">Ubah Peralatan</DialogTitle>
+          <DialogContent className="sm:max-w-[600px] mx-4 max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Ubah Peralatan</DialogTitle>
             </DialogHeader>
             <div className="py-2">
               <EquipmentForm
@@ -383,73 +451,46 @@ export function EquipmentList() {
         </Dialog>
       )}
 
+      {/* View Detail Dialog */}
       {viewingEquipment && (
-        <Dialog open={!!viewingEquipment} onOpenChange={() => setViewingEquipment(null)}>
-          <DialogContent className="sm:max-w-[600px] border-2 border-black rounded-2xl mx-4 max-h-[90vh] overflow-y-auto">
-            <DialogHeader className="pb-2">
-              <DialogTitle className="text-xl font-bold">Detail Peralatan</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6 py-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                <div>
-                  <div className="text-sm font-medium mb-2 text-gray-600 uppercase tracking-wider">Nama</div>
-                  <div className="font-medium">{viewingEquipment.name}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium mb-2 text-gray-600 uppercase tracking-wider">Nomor Seri</div>
-                  <div className="font-mono">{viewingEquipment.serial_number}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium mb-2 text-gray-600 uppercase tracking-wider">Kategori</div>
-                  <div>{viewingEquipment.category?.name || 'Tidak Berkategori'}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium mb-2 text-gray-600 uppercase tracking-wider">Lokasi</div>
-                  <div>{viewingEquipment.location}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium mb-2 text-gray-600 uppercase tracking-wider">Kondisi</div>
-                  <div>{getConditionBadge(viewingEquipment.condition)}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium mb-2 text-gray-600 uppercase tracking-wider">Status</div>
-                  <div>{getStatusBadge(viewingEquipment.status)}</div>
-                </div>
-              </div>
-
-              {viewingEquipment.description && (
-                <div>
-                  <div className="text-sm font-medium mb-2 text-gray-600 uppercase tracking-wider">Deskripsi</div>
-                  <div className="text-gray-700">{viewingEquipment.description}</div>
-                </div>
-              )}
-
-              {viewingEquipment.image_url && (
-                <div>
-                  <div className="text-sm font-medium mb-2 text-gray-600 uppercase tracking-wider">Gambar</div>
-                  <div className="border border-black rounded-xl overflow-hidden">
-                    <img
-                      src={viewingEquipment.image_url}
-                      alt={viewingEquipment.name}
-                      className="w-full h-48 sm:h-64 object-cover"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
+        <EquipmentDetailModal
+          equipment={viewingEquipment}
+          isOpen={!!viewingEquipment}
+          onClose={() => setViewingEquipment(null)}
+        />
       )}
 
-      {totalPages > 1 && (
-        <div className="mt-6">
-          <TablePagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={totalCount}
-            itemsPerPage={pageSize}
-            onPageChange={setCurrentPage}
-          />
+      {/* Pagination */}
+      {equipmentData && equipmentData.totalCount > pageSize && (
+        <TablePagination
+          currentPage={currentPage}
+          totalPages={Math.ceil(equipmentData.totalCount / pageSize)}
+          onPageChange={setCurrentPage}
+          totalItems={equipmentData.totalCount}
+          itemsPerPage={pageSize}
+        />
+      )}
+      {/* Floating Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white rounded-full shadow-xl border border-gray-200 px-6 py-3 flex items-center gap-4 z-50 animate-in slide-in-from-bottom-10 fade-in duration-300">
+          <div className="font-medium text-gray-900">
+            {selectedIds.size} item dipilih
+          </div>
+          <div className="h-6 w-px bg-gray-200"></div>
+          <ModernButton
+            variant="default"
+            size="sm"
+            onClick={handleBulkPrint}
+            leftIcon={<Printer className="w-4 h-4" />}
+          >
+            Cetak QR
+          </ModernButton>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-gray-500 hover:text-gray-900 text-sm font-medium"
+          >
+            Batal
+          </button>
         </div>
       )}
     </div>

@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ModernButton } from '@/components/ui/modern-button'
+import { ModernInput } from '@/components/ui/modern-input'
+import { ModernCard } from '@/components/ui/modern-card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { MaintenanceForm } from './maintenance-form'
+import { ModernBadge } from '@/components/ui/modern-badge'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { supabase } from '@/lib/supabase'
 import { Search, Filter, Plus, Eye, AlertCircle, Wrench } from 'lucide-react'
 
@@ -37,7 +36,6 @@ interface Equipment {
 export function MaintenanceList() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [viewingRecord, setViewingRecord] = useState<MaintenanceRecord | null>(null)
 
   const queryClient = useQueryClient()
@@ -67,7 +65,7 @@ export function MaintenanceList() {
       if (error) {
         throw error
       }
-      return data as MaintenanceRecord[]
+      return data as unknown as MaintenanceRecord[]
     },
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -129,11 +127,11 @@ export function MaintenanceList() {
 
   const getMaintenanceStatusBadge = (nextMaintenanceDate: string) => {
     if (isOverdue(nextMaintenanceDate)) {
-      return <Badge variant="destructive">Terlambat</Badge>
+      return <ModernBadge variant="destructive">Terlambat</ModernBadge>
     } else if (isUpcoming(nextMaintenanceDate)) {
-      return <Badge variant="outline">Akan Datang</Badge>
+      return <ModernBadge variant="outline">Akan Datang</ModernBadge>
     } else {
-      return <Badge variant="secondary">Terjadwal</Badge>
+      return <ModernBadge variant="secondary">Terjadwal</ModernBadge>
     }
   }
 
@@ -150,84 +148,73 @@ export function MaintenanceList() {
         <div>
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black">PEMELIHARAAN</h1>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <button className="w-full sm:w-auto border border-black px-4 sm:px-6 py-2 sm:py-3 hover:bg-black hover:text-white transition-none text-sm sm:text-base">
-              <Plus className="inline w-4 h-4 mr-2" />
-              CATAT PEMELIHARAAN
-            </button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px] border border-black">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold">CATAT PEMELIHARAAN</DialogTitle>
-            </DialogHeader>
-            <MaintenanceForm
-              onSuccess={() => {
-                setIsAddDialogOpen(false)
-                refetch()
-              }}
-            />
-          </DialogContent>
-        </Dialog>
+        <ModernButton
+          variant="outline"
+          className="w-full sm:w-auto opacity-50 cursor-not-allowed"
+          title="Fitur dalam pengembangan"
+          leftIcon={<Plus className="w-4 h-4" />}
+        >
+          CATAT PEMELIHARAAN
+        </ModernButton>
       </div>
 
       <div className="grid gap-4 sm:gap-6 lg:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="border border-black p-4 sm:p-6">
+        <ModernCard variant="default">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <span className="text-xs sm:text-sm font-medium">TOTAL CATATAN</span>
             <Wrench className="w-4 h-4" />
           </div>
           <div className="text-2xl sm:text-3xl font-black mb-2">{stats.total}</div>
           <div className="text-xs sm:text-sm text-gray-600">Semua aktivitas pemeliharaan</div>
-        </div>
+        </ModernCard>
 
-        <div className="border border-black p-4 sm:p-6">
+        <ModernCard variant="default">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <span className="text-xs sm:text-sm font-medium">TERLAMBAT</span>
             <AlertCircle className="w-4 h-4" />
           </div>
           <div className="text-2xl sm:text-3xl font-black mb-2 text-red-600">{stats.overdue}</div>
           <div className="text-xs sm:text-sm text-gray-600">Memerlukan perhatian segera</div>
-        </div>
+        </ModernCard>
 
-        <div className="border border-black p-4 sm:p-6">
+        <ModernCard variant="default">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <span className="text-xs sm:text-sm font-medium">AKAN DATANG</span>
             <Wrench className="w-4 h-4" />
           </div>
           <div className="text-2xl sm:text-3xl font-black mb-2">{stats.upcoming}</div>
           <div className="text-xs sm:text-sm text-gray-600">Jatuh tempo dalam 30 hari</div>
-        </div>
+        </ModernCard>
 
-        <div className="border border-black p-4 sm:p-6">
+        <ModernCard variant="default">
           <div className="flex items-center justify-between mb-3 sm:mb-4">
             <span className="text-xs sm:text-sm font-medium">TOTAL BIAYA</span>
             <span className="text-lg sm:text-xl">Rp</span>
           </div>
           <div className="text-2xl sm:text-3xl font-black mb-2">Rp{stats.totalCost.toLocaleString('id-ID')}</div>
           <div className="text-xs sm:text-sm text-gray-600">Biaya pemeliharaan</div>
-        </div>
+        </ModernCard>
       </div>
 
       {stats.overdue > 0 && (
-        <div className="border border-black p-4 sm:p-6">
+        <ModernCard variant="default" className="bg-red-50 border-red-200">
           <div className="flex items-center mb-2">
-            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3" />
-            <span className="font-bold text-sm sm:text-base">PEMELIHARAAN TERLAMBAT</span>
+            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 text-red-600" />
+            <span className="font-bold text-sm sm:text-base text-red-800">PEMELIHARAAN TERLAMBAT</span>
           </div>
-          <p className="text-xs sm:text-sm">
+          <p className="text-xs sm:text-sm text-red-700">
             Anda memiliki {stats.overdue} catatan pemeliharaan yang terlambat.
             Harap jadwalkan pemeliharaan sesegera mungkin.
           </p>
-        </div>
+        </ModernCard>
       )}
 
       <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 lg:space-x-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 w-4 h-4" />
-          <Input
+          <Search className="absolute left-3 top-3 w-4 h-4 z-10" />
+          <ModernInput
             placeholder="Cari catatan pemeliharaan..."
-            className="pl-10 border border-black focus:ring-0 focus:border-black h-12"
+            className="pl-10 h-12"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -235,7 +222,7 @@ export function MaintenanceList() {
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-3 sm:px-4 py-3 border border-black focus:ring-0 focus:border-black min-w-[120px] sm:min-w-[150px] h-12 text-sm"
+          className="px-3 sm:px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent min-w-[120px] sm:min-w-[150px] h-12 text-sm bg-white"
         >
           <option value="">Semua Status</option>
           <option value="overdue">Terlambat</option>
@@ -245,14 +232,14 @@ export function MaintenanceList() {
       </div>
 
       {isLoading ? (
-        <div className="border border-black p-8 sm:p-12 text-center">
+        <ModernCard variant="default" padding="lg" className="text-center">
           <div className="text-base sm:text-lg">Memuat data pemeliharaan...</div>
-        </div>
+        </ModernCard>
       ) : (
-        <div className="border border-black">
+        <ModernCard variant="default" padding="none" className="overflow-hidden">
           <div className="hidden lg:block overflow-x-auto">
             <table className="w-full">
-              <thead className="border-b border-black">
+              <thead className="bg-gray-50 border-b">
                 <tr>
                   <th className="text-left p-4 font-medium">Peralatan</th>
                   <th className="text-left p-4 font-medium">Tanggal Pemeliharaan</th>
@@ -266,7 +253,7 @@ export function MaintenanceList() {
               </thead>
               <tbody>
                 {maintenanceRecords?.map((record) => (
-                  <tr key={record.id} className="border-t border-black hover:bg-gray-50">
+                  <tr key={record.id} className="border-t hover:bg-gray-50/50">
                     <td className="p-4">
                       <div>
                         <div className="font-medium">{record.equipment?.name || 'Peralatan Tidak Diketahui'}</div>
@@ -285,21 +272,25 @@ export function MaintenanceList() {
                     <td className="p-4">{getMaintenanceStatusBadge(record.next_maintenance_date)}</td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end space-x-2">
-                        <button
+                        <ModernButton
                           onClick={() => setViewingRecord(record)}
-                          className="border border-black p-2 hover:bg-black hover:text-white transition-none"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:text-blue-600 hover:bg-blue-50"
                         >
                           <Eye className="w-4 h-4" />
-                        </button>
-                        <button
+                        </ModernButton>
+                        <ModernButton
                           onClick={() => handleDelete(record.id)}
                           disabled={deleteMutation.isPending}
-                          className="border border-black p-2 hover:bg-red-600 hover:text-white hover:border-red-600 transition-none"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:text-red-600 hover:bg-red-50"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
-                        </button>
+                        </ModernButton>
                       </div>
                     </td>
                   </tr>
@@ -309,7 +300,7 @@ export function MaintenanceList() {
           </div>
 
           <div className="lg:hidden">
-            <div className="divide-y divide-black">
+            <div className="divide-y">
               {maintenanceRecords?.map((record) => (
                 <div key={record.id} className="p-4 space-y-3">
                   <div className="flex justify-between items-start">
@@ -348,22 +339,28 @@ export function MaintenanceList() {
                     </div>
                   </div>
 
-                  <div className="flex justify-end space-x-2 pt-2 border-t border-black">
-                    <button
+                  <div className="flex justify-end space-x-2 pt-2 border-t">
+                    <ModernButton
                       onClick={() => setViewingRecord(record)}
-                      className="border border-black p-2 hover:bg-black hover:text-white transition-none"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 gap-2 hover:text-blue-600 hover:bg-blue-50"
                     >
                       <Eye className="w-4 h-4" />
-                    </button>
-                    <button
+                      Detail
+                    </ModernButton>
+                    <ModernButton
                       onClick={() => handleDelete(record.id)}
                       disabled={deleteMutation.isPending}
-                      className="border border-black p-2 hover:bg-red-600 hover:text-white hover:border-red-600 transition-none"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 gap-2 hover:text-red-600 hover:bg-red-50"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
-                    </button>
+                      Hapus
+                    </ModernButton>
                   </div>
                 </div>
               ))}
@@ -377,12 +374,12 @@ export function MaintenanceList() {
               <p className="text-xs sm:text-sm text-gray-600">Mulai dengan mencatat aktivitas pemeliharaan pertama Anda</p>
             </div>
           )}
-        </div>
+        </ModernCard>
       )}
 
       {viewingRecord && (
         <Dialog open={!!viewingRecord} onOpenChange={() => setViewingRecord(null)}>
-          <DialogContent className="sm:max-w-[600px] border border-black">
+          <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold">DETAIL PEMELIHARAAN</DialogTitle>
             </DialogHeader>

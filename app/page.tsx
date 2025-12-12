@@ -1,9 +1,10 @@
-'use client'
+"use client"
 
 import { CustomLoginForm } from "@/components/auth/custom-login-form"
 import { useCustomAuth } from "@/components/auth/custom-auth-provider"
 import { useSearchParams } from "next/navigation"
 import { useEffect, useState, Suspense } from "react"
+
 
 function HomeContent() {
   const { user, loading, isAuthenticated } = useCustomAuth()

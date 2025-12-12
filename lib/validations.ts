@@ -20,7 +20,7 @@ export const categorySchema = z.object({
 
 export const userProfileSchema = z.object({
   full_name: z.string().min(1, 'Full name is required'),
-  role: z.enum(['admin', 'lab_staff', 'lecturer', 'student']),
+  role: z.enum(['admin', 'lab_staff', 'dosen', 'mahasiswa']),
   nim: z.string().optional(),
   nip: z.string().optional(),
   phone: z.string().optional(),
@@ -60,25 +60,26 @@ export const loginSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters')
 })
 
+export const deleteUserSchema = z.object({
+  userId: z.string().uuid('Invalid user ID'),
+})
+
 export const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   fullName: z.string().min(1, 'Full name is required'),
-  role: z.enum(['student', 'lecturer']),
+  role: z.enum(['mahasiswa', 'dosen']),
   nim: z.string().optional(),
   nip: z.string().optional(),
   department: z.string().min(1, 'Department is required')
-}).refine(
-  (data) => {
-    if (data.role === 'student' && !data.nim) return false
-    if (data.role === 'lecturer' && !data.nip) return false
-    return true
-  },
-  {
-    message: "Student ID is required for students and Lecturer ID is required for lecturers",
-    path: ["nim"]
-  }
-)
+}).refine((data) => {
+  if (data.role === 'mahasiswa' && !data.nim) return false
+  if (data.role === 'dosen' && !data.nip) return false
+  return true
+}, {
+  message: "NIM wajib diisi untuk Mahasiswa dan NIP wajib diisi untuk Dosen",
+  path: ["nim"],
+})
 
 export type EquipmentFormValues = z.infer<typeof equipmentSchema>
 export type CategoryFormValues = z.infer<typeof categorySchema>

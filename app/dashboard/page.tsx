@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -12,6 +12,7 @@ import { DashboardSkeleton } from '@/components/ui/loading-skeleton'
 import { ModernCard, ModernCardHeader, ModernCardContent } from '@/components/ui/modern-card'
 import { ModernBadge } from '@/components/ui/modern-badge'
 import { ModernButton } from '@/components/ui/modern-button'
+
 
 interface DashboardStats {
   totalEquipment: number
@@ -40,16 +41,22 @@ export default function Dashboard() {
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Redirect students immediately
+  useEffect(() => {
+    if (user?.role === 'student') {
+      router.replace('/dashboard/student')
+    }
+  }, [user, router])
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        if (user?.role === 'student') {
-          // Redirect students to their specific dashboard
-          router.push('/dashboard/student')
-          return null
+        // Skip fetching if user is student (will redirect)
+        if (!user || user.role === 'student') {
+          return
         }
 
-              // Admin/Staff dashboard logic
+        // Admin/Staff dashboard logic
         // Fetch equipment stats
         const { data: equipmentData } = await supabase
           .from('equipment')
@@ -92,25 +99,32 @@ export default function Dashboard() {
           totalCategories: categoriesCount || 0
         })
 
-        // Fetch recent activity with user and equipment details
-        const { data: activityData } = await supabase
+        // Fetch recent activity with user and equipment details using explicit FK
+        const { data: activityData, error: activityError } = await supabase
           .from('borrowing_transactions')
           .select(`
-            *,
-            user:users(full_name),
-            equipment:equipment(name)
+            id,
+            status,
+            borrow_date,
+            expected_return_date,
+            actual_return_date,
+            created_at,
+            user:users!borrowing_transactions_user_id_fkey(full_name),
+            equipment:equipment!borrowing_transactions_equipment_id_fkey(name)
           `)
           .order('created_at', { ascending: false })
           .limit(10)
 
-        const formattedActivity: RecentActivity[] = activityData?.map((activity: any) => ({
+        console.log('[DEBUG] Activity data:', activityData, 'error:', activityError)
+
+        const formattedActivity: RecentActivity[] = (activityData || []).map((activity: any) => ({
           id: activity.id,
           type: activity.actual_return_date ? 'return' : 'borrow',
           user_name: activity.user?.full_name || 'Tidak Diketahui',
           equipment_name: activity.equipment?.name || 'Peralatan Tidak Diketahui',
           date: activity.created_at,
           status: activity.status as 'active' | 'returned' | 'overdue'
-        })) || []
+        }))
 
         setRecentActivity(formattedActivity)
       } catch (error) {
@@ -119,16 +133,20 @@ export default function Dashboard() {
       }
     }
 
-    if (user) {
+    if (user && user.role !== 'student') {
       fetchDashboardData()
     }
   }, [user])
 
-  if (!user) {
+  // Show loading for students while redirecting
+  if (!user || user.role === 'student') {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">Silakan masuk untuk melanjutkan...</div>
+          <div className="text-center">
+            <div className="animate-spin w-8 h-8 border-4 border-[#ff007a] border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-gray-500">Memuat...</p>
+          </div>
         </div>
       </DashboardLayout>
     )
@@ -179,7 +197,7 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 page-gradient min-h-screen">
+      <div className="w-full px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 py-4 sm:py-6 md:py-8 lg:py-12 page-gradient min-h-screen">
         {/* Enhanced Header */}
         <div className="mb-8 lg:mb-12 fade-in">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 sm:gap-6">
@@ -195,7 +213,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid - Enhanced spacing */}
-        <div className="grid gap-6 lg:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-8 lg:mb-16">
+        <div className="grid gap-3 sm:gap-4 md:gap-6 lg:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6 sm:mb-8 lg:mb-16">
           <ModernCard variant="elevated" hover className="stats-card p-4 sm:p-6">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <span className="text-xs sm:text-sm font-bold text-gray-600 uppercase tracking-wider">Equipment</span>
@@ -285,13 +303,13 @@ export default function Dashboard() {
         )}
 
         {/* Quick Actions - Enhanced layout */}
-        <div className="mb-8 lg:mb-16">
+        <div className="mb-6 sm:mb-8 lg:mb-16">
           <ModernCardHeader
             title="Aksi Cepat"
             description="Navigasi ke area manajemen kunci"
-            className="mb-6 lg:mb-8"
+            className="mb-4 sm:mb-6 lg:mb-8"
           />
-          <div className="grid gap-6 lg:gap-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:gap-6 lg:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             <ModernCard
               variant="default"
               hover
@@ -355,18 +373,20 @@ export default function Dashboard() {
         </div>
 
         {/* Analytics - Enhanced spacing */}
-        <div className="mb-8 lg:mb-16">
+        <div className="mb-6 sm:mb-8 lg:mb-16">
           <ModernCardHeader
             title="Ringkasan Analitik"
             description="Gambaran penggunaan dan tren peralatan"
-            className="mb-6 lg:mb-8"
+            className="mb-4 sm:mb-6 lg:mb-8"
           />
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 lg:p-10 shadow-lg">
-            <DashboardCharts />
+          <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6 md:p-8 lg:p-10 shadow-lg overflow-hidden">
+            <div className="w-full overflow-x-auto">
+              <DashboardCharts />
+            </div>
           </div>
         </div>
 
-        {/* Recent Activity - Consolidated responsive layout */}
+        {/* Recent Activity - Enhanced Design */}
         <div>
           <ModernCardHeader
             title="Aktivitas Terbaru"
@@ -374,48 +394,65 @@ export default function Dashboard() {
             className="mb-6 lg:mb-8"
           />
           {recentActivity.length > 0 ? (
-            <ModernCard variant="default" padding="none">
-              <div className="divide-y divide-black">
-                {recentActivity.map((activity) => (
-                  <div key={activity.id} className="p-4 lg:p-6 hover:bg-gray-50 transition-colors">
-                    {/* Header row with type, date and status */}
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4 mb-3 lg:mb-4">
-                      <div className="flex items-center gap-2 lg:gap-3">
-                        <div className="p-1.5 lg:p-2 bg-gray-100 rounded-lg">
-                          {getActivityIcon(activity.type)}
-                        </div>
-                        <div>
-                          <span className="capitalize font-medium text-sm lg:text-base">{activity.type}</span>
-                          <div className="text-xs lg:text-sm text-gray-500 lg:hidden">
-                            {formatDate(activity.date)}
-                          </div>
-                        </div>
+            <ModernCard variant="default" padding="none" className="overflow-hidden">
+              <div className="divide-y divide-gray-100">
+                {recentActivity.map((activity, index) => (
+                  <div
+                    key={activity.id}
+                    className={`p-4 lg:p-5 transition-all hover:bg-gray-50 ${index === 0 ? 'bg-pink-50/30' : ''}`}
+                  >
+                    <div className="flex items-center gap-4">
+                      {/* Avatar/Icon */}
+                      <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${activity.type === 'borrow'
+                          ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+                          : 'bg-gradient-to-br from-green-500 to-green-600'
+                        }`}>
+                        {activity.type === 'borrow' ? (
+                          <Package className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
+                        ) : (
+                          <CheckCircle className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
+                        )}
                       </div>
-                      <div className="flex items-center justify-between sm:justify-start gap-2 lg:gap-4">
-                        <div className="hidden lg:block text-sm text-gray-500">
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-gray-900 truncate">
+                            {activity.user_name}
+                          </span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${activity.type === 'borrow'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-green-100 text-green-700'
+                            }`}>
+                            {activity.type === 'borrow' ? 'Pinjam' : 'Kembali'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 truncate">
+                          {activity.equipment_name}
+                        </p>
+                      </div>
+
+                      {/* Date & Status */}
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-xs text-gray-500 mb-1">
                           {formatDate(activity.date)}
                         </div>
                         {getStatusBadge(activity.status)}
                       </div>
                     </div>
-
-                    {/* Content row with user and equipment info */}
-                    <div className="space-y-2 lg:space-y-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                        <span className="text-xs lg:text-sm font-medium text-gray-600 w-16">Pengguna:</span>
-                        <span className="text-sm lg:text-base truncate" title={activity.user_name}>
-                          {activity.user_name}
-                        </span>
-                      </div>
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                        <span className="text-xs lg:text-sm font-medium text-gray-600 w-16">Peralatan:</span>
-                        <span className="text-sm lg:text-base truncate" title={activity.equipment_name}>
-                          {activity.equipment_name}
-                        </span>
-                      </div>
-                    </div>
                   </div>
                 ))}
+              </div>
+
+              {/* View All Button */}
+              <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+                <ModernButton
+                  variant="ghost"
+                  className="w-full text-pink-600 hover:text-pink-700 hover:bg-pink-50"
+                  onClick={() => router.push('/dashboard/transactions')}
+                >
+                  Lihat Semua Aktivitas →
+                </ModernButton>
               </div>
             </ModernCard>
           ) : (
@@ -424,7 +461,13 @@ export default function Dashboard() {
                 <Activity className="w-8 h-8 lg:w-10 lg:h-10 text-gray-400 mx-auto" />
               </div>
               <h3 className="font-bold text-lg lg:text-xl text-gray-700 mb-3">Tidak ada aktivitas terbaru</h3>
-              <p className="text-sm lg:text-base text-gray-500">Aktivitas akan muncul di sini setelah pengguna mulai meminjam peralatan</p>
+              <p className="text-sm lg:text-base text-gray-500 mb-6">Aktivitas akan muncul di sini setelah pengguna mulai meminjam peralatan</p>
+              <ModernButton
+                variant="default"
+                onClick={() => router.push('/dashboard/borrowing-requests')}
+              >
+                Lihat Permintaan Peminjaman
+              </ModernButton>
             </ModernCard>
           )}
         </div>

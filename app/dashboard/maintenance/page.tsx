@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { useState, useEffect } from 'react'
 import { MaintenanceList } from '@/components/maintenance/maintenance-list'
@@ -14,6 +14,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
+
 
 export default function MaintenancePage() {
   const [stats, setStats] = useState({
@@ -73,7 +74,7 @@ export default function MaintenancePage() {
   }
   return (
     <DashboardLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 page-gradient min-h-screen">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-8 page-gradient min-h-screen">
         {/* Enhanced Page Header */}
         <ModernCard variant="elevated" padding="lg" className="mb-6 sm:mb-8 fade-in">
           <div className="flex flex-col gap-4 sm:gap-6">

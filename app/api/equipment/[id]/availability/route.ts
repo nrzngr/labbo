@@ -28,12 +28,12 @@ export async function GET(
     if (start_time && end_time) {
       const startTime = new Date(start_time)
       const endTime = new Date(end_time)
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .rpc('is_equipment_available', {
           p_equipment_id: id,
           p_start_time: startTime.toISOString(),
           p_end_time: endTime.toISOString()
-        } as any)
+        })
 
       if (error) {
         console.error('Error checking availability:', error)
@@ -56,12 +56,12 @@ export async function GET(
     if (date) {
       const targetDate = new Date(date)
       const slotDuration = parseInt(searchParams.get('slot_duration') || '60')
-      const { data: timeSlots, error: slotsError } = await supabase
+      const { data: timeSlots, error: slotsError } = await (supabase as any)
         .rpc('generate_time_slots', {
           p_equipment_id: id,
           p_date: targetDate.toISOString().split('T')[0],
           p_slot_duration_minutes: slotDuration
-        } as any)
+        })
 
       if (slotsError) {
         console.error('Error generating time slots:', slotsError)
@@ -81,13 +81,14 @@ export async function GET(
       })
     }
 
-    const { data: statusData } = await supabase
+    // Note: These are views that may not be in generated types
+    const { data: statusData } = await (supabase as any)
       .from('equipment_comprehensive_status')
       .select('current_status, return_due_date, calibration_status')
       .eq('id', id)
       .single()
 
-    const { data: upcomingReservations } = await supabase
+    const { data: upcomingReservations } = await (supabase as any)
       .from('reservation_calendar')
       .select('*')
       .eq('equipment_id', id)
@@ -95,7 +96,7 @@ export async function GET(
       .order('start_time', { ascending: true })
       .limit(5)
 
-    const { data: upcomingMaintenance } = await supabase
+    const { data: upcomingMaintenance } = await (supabase as any)
       .from('maintenance_schedule_view')
       .select('*')
       .eq('equipment_id', id)

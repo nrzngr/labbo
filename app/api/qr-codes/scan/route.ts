@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { data: equipment, error: equipmentError } = await supabase
+    // Note: equipment_qr_codes and related joins may not be in generated types
+    const { data: equipment, error: equipmentError } = await (supabase as any)
       .from('equipment')
       .select(`
         *,
@@ -48,7 +49,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { data: statusData } = await supabase
+    // Note: equipment_comprehensive_status is a view that may not be in generated types
+    const { data: statusData } = await (supabase as any)
       .from('equipment_comprehensive_status')
       .select('current_status, return_due_date, calibration_status')
       .eq('id', parsedData.id)
@@ -61,7 +63,7 @@ export async function POST(request: NextRequest) {
       .order('maintenance_date', { ascending: false })
       .limit(5)
 
-    const { data: activeReservations } = await supabase
+    const { data: activeReservations } = await (supabase as any)
       .from('reservation_calendar')
       .select('*')
       .eq('equipment_id', parsedData.id)

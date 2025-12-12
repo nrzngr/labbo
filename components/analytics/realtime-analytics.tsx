@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useQuery } from '@tanstack/react-query'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { ModernCard, ModernCardContent, ModernCardHeader } from '@/components/ui/modern-card'
+import { ModernBadge } from '@/components/ui/modern-badge'
 import { RefreshCw, Activity, TrendingUp, Users, Package, AlertCircle } from 'lucide-react'
 
 interface RealtimeStats {
@@ -253,98 +253,96 @@ export function RealtimeAnalytics() {
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="p-4">
+        <ModernCard>
+          <ModernCardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Users</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.totalUsers}</p>
                 <p className="text-xs text-green-600">+{stats.newUsersToday} today</p>
               </div>
-              <div className="p-2 bg-blue-100 rounded-xl">
+              <div className="p-3 bg-blue-100 rounded-xl">
                 <Users className="w-5 h-5 text-blue-600" />
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </ModernCardContent>
+        </ModernCard>
 
-        <Card>
-          <CardContent className="p-4">
+        <ModernCard>
+          <ModernCardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Equipment</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.totalEquipment}</p>
                 <p className="text-xs text-gray-600">{stats.availableEquipment} available</p>
               </div>
-              <div className="p-2 bg-green-100 rounded-xl">
+              <div className="p-3 bg-green-100 rounded-xl">
                 <Package className="w-5 h-5 text-green-600" />
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </ModernCardContent>
+        </ModernCard>
 
-        <Card>
-          <CardContent className="p-4">
+        <ModernCard>
+          <ModernCardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Active Loans</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.activeTransactions}</p>
                 <p className="text-xs text-orange-600">+{stats.newTransactionsToday} today</p>
               </div>
-              <div className="p-2 bg-orange-100 rounded-xl">
+              <div className="p-3 bg-orange-100 rounded-xl">
                 <TrendingUp className="w-5 h-5 text-orange-600" />
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </ModernCardContent>
+        </ModernCard>
 
-        <Card>
-          <CardContent className="p-4">
+        <ModernCard>
+          <ModernCardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Utilization</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.equipmentUtilization}%</p>
                 <p className="text-xs text-gray-600">Equipment in use</p>
               </div>
-              <div className="p-2 bg-purple-100 rounded-xl">
+              <div className="p-3 bg-purple-100 rounded-xl">
                 <Activity className="w-5 h-5 text-purple-600" />
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </ModernCardContent>
+        </ModernCard>
       </div>
 
       {/* Recent Activities */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+      <ModernCard>
+        <ModernCardHeader>
+          <div className="flex items-center justify-between w-full">
             <div>
-              <CardTitle>Recent Activities</CardTitle>
-              <CardDescription>Live system events and updates</CardDescription>
+              <h3 className="text-xl font-bold text-gray-900">Recent Activities</h3>
+              <p className="text-sm text-gray-600 mt-1">Live system events and updates</p>
             </div>
             {isRealtimeConnected && (
-              <Badge variant="outline" className="text-green-600">
+              <ModernBadge variant="outline" className="text-green-600 border-green-200 bg-green-50">
                 Live
-              </Badge>
+              </ModernBadge>
             )}
           </div>
-        </CardHeader>
-        <CardContent>
+        </ModernCardHeader>
+        <ModernCardContent>
           {recentActivities.length > 0 ? (
             <div className="space-y-3">
               {recentActivities.map((activity, index) => (
                 <div
                   key={activity.id}
-                  className={`flex items-start gap-3 pb-3 ${
-                    index < recentActivities.length - 1 ? 'border-b border-gray-100' : ''
-                  }`}
+                  className={`flex items-start gap-3 pb-3 ${index < recentActivities.length - 1 ? 'border-b border-gray-100' : ''
+                    }`}
                 >
-                  <div className={`w-2 h-2 rounded-full mt-2 ${
-                    activity.type === 'transaction' ? 'bg-blue-500' :
-                    activity.type === 'equipment' ? 'bg-green-500' :
-                    activity.type === 'user' ? 'bg-purple-500' :
-                    'bg-orange-500'
-                  }`} />
+                  <div className={`w-2 h-2 rounded-full mt-2 ${activity.type === 'transaction' ? 'bg-blue-500' :
+                      activity.type === 'equipment' ? 'bg-green-500' :
+                        activity.type === 'user' ? 'bg-purple-500' :
+                          'bg-orange-500'
+                    }`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900">{activity.description}</p>
                     <p className="text-xs text-gray-500">
@@ -360,8 +358,8 @@ export function RealtimeAnalytics() {
               <p className="text-sm text-gray-500">No recent activity</p>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </ModernCardContent>
+      </ModernCard>
 
       {/* Last Updated */}
       <div className="text-center text-xs text-gray-500">

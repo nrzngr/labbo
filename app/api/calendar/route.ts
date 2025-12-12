@@ -17,8 +17,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    let query = supabase
-      .from('reservation_calendar')
+    // Note: These are views that may not be in generated types, so using 'as any'
+    let query = (supabase
+      .from('reservation_calendar' as any) as any)
       .select('*')
       .gte('start_time', start_date)
       .lte('end_time', end_date)
@@ -41,8 +42,8 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    let maintenanceQuery = supabase
-      .from('maintenance_schedule_view')
+    let maintenanceQuery = (supabase
+      .from('maintenance_schedule_view' as any) as any)
       .select('*')
       .gte('scheduled_date', start_date.split('T')[0])
       .lte('scheduled_date', end_date.split('T')[0])
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
 
     if (maintenanceError) {
       console.error('Error fetching maintenance data:', maintenanceError)
-        }
+    }
 
     let availabilityData = []
     if (equipment_id) {
@@ -65,12 +66,13 @@ export async function GET(request: NextRequest) {
       for (let date = new Date(equipmentStartDate); date <= equipmentEndDate; date.setDate(date.getDate() + 1)) {
         const dateStr = date.toISOString().split('T')[0]
 
-        const { data: timeSlots } = await supabase
+        // Note: This RPC function may not be in generated types
+        const { data: timeSlots } = await (supabase as any)
           .rpc('generate_time_slots', {
             p_equipment_id: equipment_id,
             p_date: dateStr,
             p_slot_duration_minutes: 60
-          } as any)
+          })
 
         if (timeSlots) {
           availabilityData.push({

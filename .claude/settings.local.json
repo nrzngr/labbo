@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__zai-mcp-server__analyze_image",
+      "Bash(find:*)",
+      "Bash(npm run build:*)",
+      "Bash(xargs:*)",
+      "Bash(tree:*)",
+      "Bash(git add:*)",
+      "Bash(git remote add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npm install:*)",
+      "Bash(psql:*)",
+      "Bash(node:*)",
+      "Bash(openspec:*)",
+      "Bash(mkdir:*)",
+      "Bash(rm:*)",
+      "WebSearch",
+      "WebFetch(domain:resend.com)",
+      "mcp__Framelink_Figma_MCP__get_figma_data",
+      "mcp__Framelink_Figma_MCP__download_figma_images"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

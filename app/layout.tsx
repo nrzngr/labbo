@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CustomAuthProvider } from "@/components/auth/custom-auth-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { BASE_APP_TITLE } from "@/lib/page-metadata";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,8 +16,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Lab Inventory System",
+  title: BASE_APP_TITLE,
   description: "A comprehensive laboratory equipment inventory management system",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({

@@ -28,10 +28,10 @@ const ModernInput = React.forwardRef<HTMLInputElement, ModernInputProps>(
     const inputId = id || `input-${generatedId}`
 
     const variantStyles = {
-      default: "border-2 border-gray-300 bg-white focus:border-black focus:ring-4 focus:ring-black/10",
-      filled: "border-2 border-transparent bg-gray-100 focus:bg-white focus:border-black focus:ring-4 focus:ring-black/10",
-      underline: "border-0 border-b-2 border-gray-300 bg-transparent focus:border-black focus:ring-0 rounded-none px-0",
-      ghost: "border-2 border-transparent bg-transparent hover:border-gray-200 focus:border-black focus:ring-4 focus:ring-black/10"
+      default: "border border-[#dfe2ec] bg-white focus:border-[#ff007a] focus:ring-[rgba(255,0,122,0.16)]",
+      filled: "border border-[#dfe2ec] bg-[#eef0f8] focus:bg-white focus:border-[#ff007a] focus:ring-[rgba(255,0,122,0.16)]",
+      underline: "border-0 border-b border-[#dfe2ec] bg-transparent focus:border-[#ff007a] focus:ring-0 rounded-none px-0",
+      ghost: "border border-transparent bg-transparent hover:border-[#dfe2ec] focus:border-[#ff007a] focus:ring-[rgba(255,0,122,0.12)]"
     }
 
     return (
@@ -54,7 +54,7 @@ const ModernInput = React.forwardRef<HTMLInputElement, ModernInputProps>(
             type={type}
             id={inputId}
             className={cn(
-              "flex h-12 w-full rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50",
+              "flex h-12 w-full rounded-[16px] px-5 py-3 text-[15px] font-medium text-[#1f2937] transition-all duration-200 placeholder:text-[#9aa1b3] disabled:cursor-not-allowed disabled:opacity-50",
               variantStyles[variant],
               leftIcon && "pl-10",
               rightIcon && "pr-10",

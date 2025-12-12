@@ -1,4 +1,4 @@
-'use client'
+"use client"
 
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -13,6 +13,7 @@ import { Package, Filter, Download, Upload, Search, Calendar, BookOpen } from 'l
 import { supabase } from '@/lib/supabase'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { BorrowRequestForm } from '@/components/student/borrow-request-form'
+
 
 export default function EquipmentPage() {
   const { user } = useCustomAuth()
@@ -72,7 +73,7 @@ export default function EquipmentPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 page-gradient min-h-screen">
+      <div className="w-full px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 py-4 sm:py-6 md:py-8 page-gradient min-h-screen">
           <ModernCard variant="elevated" padding="lg" className="mb-6 sm:mb-8 fade-in">
           <div className="flex flex-col gap-4 sm:gap-6">
             <div className="flex items-center gap-3 sm:gap-4">
@@ -165,7 +166,7 @@ export default function EquipmentPage() {
           </div>
         </ModernCard>
 
-        <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4 mb-6 sm:mb-8">
+        <div className="grid gap-3 sm:gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6 sm:mb-8">
           <ModernCard variant="default" hover className="stats-card p-4 sm:p-6">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <span className="text-xs sm:text-sm font-bold text-gray-600 uppercase tracking-wider">
@@ -242,7 +243,7 @@ export default function EquipmentPage() {
               description="Jelajahi peralatan berdasarkan kategori"
               className="mb-4 sm:mb-6"
             />
-            <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {categories?.slice(0, 8).map((category: any) => (
                 <ModernButton
                   key={category.id}

@@ -1,196 +1,121 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { AlertTriangle } from 'lucide-react'
+
+import { LoginAccent } from './login-accent'
 import { useCustomAuth } from '@/components/auth/custom-auth-provider'
-import { ModernButton } from '@/components/ui/modern-button'
-import { ModernInput } from '@/components/ui/modern-input'
-import { ModernCard } from '@/components/ui/modern-card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Mail, ArrowLeft, CheckCircle } from 'lucide-react'
 
 interface ForgotPasswordFormProps {
-  onBack: () => void
-  onSuccess: (email: string) => void
+  onBack?: () => void
+  onSuccess?: (email: string) => void
 }
 
 export function ForgotPasswordForm({ onBack, onSuccess }: ForgotPasswordFormProps) {
   const { requestPasswordReset } = useCustomAuth()
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [isSubmitted, setIsSubmitted] = useState(false)
-  const [newPassword, setNewPassword] = useState<string | null>(null)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
     setIsLoading(true)
-    setError(null)
 
     try {
       const result = await requestPasswordReset(email)
 
       if (!result.success) {
-        setError(result.error || 'Terjadi kesalahan saat reset password')
+        setError(result.error || 'Failed to reset password')
         return
       }
 
-      if (result.newPassword) {
-        setNewPassword(result.newPassword)
-      }
-
-      setIsSubmitted(true)
+      // Redirect to link sent page with email parameter
+      router.push(`/link-sent?email=${encodeURIComponent(email)}`)
 
     } catch (error) {
-      setError('Terjadi kesalahan saat reset password')
+      setError('An error occurred while resetting password')
     } finally {
       setIsLoading(false)
     }
   }
 
-  if (isSubmitted && newPassword) {
-    const copyToClipboard = () => {
-      navigator.clipboard.writeText(newPassword)
-      alert('Password berhasil disalin!')
-    }
+  return (
+    <div className="flex min-h-screen w-full flex-col bg-[#f8f7fb] text-[#111827] lg:flex-row">
+      <div className="flex flex-1 flex-col px-8 py-12 sm:px-16 lg:px-20 xl:px-28">
+        <Link href="/" className="flex w-fit items-center" aria-label="Labbo home">
+          <Image
+            src="/logo.svg"
+            alt="Labbo"
+            width={160}
+            height={48}
+            priority
+            className="h-10 w-auto"
+          />
+        </Link>
 
-    return (
-      <ModernCard variant="default" padding="lg" className="w-full max-w-md mx-auto">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-            <CheckCircle className="w-8 h-8 text-green-600" />
-          </div>
-          <div>
-            <h3 className="text-xl font-bold mb-2">Password Berhasil Direset!</h3>
-            <p className="text-gray-600 text-sm leading-relaxed mb-4">
-              Password baru telah dihasilkan untuk akun Anda. Gunakan password ini untuk login.
+        <div className="mt-16 flex flex-1 flex-col sm:mt-24">
+          <div className="max-w-[420px]">
+            <h1 className="text-[40px] font-semibold leading-tight text-[#111827] sm:text-[46px]">
+              Forgot your password?
+            </h1>
+            <p className="mt-4 text-[17px] text-[#6d7079]">
+              Don&apos;t worry just enter your email below and we&apos;ll send you a link to reset it.
             </p>
 
-            <div className="bg-gray-50 p-4 rounded-lg border-2 border-dashed border-gray-300 mb-4">
-              <p className="text-xs text-gray-500 mb-2">PASSWORD BARU ANDA:</p>
-              <div className="flex items-center justify-center space-x-2">
-                <code className="text-lg font-mono font-bold text-blue-600 bg-white px-3 py-2 rounded border">
-                  {newPassword}
-                </code>
+            <form onSubmit={handleSubmit} className="mt-12 space-y-6">
+              <div>
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="w-full rounded-[16px] border border-[#e6e7eb] bg-white px-5 py-4 text-[15px] text-[#111827] shadow-sm outline-none transition focus:border-[#ff007a] focus:ring-4 focus:ring-[rgba(255,0,122,0.16)] placeholder:text-[#b1b4bd]"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+
+              {error && (
+                <div className="flex items-start gap-2 rounded-[14px] border border-[#f9a8d4] bg-[#ffe8ef] px-4 py-3 text-sm text-[#b4235d]">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <div className="pt-1">
                 <button
-                  onClick={copyToClipboard}
-                  className="p-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200 transition-colors"
-                  title="Salin password"
+                  type="submit"
+                  disabled={isLoading || !email}
+                  className="inline-flex w-full items-center justify-center rounded-[14px] bg-[#ff007a] px-12 py-3 text-base font-semibold text-white shadow-[0_18px_36px_rgba(255,0,122,0.3)] transition hover:bg-[#e6006f] focus:outline-none focus:ring-2 focus:ring-[#ff007a] focus:ring-offset-2 focus:ring-offset-[#f8f7fb] disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
+                  {isLoading ? 'Sending...' : 'Reset Password'}
                 </button>
               </div>
-            </div>
-
-            <div className="bg-yellow-50 p-3 rounded-lg">
-              <p className="text-xs text-yellow-800">
-                <strong>Penting:</strong> Simpan password ini dengan aman.
-                Password bersifat sementara dan dapat diubah melalui menu pengaturan setelah login.
-              </p>
-            </div>
+            </form>
           </div>
 
-          <div className="space-y-3 pt-4">
-            <ModernButton
-              onClick={() => onSuccess(email)}
-              variant="default"
-              size="lg"
-              className="w-full"
+          <div className="mt-16 text-sm text-[#6c6f78]">
+            Remember your password?{' '}
+            <Link
+              href="/"
+              className="font-medium text-[#ff007a] transition hover:text-[#e6006f]"
             >
-              Lanjut ke Login
-            </ModernButton>
-
-            <ModernButton
-              onClick={onBack}
-              variant="outline"
-              size="lg"
-              className="w-full"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Kembali
-            </ModernButton>
+              Sign In
+            </Link>
           </div>
-        </div>
-      </ModernCard>
-    )
-  }
-
-  return (
-    <ModernCard variant="default" padding="lg" className="w-full max-w-md mx-auto">
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="text-center">
-          <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <Mail className="w-6 h-6 text-gray-600" />
-          </div>
-          <h2 className="text-2xl font-bold mb-2">Lupa Password?</h2>
-          <p className="text-gray-600 text-sm">
-            Masukkan email Anda dan kami akan generate password baru secara instan
-          </p>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <Alert className="border-red-200 bg-red-50">
-              <AlertDescription className="text-red-800 text-sm">
-                {error}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-bold text-gray-700 uppercase tracking-wider">
-              Email Address
-            </label>
-            <ModernInput
-              id="email"
-              type="email"
-              placeholder="Masukkan email Anda"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={isLoading}
-              leftIcon={<Mail className="w-4 h-4" />}
-            />
-          </div>
-
-          <div className="space-y-3">
-            <ModernButton
-              type="submit"
-              variant="default"
-              size="lg"
-              disabled={isLoading || !email}
-              loading={isLoading}
-              className="w-full"
-            >
-              {isLoading ? 'Menggenerate Password...' : 'Generate Password Baru'}
-            </ModernButton>
-
-            <ModernButton
-              type="button"
-              variant="outline"
-              size="lg"
-              onClick={onBack}
-              disabled={isLoading}
-              className="w-full"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Kembali ke Login
-            </ModernButton>
-          </div>
-        </form>
-
-        {/* Demo Accounts Info */}
-        <div className="bg-gray-50 p-3 rounded-lg">
-          <p className="text-xs text-gray-600 text-center">
-            <strong>Akun Demo:</strong><br />
-            admin@example.com | student@example.com<br />
-            lecturer@example.com | labstaff@example.com
-          </p>
         </div>
       </div>
-    </ModernCard>
+
+      <div className="relative hidden items-center justify-center bg-[#f8f7fb] lg:flex lg:w-[48%] xl:w-[52%]">
+        <div className="relative w-full max-w-[700px] rounded-[72px] bg-[#ff007a] shadow-[0_40px_90px_rgba(255,0,122,0.32)] aspect-[442/550] overflow-hidden">
+          <LoginAccent className="absolute inset-0 scale-[1.04]" aria-hidden="true" />
+        </div>
+      </div>
+    </div>
   )
 }

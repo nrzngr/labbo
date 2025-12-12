@@ -4,27 +4,27 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const modernButtonVariants = cva(
-  "inline-flex items-center justify-center gap-3 whitespace-nowrap text-sm font-bold rounded-2xl transition-all duration-200 ease-out disabled:pointer-events-none disabled:opacity-50 outline-none focus:ring-4 focus:ring-offset-2",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-semibold rounded-[14px] transition-all duration-200 ease-out disabled:pointer-events-none disabled:opacity-50 outline-none focus:ring-4 focus:ring-offset-2 focus:ring-offset-[#f7f6fb]",
   {
     variants: {
       variant: {
-        default: "bg-black text-white hover:bg-gray-800 focus:ring-gray-400 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0",
-        destructive: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-400 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0",
-        outline: "border-2 border-black bg-white hover:bg-black hover:text-white focus:ring-gray-400 hover:-translate-y-0.5 active:translate-y-0",
-        secondary: "bg-gray-100 text-black hover:bg-gray-200 focus:ring-gray-400 border-2 border-transparent hover:border-gray-300",
-        ghost: "border-2 border-transparent hover:border-black hover:bg-gray-100 focus:ring-gray-400",
-        link: "text-black underline-offset-4 hover:underline hover:text-gray-600 focus:ring-gray-400",
-        glass: "glass-morphism border-2 border-black/20 hover:border-black hover:bg-white/80 focus:ring-gray-400 hover:-translate-y-0.5 active:translate-y-0",
-        gradient: "gradient-bg border-2 border-black hover:border-gray-800 focus:ring-gray-400 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0",
+        default: "bg-[#ff007a] text-white shadow-[0_20px_45px_rgba(255,0,122,0.35)] hover:bg-[#e6006f] hover:shadow-[0_18px_40px_rgba(255,0,122,0.45)] focus:ring-[rgba(255,0,122,0.35)] hover:-translate-y-0.5 active:translate-y-0",
+        destructive: "bg-[#f04438] text-white shadow-[0_15px_35px_rgba(240,68,56,0.25)] hover:bg-[#d63a30] focus:ring-[rgba(240,68,56,0.35)] hover:-translate-y-0.5 active:translate-y-0",
+        outline: "border border-[#ff007a] text-[#ff007a] bg-transparent hover:bg-[#ff007a] hover:text-white focus:ring-[rgba(255,0,122,0.25)] hover:-translate-y-0.5 active:translate-y-0",
+        secondary: "bg-white text-[#111827] border border-[#dfe2ec] hover:border-[#ff007a] hover:text-[#ff007a] focus:ring-[rgba(255,0,122,0.2)]",
+        ghost: "border border-transparent text-[#6d7079] hover:text-[#ff007a] hover:bg-[#ffe4f2] focus:ring-[rgba(255,0,122,0.15)]",
+        link: "text-[#ff007a] underline-offset-4 hover:underline hover:text-[#e6006f] focus:ring-[rgba(255,0,122,0.2)]",
+        glass: "glass-morphism border border-white/30 text-[#111827] hover:border-[#ff007a] hover:text-[#ff007a] focus:ring-[rgba(255,0,122,0.2)] hover:-translate-y-0.5 active:translate-y-0",
+        gradient: "bg-[radial-gradient(circle_at_top_right,_rgba(255,0,122,0.85),_rgba(255,0,122,0.65))] text-white shadow-[0_22px_48px_rgba(255,0,122,0.38)] hover:shadow-[0_20px_42px_rgba(255,0,122,0.48)] focus:ring-[rgba(255,0,122,0.35)] hover:-translate-y-0.5 active:translate-y-0",
       },
       size: {
-        default: "h-12 px-6 py-3",
-        sm: "h-10 px-4 py-2 text-xs",
-        lg: "h-14 px-8 py-4 text-base",
-        xl: "h-16 px-10 py-5 text-lg",
-        icon: "size-12 p-3",
-        "icon-sm": "size-10 p-2.5",
-        "icon-lg": "size-14 p-4",
+        default: "h-12 px-6",
+        sm: "h-10 px-5 text-xs",
+        lg: "h-14 px-8 text-base",
+        xl: "h-16 px-10 text-lg",
+        icon: "size-12",
+        "icon-sm": "size-10",
+        "icon-lg": "size-14",
       },
       fullWidth: {
         true: "w-full",
