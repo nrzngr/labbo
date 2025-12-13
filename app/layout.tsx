@@ -4,6 +4,7 @@ import "./globals.css";
 import { CustomAuthProvider } from "@/components/auth/custom-auth-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { BASE_APP_TITLE } from "@/lib/page-metadata";
+import { Preloader } from "@/components/ui/preloader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,6 +36,7 @@ export default function RootLayout({
       >
         <QueryProvider>
           <CustomAuthProvider>
+            <Preloader />
             {children}
           </CustomAuthProvider>
         </QueryProvider>

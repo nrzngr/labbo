@@ -114,10 +114,10 @@ export function CustomLoginForm() {
         <div className="mt-16 flex flex-1 flex-col sm:mt-24">
           <div className="max-w-[420px]">
             <h1 className="text-[38px] font-semibold leading-tight text-[#111827] sm:text-[44px]">
-              Back to work, genius!
+              Selamat Datang, Innovator!
             </h1>
             <p className="mt-4 text-[17px] text-[#6d7079]">
-              Let&apos;s make some science happen
+              Siap menciptakan terobosan baru hari ini?
             </p>
 
             <form onSubmit={handleSubmit} className="mt-12 space-y-6">
@@ -127,7 +127,7 @@ export function CustomLoginForm() {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  placeholder="Email"
+                  placeholder="Email Institusi"
                   autoComplete="email"
                   required
                   className="w-full rounded-[16px] border border-[#dfe2ec] bg-[#eef0f8] px-5 py-4 text-[15px] text-[#1f2937] shadow-sm outline-none transition focus:border-[#ff007a] focus:ring-4 focus:ring-[rgba(255,0,122,0.16)] placeholder:text-[#9aa1b3]"
@@ -140,7 +140,7 @@ export function CustomLoginForm() {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  placeholder="Password"
+                  placeholder="Kata Sandi"
                   autoComplete="current-password"
                   required
                   className="w-full rounded-[16px] border border-[#dfe2ec] bg-[#eef0f8] px-5 py-4 text-[15px] text-[#1f2937] shadow-sm outline-none transition focus:border-[#ff007a] focus:ring-4 focus:ring-[rgba(255,0,122,0.16)] placeholder:text-[#9aa1b3]"
@@ -149,7 +149,7 @@ export function CustomLoginForm() {
                   type="button"
                   onClick={() => setShowPassword(previous => !previous)}
                   className="absolute inset-y-0 right-4 flex items-center text-[#8b8f99] transition hover:text-[#ff007a]"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -160,7 +160,7 @@ export function CustomLoginForm() {
                   href="/forgot-password"
                   className="text-sm font-medium transition hover:text-[#ff007a]"
                 >
-                  Forgot Password?
+                  Lupa Kata Sandi?
                 </Link>
               </div>
 
@@ -170,7 +170,7 @@ export function CustomLoginForm() {
                   disabled={isBusy}
                   className="inline-flex items-center justify-center rounded-[14px] bg-[#ff007a] px-12 py-3 text-base font-semibold text-white shadow-[0_25px_45px_rgba(255,0,122,0.35)] transition hover:bg-[#e6006f] focus:outline-none focus:ring-2 focus:ring-[#ff007a] focus:ring-offset-2 focus:ring-offset-[#f7f6fb] disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {isBusy ? 'Signing In...' : 'Sign In'}
+                  {isBusy ? 'Sedang Masuk...' : 'Masuk Lab'}
                 </button>
               </div>
 
@@ -185,14 +185,14 @@ export function CustomLoginForm() {
             <div className="mt-12">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-[#6d7079]">
-                  Demo Accounts
+                  Akun Demo
                 </h3>
                 <button
                   type="button"
                   onClick={() => setShowDemoPasswords(!showDemoPasswords)}
                   className="text-xs text-[#ff007a] hover:text-[#e6006f] transition-colors"
                 >
-                  {showDemoPasswords ? 'Hide' : 'Show'} Passwords
+                  {showDemoPasswords ? 'Sembunyikan' : 'Tampilkan'} Kata Sandi
                 </button>
               </div>
 
@@ -265,7 +265,7 @@ export function CustomLoginForm() {
               ) : (
                 <div className="text-center py-6">
                   <p className="text-sm text-[#9aa1b3]">
-                    No demo accounts available
+                    Tidak ada akun demo tersedia
                   </p>
                 </div>
               )}
@@ -273,12 +273,12 @@ export function CustomLoginForm() {
           </div>
 
           <div className="mt-20 text-sm text-[#6c6f78]">
-            Don&apos;t have an account?{' '}
+            Belum punya akun?{' '}
             <Link
               href="/register"
               className="font-medium text-[#ff007a] transition hover:text-[#e6006f]"
             >
-              Register
+              Daftar Sekarang
             </Link>
           </div>
         </div>

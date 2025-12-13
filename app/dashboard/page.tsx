@@ -43,7 +43,7 @@ export default function Dashboard() {
 
   // Redirect students immediately
   useEffect(() => {
-    if (user?.role === 'student') {
+    if (user?.role === 'mahasiswa') {
       router.replace('/dashboard/student')
     }
   }, [user, router])
@@ -52,7 +52,7 @@ export default function Dashboard() {
     const fetchDashboardData = async () => {
       try {
         // Skip fetching if user is student (will redirect)
-        if (!user || user.role === 'student') {
+        if (!user || user.role === 'mahasiswa') {
           return
         }
 
@@ -139,7 +139,7 @@ export default function Dashboard() {
   }, [user])
 
   // Show loading for students while redirecting
-  if (!user || user.role === 'student') {
+  if (!user || user.role === 'mahasiswa') {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-screen">
@@ -404,8 +404,8 @@ export default function Dashboard() {
                     <div className="flex items-center gap-4">
                       {/* Avatar/Icon */}
                       <div className={`w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${activity.type === 'borrow'
-                          ? 'bg-gradient-to-br from-blue-500 to-blue-600'
-                          : 'bg-gradient-to-br from-green-500 to-green-600'
+                        ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+                        : 'bg-gradient-to-br from-green-500 to-green-600'
                         }`}>
                         {activity.type === 'borrow' ? (
                           <Package className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
@@ -421,8 +421,8 @@ export default function Dashboard() {
                             {activity.user_name}
                           </span>
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${activity.type === 'borrow'
-                              ? 'bg-blue-100 text-blue-700'
-                              : 'bg-green-100 text-green-700'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-green-100 text-green-700'
                             }`}>
                             {activity.type === 'borrow' ? 'Pinjam' : 'Kembali'}
                           </span>

@@ -27,8 +27,8 @@ export const userProfileSchema = z.object({
   department: z.string().min(1, 'Department is required')
 }).refine(
   (data) => {
-    if (data.role === 'student' && !data.nim) return false
-    if (data.role === 'lecturer' && !data.nip) return false
+    if (data.role === 'mahasiswa' && !data.nim) return false
+    if (data.role === 'dosen' && !data.nip) return false
     return true
   },
   {

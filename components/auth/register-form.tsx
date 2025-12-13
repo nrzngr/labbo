@@ -94,10 +94,10 @@ export function RegisterForm() {
         <div className="mt-16 flex flex-1 flex-col sm:mt-24">
           <div className="max-w-[440px]">
             <h1 className="text-[38px] font-semibold leading-tight text-[#111827] sm:text-[44px]">
-              Create your lab account
+              Mulai Perjalanan Risetmu
             </h1>
             <p className="mt-4 text-[17px] text-[#6d7079]">
-              Your journey to smarter inventory starts here.
+              Daftarkan diri untuk akses peralatan canggih Labbo.
             </p>
 
             <form onSubmit={handleSubmit} className="mt-12 space-y-6">
@@ -107,7 +107,7 @@ export function RegisterForm() {
                   name="full_name"
                   value={formData.full_name}
                   onChange={handleInputChange}
-                  placeholder="Full name"
+                  placeholder="Nama Lengkap"
                   className="w-full rounded-[16px] border border-[#dfe2ec] bg-[#eef0f8] px-5 py-4 text-[15px] text-[#1f2937] shadow-sm outline-none transition focus:border-[#ff007a] focus:ring-4 focus:ring-[rgba(255,0,122,0.16)] placeholder:text-[#9aa1b3]"
                   required
                   disabled={isSubmitting}
@@ -120,7 +120,7 @@ export function RegisterForm() {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  placeholder="Email"
+                  placeholder="Email Institusi"
                   className="w-full rounded-[16px] border border-[#dfe2ec] bg-[#eef0f8] px-5 py-4 text-[15px] text-[#1f2937] shadow-sm outline-none transition focus:border-[#ff007a] focus:ring-4 focus:ring-[rgba(255,0,122,0.16)] placeholder:text-[#9aa1b3]"
                   required
                   disabled={isSubmitting}
@@ -133,7 +133,7 @@ export function RegisterForm() {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  placeholder="Password"
+                  placeholder="Kata Sandi"
                   className="w-full rounded-[16px] border border-[#dfe2ec] bg-[#eef0f8] px-5 py-4 pr-12 text-[15px] text-[#1f2937] shadow-sm outline-none transition focus:border-[#ff007a] focus:ring-4 focus:ring-[rgba(255,0,122,0.16)] placeholder:text-[#9aa1b3]"
                   required
                   disabled={isSubmitting}
@@ -143,7 +143,7 @@ export function RegisterForm() {
                   onClick={() => setShowPassword(previous => !previous)}
                   className="absolute inset-y-0 right-4 flex items-center text-[#8b8f99] transition hover:text-[#ff007a]"
                   disabled={isSubmitting}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -155,7 +155,7 @@ export function RegisterForm() {
                   name="repeatPassword"
                   value={formData.repeatPassword}
                   onChange={handleInputChange}
-                  placeholder="Repeat password"
+                  placeholder="Ulangi Kata Sandi"
                   className="w-full rounded-[16px] border border-[#dfe2ec] bg-[#eef0f8] px-5 py-4 pr-12 text-[15px] text-[#1f2937] shadow-sm outline-none transition focus:border-[#ff007a] focus:ring-4 focus:ring-[rgba(255,0,122,0.16)] placeholder:text-[#9aa1b3]"
                   required
                   disabled={isSubmitting}
@@ -165,7 +165,7 @@ export function RegisterForm() {
                   onClick={() => setShowRepeatPassword(previous => !previous)}
                   className="absolute inset-y-0 right-4 flex items-center text-[#8b8f99] transition hover:text-[#ff007a]"
                   disabled={isSubmitting}
-                  aria-label={showRepeatPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showRepeatPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
                 >
                   {showRepeatPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -190,19 +190,19 @@ export function RegisterForm() {
                   }
                   className="inline-flex items-center justify-center rounded-[14px] bg-[#ff007a] px-12 py-3 text-base font-semibold text-white shadow-[0_25px_45px_rgba(255,0,122,0.35)] transition hover:bg-[#e6006f] focus:outline-none focus:ring-2 focus:ring-[#ff007a] focus:ring-offset-2 focus:ring-offset-[#f7f6fb] disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {isSubmitting ? 'Creating Account...' : 'Register'}
+                  {isSubmitting ? 'Memuat...' : 'Daftar Sekarang'}
                 </button>
               </div>
             </form>
           </div>
 
           <div className="mt-16 text-sm text-[#6c6f78]">
-            Already have an account?{' '}
+            Sudah punya akun?{' '}
             <Link
               href="/"
               className="font-medium text-[#ff007a] transition hover:text-[#e6006f]"
             >
-              Sign In
+              Masuk
             </Link>
           </div>
         </div>
