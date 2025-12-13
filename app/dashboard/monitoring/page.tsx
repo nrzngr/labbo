@@ -65,7 +65,7 @@ export default function MonitoringPage() {
             }
 
             if (statusFilter) {
-                query = query.eq('status', statusFilter)
+                query = query.eq('status', statusFilter as any)
             }
 
             const { data, error } = await query
@@ -261,16 +261,16 @@ export default function MonitoringPage() {
                                         <div
                                             key={transaction.id}
                                             className={`group relative border-2 rounded-2xl p-5 transition-all duration-300 hover:shadow-lg ${isUrgent
-                                                    ? 'border-orange-200 bg-orange-50/30'
-                                                    : 'border-gray-100 hover:border-[#ff007a]/20'
+                                                ? 'border-orange-200 bg-orange-50/30'
+                                                : 'border-gray-100 hover:border-[#ff007a]/20'
                                                 }`}
                                         >
                                             {/* Status Indicator Line */}
                                             <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl ${transaction.status === 'active' ? 'bg-purple-500' :
-                                                    transaction.status === 'pending' ? 'bg-yellow-500' :
-                                                        transaction.status === 'returned' ? 'bg-green-500' :
-                                                            transaction.status === 'overdue' ? 'bg-red-500' :
-                                                                'bg-gray-500'
+                                                transaction.status === 'pending' ? 'bg-yellow-500' :
+                                                    transaction.status === 'returned' ? 'bg-green-500' :
+                                                        transaction.status === 'overdue' ? 'bg-red-500' :
+                                                            'bg-gray-500'
                                                 }`} />
 
                                             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -336,8 +336,8 @@ export default function MonitoringPage() {
                                                 {transaction.status === 'active' && (
                                                     <div className="lg:w-32 text-center lg:border-l-2 lg:border-gray-100 lg:pl-6">
                                                         <div className={`text-3xl font-bold ${daysRemaining < 0 ? 'text-red-600' :
-                                                                daysRemaining <= 2 ? 'text-orange-600' :
-                                                                    'text-gray-900'
+                                                            daysRemaining <= 2 ? 'text-orange-600' :
+                                                                'text-gray-900'
                                                             }`}>
                                                             {Math.abs(daysRemaining)}
                                                         </div>

@@ -1,14 +1,14 @@
 'use client'
 
-import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { QRPrintGrid } from '@/components/equipment/qr-print-grid'
 import { Loader2, Printer, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useRouter } from 'next/navigation'
 
-export default function PrintLabelsPage() {
+function PrintLabelsContent() {
     const searchParams = useSearchParams()
     const router = useRouter()
     const idsParam = searchParams.get('ids')
@@ -86,5 +86,17 @@ export default function PrintLabelsPage() {
                 <QRPrintGrid items={items} />
             </div>
         </div>
+    )
+}
+
+export default function PrintLabelsPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center min-h-screen">
+                <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
+            </div>
+        }>
+            <PrintLabelsContent />
+        </Suspense>
     )
 }
