@@ -30,7 +30,6 @@ export const passwordSchema = z.object({
     .regex(/[a-z]/, 'Password harus mengandung setidaknya satu huruf kecil')
     .regex(/[0-9]/, 'Password harus mengandung setidaknya satu angka')
     .regex(/[^A-Za-z0-9]/, 'Password harus mengandung setidaknya satu karakter khusus')
-    .regex(/^(?!.*(.).*\1).*$/, 'Password tidak boleh mengandung karakter yang sama')
     .regex(/^(?!.*(123|abc|qwe|password|admin|user)).*$/i, 'Password tidak boleh mengandung pola umum')
 })
 
