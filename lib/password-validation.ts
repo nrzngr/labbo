@@ -115,54 +115,21 @@ export function validatePassword(password: string): PasswordValidationResult {
 /**
  * Check if password has been breached using HaveIBeenPwned API
  */
+import { isCommonPassword } from './common-passwords'
+
 export async function checkBreachedPassword(
   password: string
 ): Promise<BreachedPasswordResult> {
-  try {
-    // Create SHA-1 hash of the password
-    const encoder = new TextEncoder()
-    const data = encoder.encode(password)
-    const hashBuffer = await crypto.subtle.digest('SHA-1', data)
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase()
-
-    // Use k-anonymity model: send first 5 chars of hash
-    const prefix = hashHex.substring(0, 5)
-    const suffix = hashHex.substring(5)
-
-    const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Lab-Inventory-System',
-        'Add-Padding': 'true'
-      }
-    })
-
-    if (!response.ok) {
-      console.warn('HaveIBeenPwned API unavailable, skipping breach check')
-      return { isBreached: false }
+  // Use local check instead of external API to ensure reliability
+  if (isCommonPassword(password)) {
+    return {
+      isBreached: true,
+      breachCount: 1, // Generic count
+      message: 'Password ini terlalu umum dan mudah ditebak. Harap gunakan password yang lebih unik.'
     }
-
-    const responseData = await response.text()
-    const lines = responseData.split('\n')
-
-    for (const line of lines) {
-      const [hashSuffix, count] = line.split(':')
-      if (hashSuffix === suffix) {
-        return {
-          isBreached: true,
-          breachCount: parseInt(count),
-          message: `Password ini telah ditemukan dalam ${count} data breaches. Harap pilih password yang berbeda.`
-        }
-      }
-    }
-
-    return { isBreached: false }
-  } catch (error) {
-    // Silently fail or warn if API is unreachable (common in dev/offline)
-    console.warn('Skipping breach check (API unreachable):', error instanceof Error ? error.message : 'Unknown error')
-    return { isBreached: false }
   }
+
+  return { isBreached: false, breachCount: 0 }
 }
 
 /**

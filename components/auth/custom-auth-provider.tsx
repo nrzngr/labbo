@@ -803,81 +803,30 @@ export function CustomAuthProvider({ children }: { children: React.ReactNode }) 
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!emailRegex.test(email)) {
-        return { success: false, error: 'Invalid email format' }
+        return { success: false, error: 'Format email tidak valid' }
       }
 
-      // TODO: Find user when database schema is properly configured
-      // For now, just skip verification checks
-      console.log('Resend verification requested for:', email)
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email })
+      })
 
-      // TODO: Check rate limiting for verification emails when database schema is properly configured
-      // const { data: existingTokens } = await supabase
-      //   .from('email_verification_tokens')
-      //   .select('id')
-      //   .eq('user_id', user.id)
-      //   .is('used_at', null)
-      //   .gte('created_at', new Date(Date.now() - 60 * 60 * 1000).toISOString()) // Last hour
+      const data = await response.json()
 
-      // if (existingTokens && existingTokens.length >= 3) {
-      //   return { success: false, error: 'Too many verification requests. Please try again later.' }
-      // }
-
-      // Create new verification token with mock user ID
-      const mockUserId = 'mock-user-' + Date.now()
-      const { success: tokenSuccess, token } = await createEmailVerificationToken(mockUserId)
-
-      if (!tokenSuccess) {
-        return { success: false, error: 'Failed to create verification token' }
+      if (!response.ok) {
+        return { success: false, error: data.error || 'Gagal mengirim ulang email verifikasi' }
       }
-
-      // Create verification link
-      const verificationLink = token ? `${window.location.origin}/verify-email?token=${token}` : ''
-
-      // Send verification email via API
-      if (token) {
-        try {
-          const emailResponse = await fetch('/api/auth/send-verification', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email,
-              verificationLink,
-              userName: 'User'
-            })
-          })
-
-          if (!emailResponse.ok) {
-            console.error('Failed to resend verification email:', emailResponse.statusText)
-          }
-        } catch (error) {
-          console.error('Failed to resend verification email:', error)
-          // Continue anyway - token was created successfully
-        }
-      }
-
-      // Log the resend request
-      // TODO: Implement audit logging when database functions are available
-      // await supabase.rpc('log_audit_event', {
-      //   p_user_id: mockUserId,
-      //   p_action: 'EMAIL_VERIFICATION_RESENT',
-      //   p_resource_type: 'user',
-      //   p_resource_id: mockUserId,
-      //   p_details: {
-      //     email,
-      //     verificationLink,
-      //     emailSent: tokenSuccess,
-      //     timestamp: new Date().toISOString()
-      //   }
-      // })
 
       return { success: true }
     } catch (error) {
       console.error('Resend verification email error:', error)
-      return { success: false, error: 'Failed to resend verification email' }
+      return { success: false, error: 'Terjadi kesalahan koneksi' }
     }
   }
+
 
   const isAccountLocked = async (email: string): Promise<boolean> => {
     try {
