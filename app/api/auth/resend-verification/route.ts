@@ -3,21 +3,32 @@ import { createClient } from '@supabase/supabase-js'
 import { serverEmailService } from '@/lib/email-service'
 import { generateEmailVerificationToken, createTokenExpiration } from '@/lib/token-utils'
 
-// Initialize Supabase Admin client with Service Role Key
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!,
-    {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false
-        }
+// Initialize Supabase Admin client lazily to avoid build-time errors if env vars are missing
+const getSupabaseAdmin = () => {
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
+
+    if (!serviceRoleKey) {
+        throw new Error('Supabase Service Role Key is missing')
     }
-)
+
+    return createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        serviceRoleKey,
+        {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false
+            }
+        }
+    )
+}
 
 export async function POST(request: NextRequest) {
     try {
         const { email } = await request.json()
+
+        // Initialize admin client
+        const supabaseAdmin = getSupabaseAdmin()
 
         if (!email) {
             return NextResponse.json(
