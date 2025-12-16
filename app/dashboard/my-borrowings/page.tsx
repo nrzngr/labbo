@@ -65,11 +65,11 @@ export default function MyBorrowingsPage() {
     queryKey: ['my-borrowings', searchTerm, statusFilter, user?.id],
     queryFn: async () => {
       if (!user) {
-        console.log('[DEBUG] No user, returning empty array')
+
         return []
       }
 
-      console.log('[DEBUG] Fetching borrowings for user:', user.id, user.email)
+
 
       let query = supabase
         .from('borrowing_transactions')
@@ -90,7 +90,7 @@ export default function MyBorrowingsPage() {
 
       const { data, error } = await query
 
-      console.log('[DEBUG] Query result - data:', data, 'error:', error)
+
 
       if (error) throw error
 

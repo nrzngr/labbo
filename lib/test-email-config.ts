@@ -1,5 +1,5 @@
 // Email configuration test utility
-import { emailService } from './email-service-real'
+import { emailService } from './email-service'
 
 export function testEmailConfiguration() {
   console.log('🧪 Testing Email Configuration...\n')

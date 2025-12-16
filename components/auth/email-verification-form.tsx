@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCustomAuth } from './custom-auth-provider'
-import { AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react'
+import { AlertTriangle, CheckCircle, RefreshCw, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
+import { RegisterAccent } from './register-accent'
 
 export function EmailVerificationForm() {
   const { verifyEmail } = useCustomAuth()
@@ -14,11 +16,10 @@ export function EmailVerificationForm() {
   const [isVerifying, setIsVerifying] = useState(false)
   const [isVerified, setIsVerified] = useState(false)
   const [error, setError] = useState('')
-  const [email, setEmail] = useState('')
 
   useEffect(() => {
     if (!token) {
-      setError('Invalid verification link')
+      setError('Tautan verifikasi tidak valid')
       return
     }
 
@@ -41,146 +42,110 @@ export function EmailVerificationForm() {
           router.push('/')
         }, 3000)
       } else {
-        setError(result.error || 'Failed to verify email')
+        setError(result.error || 'Gagal memverifikasi email')
       }
     } catch (error) {
       console.error('Email verification error:', error)
-      setError('An error occurred while verifying your email')
+      setError('Terjadi kesalahan saat memverifikasi email Anda')
     } finally {
       setIsVerifying(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex bg-white">
-      {/* Left Column - Form */}
-      <div className="flex-1 flex items-center justify-center p-8 lg:p-12">
-        <div className="w-full max-w-md">
-          {/* Logo */}
-          <div className="flex items-center gap-2 mb-8">
-            <div className="w-10 h-10 bg-pink-500 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
-              </svg>
-            </div>
-            <span className="text-2xl font-bold text-gray-900">Labbo</span>
-          </div>
+    <div className="flex min-h-screen w-full flex-col bg-[#f7f6fb] text-[#111827] lg:flex-row">
+      {/* Left Column - Content */}
+      <div className="flex flex-1 flex-col px-8 py-12 sm:px-16 lg:px-20 xl:px-28">
+        <Link href="/" className="flex w-fit items-center" aria-label="Labbo home">
+          <Image
+            src="/logo.svg"
+            alt="Labbo"
+            width={160}
+            height={48}
+            priority
+            className="h-10 w-auto"
+          />
+        </Link>
 
-          {/* Status */}
-          {isVerified ? (
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-white" />
-              </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Email Verified!</h1>
-              <p className="text-lg text-gray-600">Your account has been successfully verified.</p>
-            </div>
-          ) : (
-            <div className="mb-8">
-              <div className="w-16 h-16 bg-pink-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                {isVerifying ? (
-                  <RefreshCw className="w-8 h-8 text-white animate-spin" />
-                ) : (
-                  <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 2a8 8 0 100-8 8 0 018 8 8 0 018-8 8 0 00-8zm1 12V9H8v2l4 2 4-2h5z" />
-                  </svg>
-                )}
-              </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Verify Your Email</h1>
-              <p className="text-lg text-gray-600">Please wait while we verify your email address.</p>
-            </div>
-          )}
+        <div className="mt-16 flex flex-1 flex-col sm:mt-24">
+          <div className="max-w-[440px]">
 
-          {/* Error Message */}
-          {error && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg mb-6">
-              <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
-              <span className="text-sm text-red-700">{error}</span>
-            </div>
-          )}
-
-          {/* Success Message */}
-          {isVerified && (
-            <div className="text-center">
-              <p className="text-green-600 font-medium mb-4">
-                Redirecting to login page...
-              </p>
-              <div className="w-6 h-6 bg-green-500 rounded-full mx-auto animate-pulse"></div>
-            </div>
-          )}
-
-          {/* Loading State */}
-          {isVerifying && (
-            <div className="text-center">
-              <p className="text-pink-500 font-medium">
-                Verifying your email...
-              </p>
-              <div className="w-6 h-6 bg-pink-500 rounded-full mx-auto animate-spin"></div>
-            </div>
-          )}
-
-          {/* Help Text */}
-          {!isVerified && !isVerifying && (
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-500 mb-4">
-                This verification link will expire in 1 hour.
-              </p>
-              <div className="space-y-2">
-                <p className="text-sm text-gray-500">
-                  Didn't receive the email?
+            {/* Status Content */}
+            {isVerified ? (
+              <>
+                <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-green-600">
+                  <CheckCircle className="h-10 w-10" />
+                </div>
+                <h1 className="text-[32px] font-semibold leading-tight text-[#111827] sm:text-[38px]">
+                  Email Terverifikasi!
+                </h1>
+                <p className="mt-4 text-[17px] text-[#6d7079]">
+                  Akun Anda telah berhasil diverifikasi. Anda sekarang dapat masuk dan mengakses layanan kami.
                 </p>
+                <div className="mt-8 rounded-[14px] bg-green-50 p-4 text-green-700 border border-green-200">
+                  <p className="flex items-center gap-2 font-medium">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Mengalihkan ke halaman login...
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#ff007a] text-white">
+                  {isVerifying ? (
+                    <Loader2 className="h-10 w-10 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-10 w-10" />
+                  )}
+                </div>
+                <h1 className="text-[32px] font-semibold leading-tight text-[#111827] sm:text-[38px]">
+                  Verifikasi Email Anda
+                </h1>
+                <p className="mt-4 text-[17px] text-[#6d7079]">
+                  {isVerifying
+                    ? 'Mohon tunggu sementara kami memverifikasi token email Anda ini untuk memastikan keamanan akun.'
+                    : error
+                      ? 'Sayangnya kami tidak dapat memverifikasi email Anda dengan tautan tersebut.'
+                      : 'Memproses verifikasi email...'}
+                </p>
+              </>
+            )}
+
+            {/* Error Message */}
+            {error && (
+              <div className="mt-6 flex items-start gap-2 rounded-[14px] border border-[#f9a8d4] bg-[#ffe8ef] px-4 py-3 text-[#b4235d]">
+                <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Manual Actions if not auto-redirecting or if error */}
+            {!isVerified && !isVerifying && (
+              <div className="mt-8 flex flex-col gap-4">
+                {error && (
+                  <Link
+                    href="/verify-email-sent"
+                    className="inline-flex w-full items-center justify-center rounded-[14px] border border-[#dfe2ec] bg-white px-8 py-3 text-base font-semibold text-[#1f2937] transition hover:bg-[#f9fafb] focus:outline-none focus:ring-2 focus:ring-[#dfe2ec] focus:ring-offset-2 focus:ring-offset-[#f7f6fb]"
+                  >
+                    Minta tautan baru
+                  </Link>
+                )}
                 <Link
-                  href="/verify-email-sent"
-                  className="text-pink-500 hover:text-pink-600 font-medium text-sm transition-colors"
+                  href="/"
+                  className="inline-flex w-full items-center justify-center rounded-[14px] bg-[#ff007a] px-8 py-3 text-base font-semibold text-white shadow-[0_25px_45px_rgba(255,0,122,0.35)] transition hover:bg-[#e6006f] focus:outline-none focus:ring-2 focus:ring-[#ff007a] focus:ring-offset-2 focus:ring-offset-[#f7f6fb]"
                 >
-                  Request a new verification link
+                  Kembali ke Masuk
                 </Link>
               </div>
-            </div>
-          )}
-
-          {/* Back to Sign In */}
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Back to Sign In
-            </Link>
+            )}
           </div>
         </div>
       </div>
 
       {/* Right Column - Decorative Panel */}
-      <div className="hidden lg:flex lg:flex-1 bg-pink-500 items-center justify-center p-8">
-        <div className="relative w-full h-full max-w-2xl max-h-[600px]">
-          {/* Abstract Decorative Shapes */}
-          <svg className="w-full h-full" viewBox="0 0 400 600" fill="none">
-            {/* Curved Lines */}
-            <path d="M50 300 Q100 200 150 250 T250 200" stroke="white" strokeWidth="3" opacity="0.3"/>
-            <path d="M100 400 Q200 350 250 400 T350 350" stroke="white" strokeWidth="2" opacity="0.2"/>
-            <path d="M80 180 Q150 120 200 160 T300 140" stroke="white" strokeWidth="2.5" opacity="0.25"/>
-            <path d="M120 500 Q180 450 220 480 T280 460" stroke="white" strokeWidth="2" opacity="0.2"/>
-
-            {/* Diagonal Line */}
-            <path d="M300 50 L100 500" stroke="white" strokeWidth="2" opacity="0.15"/>
-
-            {/* Curved Top Edge */}
-            <path d="M50 100 Q200 50 350 100" stroke="white" strokeWidth="4" opacity="0.2"/>
-
-            {/* Geometric Shapes */}
-            <circle cx="80" cy="150" r="40" fill="white" opacity="0.1"/>
-            <rect x="300" y="100" width="60" height="60" fill="white" opacity="0.1" transform="rotate(45 330 130)"/>
-            <polygon points="200,450 250,500 150,500" fill="white" opacity="0.1"/>
-
-            {/* Additional decorative elements */}
-            <circle cx="320" cy="400" r="25" fill="white" opacity="0.08"/>
-            <rect x="50" y="500" width="40" height="40" fill="white" opacity="0.08" transform="rotate(30 70 520)"/>
-            <ellipse cx="250" cy="300" rx="35" ry="20" fill="white" opacity="0.06"/>
-          </svg>
+      <div className="relative hidden items-center justify-center bg-[#f7f6fb] lg:flex lg:w-[48%] xl:w-[52%]">
+        <div className="relative w-full max-w-[700px] rounded-[72px] bg-[#ff007a] shadow-[0_45px_110px_rgba(255,0,122,0.35)] aspect-[442/550] overflow-hidden">
+          <RegisterAccent className="absolute inset-0 scale-[1.04]" aria-hidden="true" />
         </div>
       </div>
     </div>

@@ -188,7 +188,7 @@ export function Sidebar() {
         </Link>
       </div>
 
-      <nav className="relative z-10 flex-1 px-4 py-4 pointer-events-auto">
+      <nav className="relative z-10 flex-1 px-4 py-4 overflow-y-auto pointer-events-auto custom-scrollbar">
         <div className="space-y-0.5 pb-1">
           {filteredNavItems.map((item) => {
             const isActive = pathname === item.href

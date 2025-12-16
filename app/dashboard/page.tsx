@@ -115,7 +115,7 @@ export default function Dashboard() {
           .order('created_at', { ascending: false })
           .limit(10)
 
-        console.log('[DEBUG] Activity data:', activityData, 'error:', activityError)
+
 
         const formattedActivity: RecentActivity[] = (activityData || []).map((activity: any) => ({
           id: activity.id,

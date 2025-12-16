@@ -24,14 +24,14 @@ export interface BreachedPasswordResult {
 export const passwordSchema = z.object({
   password: z
     .string()
-    .min(12, 'Password must be at least 12 characters long')
-    .max(128, 'Password cannot exceed 128 characters')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .regex(/[0-9]/, 'Password must contain at least one number')
-    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character')
-    .regex(/^(?!.*(.).*\1).*$/, 'Password cannot contain repeated characters')
-    .regex(/^(?!.*(123|abc|qwe|password|admin|user)).*$/i, 'Password cannot contain common patterns')
+    .min(12, 'Kata sandi minimal harus 12 karakter')
+    .max(128, 'Kata sandi tidak boleh melebihi 128 karakter')
+    .regex(/[A-Z]/, 'Password harus mengandung setidaknya satu huruf besar')
+    .regex(/[a-z]/, 'Password harus mengandung setidaknya satu huruf kecil')
+    .regex(/[0-9]/, 'Password harus mengandung setidaknya satu angka')
+    .regex(/[^A-Za-z0-9]/, 'Password harus mengandung setidaknya satu karakter khusus')
+    .regex(/^(?!.*(.).*\1).*$/, 'Password tidak boleh mengandung karakter yang sama')
+    .regex(/^(?!.*(123|abc|qwe|password|admin|user)).*$/i, 'Password tidak boleh mengandung pola umum')
 })
 
 /**
@@ -85,11 +85,11 @@ export function validatePassword(password: string): PasswordValidationResult {
 
   // Additional validation checks
   if (password.toLowerCase().includes('password')) {
-    errors.push('Password cannot contain the word "password"')
+    errors.push('Password tidak boleh mengandung kata "password"')
   }
 
   if (password.toLowerCase().includes('labinventory')) {
-    errors.push('Password cannot contain the application name')
+    errors.push('Password tidak boleh mengandung nama aplikasi')
   }
 
   // Check for common passwords
@@ -99,7 +99,7 @@ export function validatePassword(password: string): PasswordValidationResult {
   ]
 
   if (commonPasswords.includes(password.toLowerCase())) {
-    errors.push('Password is too common and easily guessable')
+    errors.push('Password terlalu umum dan mudah ditebak')
   }
 
   const { strength, score } = calculatePasswordStrength(password)
@@ -139,7 +139,6 @@ export async function checkBreachedPassword(
     })
 
     if (!response.ok) {
-      // If API is unavailable, skip breach check but don't block
       console.warn('HaveIBeenPwned API unavailable, skipping breach check')
       return { isBreached: false }
     }
@@ -153,15 +152,15 @@ export async function checkBreachedPassword(
         return {
           isBreached: true,
           breachCount: parseInt(count),
-          message: `This password has been found in ${count} data breaches. Please choose a different password.`
+          message: `Password ini telah ditemukan dalam ${count} data breaches. Harap pilih password yang berbeda.`
         }
       }
     }
 
     return { isBreached: false }
   } catch (error) {
-    console.error('Error checking breached password:', error)
-    // Don't block user if API fails
+    // Silently fail or warn if API is unreachable (common in dev/offline)
+    console.warn('Skipping breach check (API unreachable):', error instanceof Error ? error.message : 'Unknown error')
     return { isBreached: false }
   }
 }
@@ -173,7 +172,6 @@ export function checkPasswordHistory(
   newPassword: string,
   passwordHistory: string[]
 ): boolean {
-  // Simple check - in production, you'd use proper password hashing comparison
   return !passwordHistory.includes(newPassword)
 }
 
@@ -184,18 +182,14 @@ export function generateSecurePassword(length: number = 16): string {
   const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*'
   let password = ''
 
-  // Ensure at least one character from each required category
   password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]
   password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]
   password += '0123456789'[Math.floor(Math.random() * 10)]
   password += '!@#$%^&*'[Math.floor(Math.random() * 8)]
 
-  // Fill remaining length
   for (let i = 4; i < length; i++) {
     password += charset[Math.floor(Math.random() * charset.length)]
   }
-
-  // Shuffle the password
   return password
     .split('')
     .sort(() => Math.random() - 0.5)
@@ -222,16 +216,13 @@ export async function performCompletePasswordValidation(
     return validation
   }
 
-  // Check password history
   if (passwordHistory && !checkPasswordHistory(password, passwordHistory)) {
-    validation.errors.push('You cannot reuse a previous password')
+    validation.errors.push('Kamu tidak dapat menggunakan password sebelumnya')
     validation.isValid = false
   }
-
-  // Check for breached passwords
   const breachInfo = await checkBreachedPassword(password)
   if (breachInfo.isBreached) {
-    validation.errors.push(breachInfo.message || 'Password has been found in data breaches')
+    validation.errors.push(breachInfo.message || 'Password telah ditemukan dalam data breaches')
     validation.isValid = false
   }
 
