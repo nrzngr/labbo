@@ -75,52 +75,33 @@ export function CustomAuthProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const sessionData = localStorage.getItem('authSession')
-        if (!sessionData) {
+        // Use server action to get session from HTTP-only cookie
+        const { getSession } = await import('@/app/actions/auth-session')
+        const session = await getSession()
+
+        if (!session?.user?.id) {
           setLoading(false)
           return
         }
 
-        const session = JSON.parse(sessionData)
-        if (!session.userId) {
-          localStorage.removeItem('authSession')
-          setLoading(false)
-          return
-        }
-
-        let user = null
-        let error = null
-
-        // First try to get user from database
-        const { data: dbUser, error: dbError } = await supabase
+        // Fetch full user data from database
+        const { data: dbUser, error } = await supabase
           .from('users')
           .select('*')
-          .eq('id', session.userId)
+          .eq('id', session.user.id)
           .single()
 
-        if (dbUser && !dbError) {
-          user = dbUser
-        } else {
-          // If not in database, check local users
-          const localUsers = JSON.parse(localStorage.getItem('localUsers') || '[]')
-          const localUser = localUsers.find((u: any) => u.id === session.userId)
-          if (localUser) {
-            user = localUser
-          } else {
-            error = dbError
-          }
-        }
-
-        if (error || !user) {
-          localStorage.removeItem('authSession')
+        if (error || !dbUser) {
+          // Invalid session - user no longer exists
+          const { logoutSession } = await import('@/app/actions/auth-session')
+          await logoutSession()
           setLoading(false)
           return
         }
 
-        setUser(user)
+        setUser(dbUser as User)
       } catch (error) {
         console.error('Session check error:', error)
-        localStorage.removeItem('authSession')
       } finally {
         setLoading(false)
       }
@@ -137,148 +118,44 @@ export function CustomAuthProvider({ children }: { children: React.ReactNode }) 
         return { success: false, error: 'Account is temporarily locked. Please try again later.' }
       }
 
-      // TODO: Implement failed login logging and rate limiting
-      // This will be enabled after database schema is properly updated
-      // For now, we'll skip the advanced security features to ensure build works
-
-      const demoAccounts = {
-        'admin@example.com': 'admin123',
-        'mahasiswa@example.com': 'mahasiswa123',
-        'dosen@example.com': 'dosen123',
-        'labstaff@example.com': 'labstaff123'
-      }
-
-      // Handle demo accounts
-      if (demoAccounts[email as keyof typeof demoAccounts]) {
-        const tempPassword = localStorage.getItem(`tempPassword_${email}`)
-        const expectedPassword = tempPassword || demoAccounts[email as keyof typeof demoAccounts]
-
-        if (password !== expectedPassword) {
-          return { success: false, error: 'Invalid email or password' }
-        }
-
-        const { data: user, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', email)
-          .single()
-
-        if (error || !user) {
-          return { success: false, error: 'Account not found' }
-        }
-
-        // Type assertion to satisfy TypeScript
-        const typedUser = user as User
-
-        // TODO: Update login information when database functions are available
-        // await supabase.rpc('update_user_login', {
-        //   p_user_id: user.id,
-        //   p_ip_address: '127.0.0.1',
-        //   p_user_agent: navigator.userAgent
-        // })
-
-        const sessionData = {
-          userId: typedUser.id,
-          loginTime: new Date().toISOString()
-        }
-
-        localStorage.setItem('authSession', JSON.stringify(sessionData))
-        setUser(typedUser)
-        console.log('Client (Demo): Calling loginSession server action')
-        await loginSession(typedUser)
-        console.log('Client (Demo): loginSession completed')
-
-        return { success: true }
-      }
-
-      // Handle regular accounts - check database first
+      // Fetch user from database
       const { data: user, error } = await supabase
         .from('users')
         .select('*')
-        .eq('email', email)
+        .eq('email', email.toLowerCase().trim())
         .single()
 
-      let typedUser: User | null = null
-      let passwordMatch = false
-
-      if (user && !error) {
-        // User found in database
-        const dbUser = user as User
-
-        // Check if email is verified
-        if (!dbUser.email_verified) {
-          return { success: false, error: 'Please verify your email before logging in' }
-        }
-
-        // Check local password storage first (for database users without password column)
-        const userPasswords = JSON.parse(localStorage.getItem('userPasswords') || '[]')
-        const passwordData = userPasswords.find((p: any) => p.userId === dbUser.id && p.email === email)
-
-        if (passwordData) {
-          passwordMatch = await bcrypt.compare(password, passwordData.hashedPassword)
-          if (passwordMatch) {
-            typedUser = dbUser
-          }
-        } else if (dbUser.custom_password) {
-          // Try database password if it exists
-          passwordMatch = await bcrypt.compare(password, dbUser.custom_password)
-          if (passwordMatch) {
-            typedUser = dbUser
-          }
-        } else {
-          // Check local users as fallback
-          const localUsers = JSON.parse(localStorage.getItem('localUsers') || '[]')
-          const localUser = localUsers.find((u: any) => u.email === email)
-          if (localUser) {
-            passwordMatch = await bcrypt.compare(password, localUser.custom_password)
-            if (passwordMatch) {
-              typedUser = localUser
-            }
-          }
-        }
-      } else {
-        // User not found in database, check local users
-        const localUsers = JSON.parse(localStorage.getItem('localUsers') || '[]')
-        const localUser = localUsers.find((u: any) => u.email === email)
-
-        if (localUser) {
-          // Check if email is verified
-          if (!localUser.email_verified) {
-            return { success: false, error: 'Please verify your email before logging in' }
-          }
-
-          passwordMatch = await bcrypt.compare(password, localUser.custom_password)
-          if (passwordMatch) {
-            typedUser = localUser
-          }
-        }
-      }
-
-      if (!typedUser || !passwordMatch) {
+      // Generic error message to prevent email enumeration
+      if (error || !user) {
         return { success: false, error: 'Invalid email or password' }
       }
 
-      // Update login information
-      // TODO: Implement login tracking when database functions are available
-      // await supabase.rpc('update_user_login', {
-      //   p_user_id: typedUser.id,
-      //   p_ip_address: '127.0.0.1',
-      //   p_user_agent: navigator.userAgent
-      // })
+      const dbUser = user as User
 
-      const sessionData = {
-        userId: typedUser.id,
-        loginTime: new Date().toISOString()
+      // Check if email is verified
+      if (!dbUser.email_verified) {
+        return { success: false, error: 'Please verify your email before logging in' }
       }
 
-      localStorage.setItem('authSession', JSON.stringify(sessionData))
-      setUser(typedUser)
-      console.log('Client: Calling loginSession server action')
-      await loginSession(typedUser)
-      console.log('Client: loginSession completed')
+      // Verify password against database password_hash
+      const passwordHash = (dbUser as any).password_hash
+      if (!passwordHash) {
+        console.error('User has no password_hash set:', dbUser.email)
+        return { success: false, error: 'Invalid email or password' }
+      }
+
+      const passwordMatch = await bcrypt.compare(password, passwordHash)
+      if (!passwordMatch) {
+        // TODO: Increment failed login attempts in database
+        return { success: false, error: 'Invalid email or password' }
+      }
+
+      // Set user state and create HTTP-only cookie session
+      setUser(dbUser)
+      await loginSession(dbUser)
 
       // Check if MFA is enabled for this user
-      if (typedUser.mfa_enabled) {
+      if (dbUser.mfa_enabled) {
         return { success: true, requiresMFA: true }
       }
 

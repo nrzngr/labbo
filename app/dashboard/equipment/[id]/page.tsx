@@ -263,12 +263,14 @@ export default function EquipmentDetailPage() {
                   Pinjam Sekarang
                 </button>
               )}
-              <button
-                onClick={() => router.push(`/dashboard/equipment/${equipmentId}/edit`)}
-                className="px-5 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold border border-white/10 transition-all hover:border-white/30 backdrop-blur-sm"
-              >
-                Edit
-              </button>
+              {(user?.role === 'admin' || user?.role === 'lab_staff') && (
+                <button
+                  onClick={() => router.push(`/dashboard/equipment/${equipmentId}/edit`)}
+                  className="px-5 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold border border-white/10 transition-all hover:border-white/30 backdrop-blur-sm"
+                >
+                  Edit
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -287,8 +289,8 @@ export default function EquipmentDetailPage() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex-1 min-w-[120px] py-3 px-4 rounded-xl text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === tab.id
-                  ? 'bg-[#1a1f37] text-white shadow-lg shadow-indigo-900/20 ring-2 ring-indigo-500 ring-offset-2'
-                  : 'bg-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                ? 'bg-[#1a1f37] text-white shadow-lg shadow-indigo-900/20 ring-2 ring-indigo-500 ring-offset-2'
+                : 'bg-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                 }`}
             >
               <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-[#ff007a]' : ''}`} />
@@ -381,9 +383,11 @@ export default function EquipmentDetailPage() {
                       <h2 className="text-xl font-extrabold text-[#1a1f37]">Riwayat Pemeliharaan</h2>
                       <p className="text-gray-400 text-sm">Log servis dan perbaikan</p>
                     </div>
-                    <button className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-bold hover:bg-gray-800 transition-colors">
-                      + Catat Servis
-                    </button>
+                    {(user?.role === 'admin' || user?.role === 'lab_staff') && (
+                      <button className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-bold hover:bg-gray-800 transition-colors">
+                        + Catat Servis
+                      </button>
+                    )}
                   </div>
 
                   {maintenanceHistory.length > 0 ? (
@@ -398,7 +402,7 @@ export default function EquipmentDetailPage() {
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                               <div className="flex items-center gap-3">
                                 <span className={`px-2 py-1 rounded-md text-xs font-bold uppercase ${record.type === 'preventive' ? 'bg-blue-100 text-blue-700' :
-                                    record.type === 'corrective' ? 'bg-orange-100 text-orange-700' : 'bg-purple-100 text-purple-700'
+                                  record.type === 'corrective' ? 'bg-orange-100 text-orange-700' : 'bg-purple-100 text-purple-700'
                                   }`}>
                                   {record.type}
                                 </span>
@@ -513,8 +517,8 @@ export default function EquipmentDetailPage() {
                   <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                     <div className="flex items-center justify-between mb-3">
                       <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${lastBorrowing.status === 'active' ? 'bg-blue-100 text-blue-700' :
-                          lastBorrowing.status === 'returned' ? 'bg-green-100 text-green-700' :
-                            lastBorrowing.status === 'overdue' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
+                        lastBorrowing.status === 'returned' ? 'bg-green-100 text-green-700' :
+                          lastBorrowing.status === 'overdue' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
                         }`}>
                         {lastBorrowing.status}
                       </span>
@@ -546,7 +550,11 @@ export default function EquipmentDetailPage() {
                   </div>
 
                   <button
-                    onClick={() => router.push('/dashboard/transactions')}
+                    onClick={() => router.push(
+                      (user?.role === 'admin' || user?.role === 'lab_staff')
+                        ? '/dashboard/transactions'
+                        : '/dashboard/my-borrowings'
+                    )}
                     className="w-full py-2.5 text-xs font-bold text-purple-600 border border-purple-200 rounded-xl hover:bg-purple-50 transition-colors flex items-center justify-center gap-2"
                   >
                     <History className="w-3 h-3" />

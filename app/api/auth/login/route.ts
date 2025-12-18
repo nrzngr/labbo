@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import bcrypt from 'bcryptjs'
+import { cookies } from 'next/headers'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,63 +19,66 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Fetch user from database
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('*')
-      .eq('email', email)
+      .eq('email', email.toLowerCase().trim())
       .single()
 
+    // Generic error to prevent email enumeration
     if (userError || !user) {
       return NextResponse.json(
-        {
-          error: 'Email tidak ditemukan',
-          details: userError?.message
-        },
+        { error: 'Email atau password salah' },
         { status: 401 }
       )
     }
 
-    // Untuk demo purposes, kita akan menggunakan password yang di-hash dengan cara sederhana
-    // Dalam production, gunakan password hashing yang proper seperti bcrypt
-    const hashPassword = (password: string) => {
-      // Simple hash function untuk demo
-      return btoa(password + 'salt_laboratory_2024')
+    // Check if user has password_hash
+    const passwordHash = user.password_hash
+    if (!passwordHash) {
+      return NextResponse.json(
+        { error: 'Email atau password salah' },
+        { status: 401 }
+      )
     }
 
-    // Simpan password hash di database (dalam real app, seharusnya sudah ada field password_hash)
-    // Untuk sekarang, kita gunakan beberapa default password untuk demo
-    const defaultPasswords: Record<string, string> = {
-      'admin@example.com': 'admin123',
-      'student@example.com': 'student123',
-      'lecturer@example.com': 'lecturer123',
-      'labstaff@example.com': 'labstaff123'
-    }
-
-    const isValidPassword = defaultPasswords[email] === password ||
-                          hashPassword(password) === 'c3R1ZGVudDEyM3NhbHRfbGFib3JhdG9yeV8yMDI0' // student123
-
+    // Verify password with bcrypt
+    const isValidPassword = await bcrypt.compare(password, passwordHash)
     if (!isValidPassword) {
       return NextResponse.json(
-        { error: 'Password salah' },
+        { error: 'Email atau password salah' },
         { status: 401 }
       )
     }
 
-    const sessionToken = Buffer.from(JSON.stringify({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      timestamp: Date.now()
-    })).toString('base64')
+    // Check if email is verified
+    if (!user.email_verified) {
+      return NextResponse.json(
+        { error: 'Silakan verifikasi email Anda terlebih dahulu' },
+        { status: 401 }
+      )
+    }
 
-    await supabase
-      .from('user_sessions')
-      .insert({
-        user_id: user.id,
-        session_token: sessionToken,
-        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 jam
-        created_at: new Date().toISOString()
-      })
+    // Create session payload
+    const sessionPayload = {
+      user: {
+        id: user.id,
+        role: user.role,
+        email: user.email,
+        full_name: user.full_name
+      }
+    }
+
+    // Set HTTP-only session cookie
+    const cookieStore = await cookies()
+    cookieStore.set('session', JSON.stringify(sessionPayload), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7 // 1 week
+    })
 
     return NextResponse.json({
       success: true,
@@ -84,11 +89,8 @@ export async function POST(request: NextRequest) {
         role: user.role,
         department: user.department,
         nim: user.nim,
-        nip: user.nip,
-        student_level: user.student_level,
-        lecturer_rank: user.lecturer_rank
-      },
-      sessionToken
+        nip: user.nip
+      }
     })
 
   } catch (error) {

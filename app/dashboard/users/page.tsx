@@ -3,12 +3,14 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { UserList } from '@/components/users/user-list'
+import { AddUserDialog } from '@/components/users/add-user-dialog'
 import { ModernCard } from '@/components/ui/modern-card'
 import { Users, UserPlus } from 'lucide-react'
 import { ModernButton } from '@/components/ui/modern-button'
 
 export default function UsersPage() {
   const [queryClient] = useState(() => new QueryClient())
+  const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false)
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -35,6 +37,7 @@ export default function UsersPage() {
                 size="sm"
                 leftIcon={<UserPlus className="w-4 h-4" />}
                 className="w-full sm:w-auto button-hover-lift"
+                onClick={() => setIsAddUserDialogOpen(true)}
               >
                 Tambah Pengguna
               </ModernButton>
@@ -47,6 +50,12 @@ export default function UsersPage() {
           <UserList />
         </div>
       </div>
+
+      {/* Add User Dialog */}
+      <AddUserDialog
+        open={isAddUserDialogOpen}
+        onOpenChange={setIsAddUserDialogOpen}
+      />
     </QueryClientProvider>
   )
 }

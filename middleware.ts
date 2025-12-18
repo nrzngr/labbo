@@ -55,8 +55,43 @@ export async function middleware(req: NextRequest) {
     )
   }
 
+  // Skip auth check for public routes
   if (pathname.startsWith('/api/') || pathname.startsWith('/_next/') || pathname.includes('.')) {
     return response
+  }
+
+  // Define public routes that don't require authentication
+  const publicRoutes = ['/', '/register', '/forgot-password', '/reset-password', '/verify-email', '/verify-email-sent', '/link-sent']
+  const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'))
+
+  // Protect /dashboard routes - require valid session
+  if (pathname.startsWith('/dashboard') && !isPublicRoute) {
+    const sessionCookie = req.cookies.get('session')
+
+    if (!sessionCookie?.value) {
+      // No session - redirect to login
+      const loginUrl = new URL('/', req.url)
+      loginUrl.searchParams.set('redirect', pathname)
+      return NextResponse.redirect(loginUrl)
+    }
+
+    try {
+      // Validate session structure
+      const session = JSON.parse(sessionCookie.value)
+      if (!session?.user?.id || !session?.user?.role) {
+        // Invalid session - redirect to login
+        const loginUrl = new URL('/', req.url)
+        return NextResponse.redirect(loginUrl)
+      }
+
+      // Session valid - add user info to headers for downstream use
+      response.headers.set('X-User-Id', session.user.id)
+      response.headers.set('X-User-Role', session.user.role)
+    } catch {
+      // Parse error - redirect to login
+      const loginUrl = new URL('/', req.url)
+      return NextResponse.redirect(loginUrl)
+    }
   }
 
   return response
