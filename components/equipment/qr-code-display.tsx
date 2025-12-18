@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { ModernButton } from '@/components/ui/modern-button'
-import { ModernCard } from '@/components/ui/modern-card'
-import { QrCode, Download, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react'
+import { QrCode, Download, Printer, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react'
 import { QRCodeService } from '@/lib/qr-service'
 
 interface QRCodeDisplayProps {
@@ -39,12 +38,11 @@ export function QRCodeDisplay({
       if (existingQR) {
         setQrCode(existingQR)
       } else {
-        // Generate new QR code if none exists
         await generateNewQRCode()
       }
     } catch (error) {
       console.error('Error loading QR code:', error)
-      setError('Failed to load QR code')
+      setError('Gagal memuat kode QR')
     } finally {
       setIsLoading(false)
     }
@@ -57,9 +55,7 @@ export function QRCodeDisplay({
 
       const response = await fetch('/api/qr-codes/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ equipment_id: equipmentId }),
       })
 
@@ -68,18 +64,14 @@ export function QRCodeDisplay({
       if (data.success) {
         setQrCode(data.qr_code)
       } else {
-        setError(data.error || 'Failed to generate QR code')
+        setError(data.error || 'Gagal generate kode QR')
       }
     } catch (error) {
       console.error('Error generating QR code:', error)
-      setError('Failed to generate QR code')
+      setError('Gagal generate kode QR')
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const regenerateQRCode = async () => {
-    await generateNewQRCode()
   }
 
   const downloadQRCode = () => {
@@ -94,7 +86,7 @@ export function QRCodeDisplay({
       document.body.removeChild(link)
     } catch (error) {
       console.error('Error downloading QR code:', error)
-      setError('Failed to download QR code')
+      setError('Gagal download kode QR')
     }
   }
 
@@ -110,47 +102,28 @@ export function QRCodeDisplay({
         <head>
           <title>QR Code - ${equipmentName}</title>
           <style>
-            body {
-              font-family: Arial, sans-serif;
-              text-align: center;
-              margin: 20px;
-            }
-            .qr-container {
-              margin: 20px auto;
-              max-width: 400px;
-            }
-            .qr-image {
-              max-width: 300px;
-              height: auto;
-              border: 2px solid #000;
-              padding: 10px;
-            }
-            .equipment-info {
-              margin-top: 20px;
-              border: 1px solid #ccc;
-              padding: 10px;
-            }
-            @media print {
-              .no-print { display: none; }
-            }
+            body { font-family: system-ui, sans-serif; text-align: center; margin: 40px; }
+            .container { max-width: 400px; margin: 0 auto; padding: 30px; border: 2px solid #eee; border-radius: 16px; }
+            .qr-image { width: 250px; height: 250px; margin: 20px auto; }
+            .title { font-size: 24px; font-weight: bold; color: #1a1f36; margin-bottom: 10px; }
+            .serial { color: #666; font-family: monospace; background: #f5f5f5; padding: 8px 16px; border-radius: 8px; display: inline-block; }
+            .info { margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }
+            .info p { margin: 8px 0; color: #666; }
+            @media print { .no-print { display: none; } }
           </style>
         </head>
         <body>
-          <div class="qr-container">
-            <h2>${equipmentName}</h2>
+          <div class="container">
+            <div class="title">${equipmentName}</div>
+            <div class="serial">${serialNumber}</div>
             <img src="${qrCode.qr_code_url}" alt="QR Code" class="qr-image" />
-            <div class="equipment-info">
-              <p><strong>Serial Number:</strong> ${serialNumber}</p>
-              ${category ? `<p><strong>Category:</strong> ${category}</p>` : ''}
-              ${location ? `<p><strong>Location:</strong> ${location}</p>` : ''}
+            <div class="info">
+              ${category ? `<p><strong>Kategori:</strong> ${category}</p>` : ''}
+              ${location ? `<p><strong>Lokasi:</strong> ${location}</p>` : ''}
+              <p style="font-size: 12px; color: #999; margin-top: 16px;">Scan untuk akses detail peralatan</p>
             </div>
-            <p><em>Scan this QR code to access equipment details</em></p>
           </div>
-          <script>
-            window.onload = function() {
-              window.print();
-            }
-          </script>
+          <script>window.onload = function() { window.print(); }</script>
         </body>
       </html>
     `)
@@ -159,114 +132,103 @@ export function QRCodeDisplay({
 
   if (isLoading) {
     return (
-      <ModernCard variant="default" padding="lg" className="w-full max-w-sm">
-        <div className="flex flex-col items-center justify-center py-8">
-          <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mb-2" />
-          <p className="text-gray-600">Loading QR code...</p>
-        </div>
-      </ModernCard>
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="w-12 h-12 rounded-full border-4 border-gray-200 border-t-[#ff007a] animate-spin mb-4"></div>
+        <p className="text-gray-500 font-medium">Memuat kode QR...</p>
+      </div>
     )
   }
 
   if (error) {
     return (
-      <ModernCard variant="default" padding="lg" className="w-full max-w-sm">
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg">
-            <AlertTriangle className="w-4 h-4 text-red-600" />
-            <span className="text-red-800 text-sm">{error}</span>
-          </div>
-          <ModernButton
-            onClick={loadQRCode}
-            variant="outline"
-            size="sm"
-            className="w-full"
-          >
-            Retry
-          </ModernButton>
+      <div className="text-center py-8">
+        <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <AlertTriangle className="w-7 h-7 text-red-500" />
         </div>
-      </ModernCard>
+        <p className="text-red-600 font-medium mb-4">{error}</p>
+        <ModernButton onClick={loadQRCode} variant="outline" size="sm">
+          Coba Lagi
+        </ModernButton>
+      </div>
     )
   }
 
   if (!qrCode) {
     return (
-      <ModernCard variant="default" padding="lg" className="w-full max-w-sm">
-        <div className="text-center py-8">
-          <QrCode className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-          <p className="text-gray-600 mb-4">No QR code available</p>
-          <ModernButton
-            onClick={generateNewQRCode}
-            variant="default"
-            size="sm"
-            loading={isLoading}
-            className="w-full"
-          >
-            Generate QR Code
-          </ModernButton>
+      <div className="text-center py-8">
+        <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <QrCode className="w-7 h-7 text-gray-400" />
         </div>
-      </ModernCard>
+        <p className="text-gray-600 mb-4">Belum ada kode QR</p>
+        <ModernButton onClick={generateNewQRCode} loading={isLoading}>
+          Generate Kode QR
+        </ModernButton>
+      </div>
     )
   }
 
   return (
-    <ModernCard variant="default" padding="lg" className="w-full max-w-sm">
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 mb-2">
-          <CheckCircle className="w-5 h-5 text-green-600" />
-          <h3 className="font-semibold">Equipment QR Code</h3>
-        </div>
-
-        <div className="flex justify-center">
-          <div className="p-4 bg-white rounded-lg shadow-sm border">
-            <img
-              src={qrCode.qr_code_url}
-              alt={`QR Code for ${equipmentName}`}
-              className="w-64 h-64 object-contain"
-            />
-          </div>
-        </div>
-
-        <div className="text-center">
-          <p className="text-sm text-gray-600 mb-2">{equipmentName}</p>
-          <p className="text-xs text-gray-500">Serial: {serialNumber}</p>
-        </div>
-
-        <div className="flex gap-2">
-          <ModernButton
-            onClick={downloadQRCode}
-            variant="outline"
-            size="sm"
-            leftIcon={<Download className="w-4 h-4" />}
-            className="flex-1"
-          >
-            Download
-          </ModernButton>
-
-          <ModernButton
-            onClick={printQRCode}
-            variant="outline"
-            size="sm"
-            className="flex-1"
-          >
-            Print
-          </ModernButton>
-
-          <ModernButton
-            onClick={regenerateQRCode}
-            variant="secondary"
-            size="sm"
-            leftIcon={<RefreshCw className="w-4 h-4" />}
-            className="flex-1"
-          >
-            Regenerate
-          </ModernButton>
-        </div>
-
-        <div className="text-xs text-gray-500 text-center">
-          <p>Scan this QR code to quickly access equipment details</p>
-        </div>
+    <div className="flex flex-col items-center">
+      {/* Status Badge */}
+      <div className="flex items-center gap-2 mb-6 px-4 py-2 bg-emerald-50 rounded-full">
+        <CheckCircle className="w-4 h-4 text-emerald-600" />
+        <span className="text-sm font-semibold text-emerald-700">Kode QR Aktif</span>
       </div>
-    </ModernCard>
+
+      {/* QR Image */}
+      <div className="p-4 bg-white rounded-2xl border-2 border-gray-100 shadow-sm mb-6">
+        <img
+          src={qrCode.qr_code_url}
+          alt={`QR Code for ${equipmentName}`}
+          className="w-52 h-52 object-contain"
+        />
+      </div>
+
+      {/* Equipment Info */}
+      <div className="text-center mb-8">
+        <p className="font-bold text-lg text-gray-900 mb-1">{equipmentName}</p>
+        <p className="text-sm text-gray-500 font-mono bg-gray-100 px-4 py-1.5 rounded-xl inline-block">
+          {serialNumber}
+        </p>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex items-center justify-center gap-3 flex-wrap">
+        <ModernButton
+          onClick={downloadQRCode}
+          variant="outline"
+          size="sm"
+          leftIcon={<Download className="w-4 h-4" />}
+          className="border-[#ff007a] text-[#ff007a] hover:bg-[#ff007a]/5 rounded-xl"
+        >
+          Download
+        </ModernButton>
+
+        <ModernButton
+          onClick={printQRCode}
+          variant="outline"
+          size="sm"
+          leftIcon={<Printer className="w-4 h-4" />}
+          className="border-[#ff007a] text-[#ff007a] hover:bg-[#ff007a]/5 rounded-xl"
+        >
+          Print
+        </ModernButton>
+
+        <ModernButton
+          onClick={generateNewQRCode}
+          variant="secondary"
+          size="sm"
+          leftIcon={<RefreshCw className="w-4 h-4" />}
+          className="rounded-xl"
+        >
+          Regenerate
+        </ModernButton>
+      </div>
+
+      {/* Helper Text */}
+      <p className="text-xs text-gray-400 mt-6 text-center">
+        Scan kode QR ini untuk mengakses detail peralatan dengan cepat
+      </p>
+    </div>
   )
 }

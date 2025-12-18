@@ -153,6 +153,15 @@ export function PaginationInfo({
   itemsPerPage,
   className = ''
 }: PaginationInfoProps) {
+  // Handle edge case when there are no items
+  if (totalItems === 0) {
+    return (
+      <div className={`text-sm text-muted-foreground ${className}`}>
+        Tidak ada item
+      </div>
+    )
+  }
+
   const startItem = (currentPage - 1) * itemsPerPage + 1
   const endItem = Math.min(currentPage * itemsPerPage, totalItems)
 
@@ -195,35 +204,46 @@ export function TablePagination({
   showInfo = true,
   className = ''
 }: TablePaginationProps) {
-  return (
-    <div className={`flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 ${className}`}>
-      <div className="flex flex-col sm:flex-row items-center gap-4 text-sm text-muted-foreground order-2 sm:order-1">
-        {showInfo && (
-          <PaginationInfo
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={totalItems}
-            itemsPerPage={itemsPerPage}
-            className="text-center sm:text-left"
-          />
-        )}
+  // Handle edge case when there are no items
+  if (totalItems === 0 && totalPages <= 1) {
+    return (
+      <div className={`flex items-center justify-center py-6 ${className}`}>
+        <span className="text-sm text-gray-400 italic">Tidak ada item untuk ditampilkan</span>
+      </div>
+    )
+  }
 
+  const startItem = Math.max((currentPage - 1) * itemsPerPage + 1, 1)
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems)
+
+  return (
+    <div className={`flex items-center justify-between gap-6 py-5 px-6 bg-gray-50/50 border-t border-gray-100 ${className}`}>
+      {/* Left: Item count info */}
+      {showInfo && totalItems > 0 && (
+        <p className="text-sm text-gray-600">
+          Menampilkan <span className="font-bold text-[#ff007a]">{startItem}-{endItem}</span> dari <span className="font-bold text-gray-900">{totalItems}</span> item
+        </p>
+      )}
+
+      {/* Right: Controls */}
+      <div className="flex items-center gap-6 ml-auto">
+        {/* Page size selector */}
         {onPageSizeChange && (
-          <div className="flex items-center gap-2">
-            <span className="whitespace-nowrap hidden sm:inline-block mr-2 font-medium text-gray-500">Baris per halaman:</span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500 font-medium">Baris per halaman:</span>
             <Select
               value={itemsPerPage.toString()}
               onValueChange={(value) => {
                 onPageSizeChange(Number(value))
-                onPageChange(1) // Reset to first page when changing page size
+                onPageChange(1)
               }}
             >
-              <SelectTrigger className="h-9 w-[70px] border-gray-200 bg-white px-3 text-xs rounded-lg hover:border-[#ff007a] hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-[#ff007a]/20">
+              <SelectTrigger className="h-9 w-20 border-gray-200 bg-white text-sm font-semibold rounded-xl hover:border-[#ff007a] focus:ring-2 focus:ring-[#ff007a]/20 shadow-sm px-3">
                 <SelectValue placeholder={itemsPerPage.toString()} />
               </SelectTrigger>
-              <SelectContent side="top">
+              <SelectContent side="top" className="rounded-xl">
                 {pageSizeOptions.map((size) => (
-                  <SelectItem key={size} value={size.toString()} className="text-xs">
+                  <SelectItem key={size} value={size.toString()} className="text-sm font-medium">
                     {size}
                   </SelectItem>
                 ))}
@@ -231,17 +251,17 @@ export function TablePagination({
             </Select>
           </div>
         )}
-      </div>
 
-      <div className="order-1 sm:order-2 w-full sm:w-auto flex justify-center sm:justify-end">
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={onPageChange}
-          siblingCount={1}
-          showEdges={totalPages > 5}
-          className="text-xs sm:text-sm"
-        />
+        {/* Page navigation */}
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={onPageChange}
+            siblingCount={1}
+            showEdges={totalPages > 5}
+          />
+        )}
       </div>
     </div>
   )

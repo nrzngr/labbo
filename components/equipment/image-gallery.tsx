@@ -280,7 +280,7 @@ export function ImageGallery({
             {/* Enhanced Lightbox with Zoom */}
             {lightboxOpen && (
                 <div
-                    className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center"
+                    className="fixed inset-0 bg-black/95 z-[9999] flex items-center justify-center"
                     onClick={() => setLightboxOpen(false)}
                 >
                     {/* Close Button */}

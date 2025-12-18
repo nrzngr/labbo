@@ -18,10 +18,11 @@ export async function GET(
                 equipment_id,
                 scheduled_date,
                 maintenance_type,
+                title,
                 description,
                 status,
-                cost,
-                notes,
+                priority,
+                assigned_to,
                 created_at
             `)
             .eq('equipment_id', id)
@@ -37,9 +38,9 @@ export async function GET(
             id: record.id,
             date: record.scheduled_date,
             type: mapMaintenanceType(record.maintenance_type),
-            description: record.description || record.notes || 'Tidak ada deskripsi',
-            cost: record.cost,
-            performed_by: 'Staff Lab', // Default value since column doesn't exist
+            description: record.description || record.title || 'Tidak ada deskripsi',
+            cost: null, // Column doesn't exist in schema
+            performed_by: record.assigned_to || 'Staff Lab',
             status: record.status || 'pending'
         }))
 

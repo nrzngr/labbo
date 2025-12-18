@@ -194,18 +194,18 @@ export default function EquipmentDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#f8fafe]">
-      {/* Hero Section */}
-      <div className="relative bg-[#1a1f37] text-white pb-32 overflow-hidden">
-        {/* Abstract Background Shapes */}
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-[#ff007a]/20 to-purple-600/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-blue-600/20 to-cyan-400/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none"></div>
+      {/* Hero Section - Clean Light Theme */}
+      <div className="relative bg-white border-b border-gray-100 pb-8 overflow-hidden">
+        {/* Subtle Background Pattern */}
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-[#ff007a]/5 to-purple-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-blue-500/5 to-cyan-400/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none"></div>
 
         <div className="container mx-auto px-4 pt-8 relative z-10">
           <button
             onClick={() => router.back()}
-            className="flex items-center text-gray-400 hover:text-white transition-colors mb-8 group"
+            className="flex items-center text-gray-500 hover:text-[#ff007a] transition-colors mb-8 group"
           >
-            <div className="p-2 rounded-full bg-white/5 group-hover:bg-white/10 mr-3 transition-all">
+            <div className="p-2 rounded-full bg-gray-100 group-hover:bg-[#ff007a]/10 mr-3 transition-all">
               <ArrowLeft className="w-5 h-5" />
             </div>
             <span className="font-medium">Kembali ke Daftar</span>
@@ -217,20 +217,20 @@ export default function EquipmentDetailPage() {
                 <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${getStatusColor(equipment.status)}`}>
                   {equipment.status}
                 </span>
-                <span className="text-gray-400 text-sm font-mono bg-white/5 px-3 py-1 rounded-full border border-white/10 flex items-center gap-2">
+                <span className="text-gray-500 text-sm font-mono bg-gray-100 px-3 py-1 rounded-full border border-gray-200 flex items-center gap-2">
                   <Tag className="w-3 h-3" />
                   {equipment.serial_number}
                 </span>
               </div>
 
-              <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">
+              <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-tight text-gray-900">
                 {equipment.name}
               </h1>
 
-              <div className="flex flex-wrap items-center gap-6 text-gray-300 text-sm md:text-base">
+              <div className="flex flex-wrap items-center gap-6 text-gray-600 text-sm md:text-base">
                 {equipment.category && (
                   <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400">
+                    <div className="p-1.5 rounded-lg bg-blue-100 text-blue-600">
                       <Tag className="w-4 h-4" />
                     </div>
                     {typeof equipment.category === 'object' ? equipment.category?.name : equipment.category}
@@ -238,14 +238,14 @@ export default function EquipmentDetailPage() {
                 )}
                 {equipment.location && (
                   <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                    <div className="p-1.5 rounded-lg bg-emerald-100 text-emerald-600">
                       <MapPin className="w-4 h-4" />
                     </div>
                     {equipment.location}
                   </div>
                 )}
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400">
+                  <div className="p-1.5 rounded-lg bg-purple-100 text-purple-600">
                     <Clock className="w-4 h-4" />
                   </div>
                   Ditambahkan {new Date(equipment.created_at).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
@@ -266,7 +266,7 @@ export default function EquipmentDetailPage() {
               {(user?.role === 'admin' || user?.role === 'lab_staff') && (
                 <button
                   onClick={() => router.push(`/dashboard/equipment/${equipmentId}/edit`)}
-                  className="px-5 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold border border-white/10 transition-all hover:border-white/30 backdrop-blur-sm"
+                  className="px-5 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold border border-gray-200 transition-all"
                 >
                   Edit
                 </button>
@@ -276,9 +276,9 @@ export default function EquipmentDetailPage() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 -mt-20 relative z-20 pb-12">
+      <div className="container mx-auto px-4 py-8 relative z-20">
         {/* Navigation Tabs */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-2 mb-8 flex flex-wrap gap-2">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 mb-8 flex flex-wrap gap-2">
           {[
             { id: 'overview', label: 'Ringkasan', icon: FileText },
             { id: 'maintenance', label: 'Riwayat Servis', icon: Wrench },
@@ -289,11 +289,11 @@ export default function EquipmentDetailPage() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex-1 min-w-[120px] py-3 px-4 rounded-xl text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === tab.id
-                ? 'bg-[#1a1f37] text-white shadow-lg shadow-indigo-900/20 ring-2 ring-indigo-500 ring-offset-2'
+                ? 'bg-[#ff007a] text-white shadow-lg shadow-[#ff007a]/20'
                 : 'bg-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                 }`}
             >
-              <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-[#ff007a]' : ''}`} />
+              <tab.icon className="w-4 h-4" />
               {tab.label}
             </button>
           ))}
@@ -475,22 +475,24 @@ export default function EquipmentDetailPage() {
             )}
 
             {activeTab === 'qr' && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex justify-center">
-                <ModernCard className="max-w-md w-full text-center">
-                  <h2 className="text-xl font-extrabold text-[#1a1f37] mb-2">Kode QR Digital</h2>
-                  <p className="text-gray-400 text-sm mb-8">Scan untuk identifikasi cepat</p>
-
-                  <div className="bg-white p-8 rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 inline-block mb-8">
-                    <QRCodeDisplay
-                      equipmentId={equipment.id}
-                      equipmentName={equipment.name}
-                      serialNumber={equipment.serial_number}
-                      category={typeof equipment.category === 'object' ? equipment.category?.name : equipment.category}
-                      location={equipment.location}
-                    />
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <ModernCard className="p-8">
+                  <div className="text-center mb-6">
+                    <h2 className="text-xl font-extrabold text-gray-900 mb-2">Kode QR Digital</h2>
+                    <p className="text-gray-500 text-sm">Scan untuk identifikasi cepat</p>
                   </div>
 
-                  <p className="text-xs text-gray-400">ID: {equipment.id}</p>
+                  <QRCodeDisplay
+                    equipmentId={equipment.id}
+                    equipmentName={equipment.name}
+                    serialNumber={equipment.serial_number}
+                    category={typeof equipment.category === 'object' ? equipment.category?.name : equipment.category}
+                    location={equipment.location}
+                  />
+
+                  <div className="mt-6 pt-6 border-t border-gray-100 text-center">
+                    <p className="text-xs text-gray-400 font-mono">ID: {equipment.id}</p>
+                  </div>
                 </ModernCard>
               </div>
             )}
@@ -570,9 +572,9 @@ export default function EquipmentDetailPage() {
             </div>
 
             {/* Quick Actions */}
-            <div className="bg-gradient-to-br from-[#1a1f37] to-[#0f1225] rounded-3xl p-6 text-white shadow-xl shadow-gray-900/10">
-              <h3 className="font-bold mb-4 flex items-center gap-2">
-                <span className="w-2 h-6 bg-[#ff007a] rounded-full inline-block"></span>
+            <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+              <h3 className="font-bold mb-4 flex items-center gap-2 text-gray-900">
+                <span className="w-1.5 h-6 bg-[#ff007a] rounded-full inline-block"></span>
                 Menu Cepat
               </h3>
 
@@ -580,33 +582,33 @@ export default function EquipmentDetailPage() {
                 {equipment.status === 'available' ? (
                   <button
                     onClick={() => router.push(`/dashboard/checkout?equipment=${equipmentId}`)}
-                    className="w-full py-3 px-4 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl flex items-center gap-3 transition-all group"
+                    className="w-full py-3 px-4 bg-gradient-to-r from-[#ff007a] to-[#ff4d9e] hover:from-[#d60066] hover:to-[#ff007a] text-white rounded-2xl flex items-center gap-3 transition-all group shadow-lg shadow-[#ff007a]/20"
                   >
-                    <div className="p-2 bg-[#ff007a] rounded-lg group-hover:scale-110 transition-transform">
+                    <div className="p-2 bg-white/20 rounded-xl group-hover:scale-110 transition-transform">
                       <Activity className="w-4 h-4 text-white" />
                     </div>
                     <div className="text-left">
                       <div className="font-bold text-sm">Pinjam Alat</div>
-                      <div className="text-[10px] text-gray-400">Proses sekarang</div>
+                      <div className="text-[10px] text-white/70">Proses sekarang</div>
                     </div>
                   </button>
                 ) : (
-                  <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-3">
-                    <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
-                    <p className="text-xs text-amber-200">Tidak tersedia untuk dipinjam saat ini.</p>
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                    <p className="text-xs text-amber-700">Tidak tersedia untuk dipinjam saat ini.</p>
                   </div>
                 )}
 
                 <button
                   onClick={() => setActiveTab('qr')}
-                  className="w-full py-3 px-4 bg-transparent hover:bg-white/5 border border-white/10 rounded-xl flex items-center gap-3 transition-colors"
+                  className="w-full py-3 px-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-2xl flex items-center gap-3 transition-colors"
                 >
-                  <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
+                  <div className="p-2 bg-blue-100 rounded-xl text-blue-600">
                     <QrCode className="w-4 h-4" />
                   </div>
                   <div className="text-left">
-                    <div className="font-bold text-sm">Cetak QR</div>
-                    <div className="text-[10px] text-gray-400">Download label</div>
+                    <div className="font-bold text-sm text-gray-900">Cetak QR</div>
+                    <div className="text-[10px] text-gray-500">Download label</div>
                   </div>
                 </button>
               </div>
