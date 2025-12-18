@@ -132,7 +132,7 @@ export default function BorrowingRequestsPage() {
                 // If searchTerm, fetch ALL matching status, then filter, then slice.
                 if (data) {
                     // We need to fetch EVERYTHING to search properly on client side
-                    const { data: allData } = await supabase
+                    let query = supabase
                         .from('borrowing_transactions')
                         .select(`
                           *,
@@ -141,7 +141,12 @@ export default function BorrowingRequestsPage() {
                           quantity
                         `)
                         .order('created_at', { ascending: false })
-                        .eq(filter !== 'all' ? 'status' : '', filter !== 'all' ? filter : '')
+
+                    if (filter !== 'all') {
+                        query = query.eq('status', filter as any)
+                    }
+
+                    const { data: allData } = await query
                     // Note: .eq('', '') is invalid, handle conditionally
 
                     let searchBase = allData as unknown as BorrowingRequest[] || []

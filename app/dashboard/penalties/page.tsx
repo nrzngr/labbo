@@ -403,94 +403,93 @@ export default function PenaltiesPage() {
                     </div>
                 </div>
             </div>
-        </div>
+            {/* Pagination */}
+            <TablePagination
+                currentPage={page}
+                totalPages={Math.ceil(totalItems / pageSize)}
+                onPageChange={setPage}
+                totalItems={totalItems}
+                itemsPerPage={pageSize}
+                onPageSizeChange={setPageSize}
+            />
 
-            {/* Pagination */ }
-    <TablePagination
-        currentPage={page}
-        totalPages={Math.ceil(totalItems / pageSize)}
-        onPageChange={setPage}
-        totalItems={totalItems}
-        itemsPerPage={pageSize}
-        onPageSizeChange={setPageSize}
-    />
 
-    {/* Detail Dialog */ }
-    <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-lg rounded-[24px] p-0 overflow-hidden border-none shadow-2xl">
-            <DialogHeader className="p-6 bg-[#f8f9fc] border-b border-gray-100">
-                <DialogTitle className="text-xl font-black text-gray-900 flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5 text-red-500" />
-                    Detail Denda
-                </DialogTitle>
-            </DialogHeader>
+            {/* Detail Dialog */}
+            <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+                <DialogContent className="max-w-lg rounded-[24px] p-0 overflow-hidden border-none shadow-2xl">
+                    <DialogHeader className="p-6 bg-[#f8f9fc] border-b border-gray-100">
+                        <DialogTitle className="text-xl font-black text-gray-900 flex items-center gap-2">
+                            <AlertTriangle className="w-5 h-5 text-red-500" />
+                            Detail Denda
+                        </DialogTitle>
+                    </DialogHeader>
 
-            {selectedCase && ((item) => {
-                if (!item) return null
-                const daysLate = getDaysLate(item.expected_return_date)
-                const penaltyAmount = calculatePenalty(daysLate)
+                    {selectedCase && ((item) => {
+                        if (!item) return null
+                        const daysLate = getDaysLate(item.expected_return_date)
+                        const penaltyAmount = calculatePenalty(daysLate)
 
-                return (
-                    <div className="p-6 space-y-6">
-                        <div className="p-6 bg-red-50 rounded-2xl border border-red-100 text-center">
-                            <p className="text-4xl font-black text-red-600 tracking-tight">{formatCurrency(penaltyAmount)}</p>
-                            <div className="flex items-center justify-center gap-2 mt-2 text-sm font-medium text-red-700 bg-red-100/50 py-1 px-3 rounded-full mx-auto w-fit">
-                                <span>{daysLate} Hari Terlambat</span>
-                                <span>×</span>
-                                <span>{formatCurrency(PENALTY_RATE_PER_DAY)}/hari</span>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-                            <div>
-                                <label className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1.5 block">Peminjam</label>
-                                <div className="font-bold text-gray-900">{item.user?.full_name}</div>
-                                <div className="text-xs text-gray-500 mt-0.5">{item.user?.email}</div>
-                            </div>
-                            <div>
-                                <label className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1.5 block">Peralatan</label>
-                                <div className="font-bold text-gray-900">{item.equipment?.name}</div>
-                                <div className="text-xs text-gray-500 font-mono mt-0.5">{item.equipment?.serial_number}</div>
-                            </div>
-                            <div>
-                                <label className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1.5 block">Jatuh Tempo</label>
-                                <div className="font-bold text-red-600 flex items-center gap-2">
-                                    <Clock className="w-4 h-4" />
-                                    {formatDate(item.expected_return_date)}
+                        return (
+                            <div className="p-6 space-y-6">
+                                <div className="p-6 bg-red-50 rounded-2xl border border-red-100 text-center">
+                                    <p className="text-4xl font-black text-red-600 tracking-tight">{formatCurrency(penaltyAmount)}</p>
+                                    <div className="flex items-center justify-center gap-2 mt-2 text-sm font-medium text-red-700 bg-red-100/50 py-1 px-3 rounded-full mx-auto w-fit">
+                                        <span>{daysLate} Hari Terlambat</span>
+                                        <span>×</span>
+                                        <span>{formatCurrency(PENALTY_RATE_PER_DAY)}/hari</span>
+                                    </div>
                                 </div>
-                            </div>
-                            <div>
-                                <label className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1.5 block">Status</label>
-                                {item.penalty_paid ? (
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
-                                        LUNAS
-                                    </span>
-                                ) : (
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">
-                                        BELUM LUNAS
-                                    </span>
+
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-6">
+                                    <div>
+                                        <label className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1.5 block">Peminjam</label>
+                                        <div className="font-bold text-gray-900">{item.user?.full_name}</div>
+                                        <div className="text-xs text-gray-500 mt-0.5">{item.user?.email}</div>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1.5 block">Peralatan</label>
+                                        <div className="font-bold text-gray-900">{item.equipment?.name}</div>
+                                        <div className="text-xs text-gray-500 font-mono mt-0.5">{item.equipment?.serial_number}</div>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1.5 block">Jatuh Tempo</label>
+                                        <div className="font-bold text-red-600 flex items-center gap-2">
+                                            <Clock className="w-4 h-4" />
+                                            {formatDate(item.expected_return_date)}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1.5 block">Status</label>
+                                        {item.penalty_paid ? (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                                                LUNAS
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">
+                                                BELUM LUNAS
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {!item.penalty_paid && (
+                                    <div className="pt-2">
+                                        <ModernButton
+                                            variant="default"
+                                            onClick={() => markPaidMutation.mutate(item.id)}
+                                            loading={markPaidMutation.isPending}
+                                            className="w-full h-12 text-base rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 border-none shadow-lg shadow-green-500/30"
+                                        >
+                                            <CheckCircle className="w-5 h-5 mr-2" />
+                                            Konfirmasi Pembayaran
+                                        </ModernButton>
+                                    </div>
                                 )}
                             </div>
-                        </div>
-
-                        {!item.penalty_paid && (
-                            <div className="pt-2">
-                                <ModernButton
-                                    variant="default"
-                                    onClick={() => markPaidMutation.mutate(item.id)}
-                                    loading={markPaidMutation.isPending}
-                                    className="w-full h-12 text-base rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 border-none shadow-lg shadow-green-500/30"
-                                >
-                                    <CheckCircle className="w-5 h-5 mr-2" />
-                                    Konfirmasi Pembayaran
-                                </ModernButton>
-                            </div>
-                        )}
-                    </div>
-                )
-            })(selectedCase)}
-        </DialogContent>
-    </Dialog>
-        </div >
+                        )
+                    })(selectedCase)}
+                </DialogContent>
+            </Dialog>
+        </div>
     )
 }

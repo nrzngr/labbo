@@ -623,36 +623,35 @@ export default function MyBorrowingsPage() {
               </tbody>
             </table>
           </div>
+          {/* Pagination */}
+          <TablePagination
+            currentPage={page}
+            totalPages={Math.ceil(totalItems / pageSize)}
+            onPageChange={setPage}
+            totalItems={totalItems}
+            itemsPerPage={pageSize}
+            onPageSizeChange={setPageSize}
+          />
         </div>
-        
-        {/* Pagination */}
-      <TablePagination
-        currentPage={page}
-        totalPages={Math.ceil(totalItems / pageSize)}
-        onPageChange={setPage}
-        totalItems={totalItems}
-        itemsPerPage={pageSize}
-        onPageSizeChange={setPageSize}
-      />
       ) : (
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center">
-        <div className="w-24 h-24 bg-gradient-to-br from-[#ff007a]/10 to-[#ff007a]/5 rounded-3xl flex items-center justify-center mx-auto mb-6">
-          <Sparkles className="w-12 h-12 text-[#ff007a]" />
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center">
+          <div className="w-24 h-24 bg-gradient-to-br from-[#ff007a]/10 to-[#ff007a]/5 rounded-3xl flex items-center justify-center mx-auto mb-6">
+            <Sparkles className="w-12 h-12 text-[#ff007a]" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Belum ada peminjaman</h3>
+          <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+            Mulai pinjam peralatan laboratorium yang Anda butuhkan untuk proyek Anda
+          </p>
+          <button
+            onClick={() => setIsRequestDialogOpen(true)}
+            className="px-6 py-3.5 bg-gradient-to-r from-[#ff007a] to-[#ff4d9e] text-white rounded-2xl font-semibold shadow-lg shadow-[rgba(255,0,122,0.3)] hover:shadow-xl hover:shadow-[rgba(255,0,122,0.4)] transition-all inline-flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Pinjam Peralatan Pertama
+          </button>
         </div>
-        <h3 className="text-xl font-bold text-gray-900 mb-2">Belum ada peminjaman</h3>
-        <p className="text-gray-500 mb-6 max-w-sm mx-auto">
-          Mulai pinjam peralatan laboratorium yang Anda butuhkan untuk proyek Anda
-        </p>
-        <button
-          onClick={() => setIsRequestDialogOpen(true)}
-          className="px-6 py-3.5 bg-gradient-to-r from-[#ff007a] to-[#ff4d9e] text-white rounded-2xl font-semibold shadow-lg shadow-[rgba(255,0,122,0.3)] hover:shadow-xl hover:shadow-[rgba(255,0,122,0.4)] transition-all inline-flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Pinjam Peralatan Pertama
-        </button>
-      </div>
       )
-}
+      }
 
       {/* Detail Dialog */}
       <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
