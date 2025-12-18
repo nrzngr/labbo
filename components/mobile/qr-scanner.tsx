@@ -309,90 +309,142 @@ export function QRScanner({ onScanSuccess, onScanError, onClose }: QRScannerProp
     }
   }, [stopCamera])
 
+  // ... inside QRScanner ...
+
   return (
-    <ModernCard variant="default" padding="lg" className="w-full max-w-md mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold">QR Scanner</h3>
+    <ModernCard variant="elevated" padding="none" className="w-full max-w-lg mx-auto overflow-hidden border-2 border-[#ff007a]/10 shadow-2xl shadow-[#ff007a]/5">
+      <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-[#ff007a]/10 rounded-lg">
+            <Camera className="w-5 h-5 text-[#ff007a]" />
+          </div>
+          <h3 className="text-lg font-black text-gray-900 tracking-tight">Scanner</h3>
+        </div>
         {onClose && (
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5 text-gray-400" />
           </button>
         )}
       </div>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={handleFileUpload}
-        className="hidden"
-      />
+      <div className="p-4 sm:p-6 bg-white min-h-[400px] flex flex-col">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleFileUpload}
+          className="hidden"
+        />
 
-      <div className="space-y-4">
         {scanResult ? (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
-              <CheckCircle className="w-5 h-5 text-green-600" />
-              <span className="text-green-800 font-medium">QR Code Scanned Successfully</span>
+          <div className="flex-1 flex flex-col justify-center animate-in fade-in zoom-in-95 duration-300">
+            <div className="text-center mb-6">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl shadow-green-500/20">
+                <CheckCircle className="w-10 h-10 text-green-600" />
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 mb-1">Berhasil!</h3>
+              <p className="text-gray-500">QR Code terdeteksi</p>
             </div>
 
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-semibold mb-2">Equipment Details:</h4>
-              <div className="space-y-1 text-sm">
-                <p><strong>Name:</strong> {scanResult.name}</p>
-                <p><strong>Serial:</strong> {scanResult.serial}</p>
-                <p><strong>Category:</strong> {scanResult.category}</p>
-                <p><strong>Location:</strong> {scanResult.location}</p>
+            <div className="bg-gray-50 rounded-2xl p-6 mb-6 border border-gray-100 relative overflow-hidden group">
+              <div className="absolute top-0 left-0 w-1 h-full bg-[#ff007a]"></div>
+
+              <div className="space-y-4 relative z-10">
+                <div>
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Nama Peralatan</span>
+                  <p className="text-xl font-bold text-gray-900 text-wrap break-words">{scanResult.name || 'Unknown Item'}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Serial Number</span>
+                    <p className="font-mono text-sm bg-white border border-gray-200 rounded px-2 py-1 inline-block text-gray-700">
+                      {scanResult.serial || '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Lokasi</span>
+                    <p className="text-sm font-medium text-gray-700">{scanResult.location || '-'}</p>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <ModernButton
-              onClick={resetScanner}
-              variant="outline"
-              size="sm"
-              className="w-full"
-            >
-              Scan Another QR Code
-            </ModernButton>
+            <div className="space-y-3 mt-auto">
+              <ModernButton
+                onClick={() => onScanSuccess(scanResult)}
+                variant="default"
+                size="lg"
+                fullWidth
+                className="bg-[#ff007a] hover:bg-[#df006b] shadow-lg shadow-[#ff007a]/30 border-none h-12 text-lg"
+              >
+                Lihat Detail Peralatan
+              </ModernButton>
+              <ModernButton
+                onClick={resetScanner}
+                variant="outline"
+                size="lg"
+                fullWidth
+                className="h-12 border-gray-200 text-gray-600 hover:bg-gray-50"
+              >
+                Scan Lagi
+              </ModernButton>
+            </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="relative flex flex-col items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-900">
+          <div className="flex-1 flex flex-col">
+            <div className="relative flex-1 flex flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 min-h-[300px]">
               {isCameraActive ? (
                 <>
                   <video
                     ref={videoRef}
-                    className="w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full object-cover"
                     playsInline
                     muted
                     autoPlay
                   />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-48 h-48 border-2 border-white/70 rounded-lg" />
+                  {/* Overlay */}
+                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                    <div className="relative w-64 h-64 border-2 border-white/50 rounded-3xl overflow-hidden shadow-[0_0_0_1000px_rgba(0,0,0,0.5)]">
+                      {/* Corner Markers */}
+                      <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-[#ff007a] rounded-tl-xl"></div>
+                      <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-[#ff007a] rounded-tr-xl"></div>
+                      <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-[#ff007a] rounded-bl-xl"></div>
+                      <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-[#ff007a] rounded-br-xl"></div>
+
+                      {/* Scanning Animation */}
+                      <div className="absolute top-0 left-0 w-full h-1 bg-[#ff007a] shadow-[0_0_20px_#ff007a] animate-[scan_2s_ease-in-out_infinite]"></div>
+                    </div>
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-4 py-2 text-xs text-white text-center">
-                    Align the QR code within the frame to scan automatically
+                  <div className="absolute bottom-8 left-0 right-0 text-center">
+                    <span className="inline-block px-4 py-2 bg-black/60 backdrop-blur-md rounded-full text-white text-sm font-medium border border-white/10">
+                      Arahkan kamera ke QR Code
+                    </span>
                   </div>
                 </>
               ) : (
-                <div className="flex flex-col items-center justify-center p-8 text-center space-y-3">
-                  <Camera className="w-12 h-12 text-gray-400" />
+                <div className="flex flex-col items-center justify-center p-8 text-center space-y-4">
+                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-lg mb-2">
+                    <Camera className="w-10 h-10 text-gray-300" />
+                  </div>
                   <div>
-                    <p className="text-sm text-gray-300">Open your device camera to scan the QR code</p>
-                    <p className="text-xs text-gray-400">You can also upload an image if camera access is unavailable</p>
+                    <h4 className="text-lg font-bold text-gray-900 mb-1">Siap untuk Scan</h4>
+                    <p className="text-sm text-gray-500 max-w-[200px] mx-auto">Izinkan akses kamera atau upload gambar QR Code</p>
                   </div>
                 </div>
               )}
             </div>
 
             {(error || cameraError || barcodeSupportedText) && (
-              <div className="flex items-start gap-2 p-3 bg-orange-50 rounded-lg">
-                <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5" />
-                <div className="text-sm text-orange-800 space-y-1">
+              <div className="mt-4 flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-xl animate-in slide-in-from-top-2">
+                <div className="p-2 bg-red-100 rounded-full flex-shrink-0">
+                  <AlertTriangle className="w-4 h-4 text-red-600" />
+                </div>
+                <div className="text-sm text-red-800 font-medium">
                   {barcodeSupportedText && <p>{barcodeSupportedText}</p>}
                   {cameraError && <p>{cameraError}</p>}
                   {error && <p>{error}</p>}
@@ -400,17 +452,17 @@ export function QRScanner({ onScanSuccess, onScanError, onClose }: QRScannerProp
               </div>
             )}
 
-            <div className="space-y-3">
+            <div className="mt-6 space-y-3">
               <ModernButton
                 onClick={startCameraScan}
                 variant="default"
                 size="lg"
                 disabled={isScanning}
                 loading={isScanning}
-                className="w-full"
-                leftIcon={<Camera className="w-4 h-4" />}
+                className="w-full h-12 text-lg shadow-lg hover:shadow-xl transition-all"
+                leftIcon={<Camera className="w-5 h-5" />}
               >
-                {isCameraActive ? 'Scanning...' : 'Open Camera'}
+                {isCameraActive ? 'Sedang Memindai...' : 'Buka Kamera'}
               </ModernButton>
 
               {isCameraActive && (
@@ -418,31 +470,43 @@ export function QRScanner({ onScanSuccess, onScanError, onClose }: QRScannerProp
                   onClick={stopCamera}
                   variant="outline"
                   size="lg"
-                  className="w-full"
-                  leftIcon={<PauseCircle className="w-4 h-4" />}
+                  className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                  leftIcon={<PauseCircle className="w-5 h-5" />}
                 >
-                  Pause Camera
+                  Hentikan Kamera
                 </ModernButton>
               )}
 
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-gray-200" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-gray-400 font-medium">Atau</span>
+                </div>
+              </div>
+
               <ModernButton
                 onClick={() => fileInputRef.current?.click()}
-                variant="outline"
+                variant="ghost"
                 size="lg"
                 disabled={isScanning}
-                className="w-full"
+                className="w-full text-gray-500 hover:text-gray-900 hover:bg-gray-100"
               >
-                Upload Image
+                Upload Gambar dari Galeri
               </ModernButton>
-            </div>
-
-            <div className="text-xs text-gray-500 text-center space-y-1">
-              <p>Make sure the QR code is clear, well-lit, and within the frame.</p>
-              <p>Supported image formats: JPG, PNG, GIF</p>
             </div>
           </div>
         )}
       </div>
+      <style jsx global>{`
+        @keyframes scan {
+          0% { top: 0%; opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { top: 100%; opacity: 0; }
+        }
+      `}</style>
     </ModernCard>
   )
 }

@@ -11,7 +11,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import DashboardLayout from '@/components/layout/dashboard-layout';
 
 interface PendingUser {
     id: string;
@@ -121,8 +120,7 @@ export default function PendingUsersPage() {
     };
 
     return (
-        <DashboardLayout>
-            <div className="space-y-6">
+                    <div className="space-y-6">
                 {/* Header */}
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Persetujuan Pengguna</h1>
@@ -332,6 +330,5 @@ export default function PendingUsersPage() {
                     </DialogContent>
                 </Dialog>
             </div>
-        </DashboardLayout>
-    );
+            );
 }

@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCustomAuth } from '@/components/auth/custom-auth-provider'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog'
 import { EquipmentForm } from './equipment-form'
 import { EquipmentDetailModal } from './equipment-detail-modal'
 import { AdvancedSearch } from './advanced-search'
 import { supabase } from '@/lib/supabase'
 import { Search, Plus, Edit, Trash2, Eye, Package } from 'lucide-react'
+import { EquipmentItemCard } from './equipment-item-card'
+import { EquipmentGridCard } from './equipment-grid-card'
 import { TableSkeleton } from '@/components/ui/loading-skeleton'
 import { ModernCard, ModernCardHeader, ModernCardContent } from '@/components/ui/modern-card'
 import { ModernBadge } from '@/components/ui/modern-badge'
@@ -32,6 +34,7 @@ interface Equipment {
   purchase_price: string
   created_at: string
   updated_at: string
+  stock: number
 }
 
 interface Category {
@@ -116,7 +119,12 @@ export function EquipmentList() {
         .from('equipment')
         .select(`
           *,
-          category:categories (name)
+          category:categories (name),
+          equipment_images!equipment_images_equipment_id_fkey (
+            id,
+            image_url,
+            is_primary
+          )
         `)
         .order('created_at', { ascending: false })
         .range((currentPage - 1) * pageSize, currentPage * pageSize - 1)
@@ -148,7 +156,11 @@ export function EquipmentList() {
         .select('*')
         .order('name')
       if (error) throw error
-      return data as Category[]
+
+      const uniqueCategories = Array.from(
+        new Map(data?.map((item) => [item.name, item])).values()
+      )
+      return uniqueCategories as Category[]
     }
   })
 
@@ -183,7 +195,7 @@ export function EquipmentList() {
       available: 'Tersedia',
       borrowed: 'Dipinjam',
       maintenance: 'Dalam Pemeliharaan',
-      retired: 'Tidak Aktif'
+      retired: 'Rusak / Hilang'
     }
 
     return <ModernBadge variant={variants[status] || 'default'} size="sm">{statusLabels[status] || status}</ModernBadge>
@@ -254,6 +266,9 @@ export function EquipmentList() {
             <DialogContent className="mx-4 max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Tambah Peralatan Baru</DialogTitle>
+                <DialogDescription className="sr-only">
+                  Isi formulir berikut untuk menambahkan peralatan baru.
+                </DialogDescription>
               </DialogHeader>
               <div className="py-2">
                 <EquipmentForm
@@ -312,6 +327,9 @@ export function EquipmentList() {
                   <DialogContent className="sm:max-w-[600px] mx-4 max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Tambah Peralatan Baru</DialogTitle>
+                      <DialogDescription className="sr-only">
+                        Isi formulir berikut untuk menambahkan peralatan baru.
+                      </DialogDescription>
                     </DialogHeader>
                     <div className="py-2">
                       <EquipmentForm
@@ -343,88 +361,18 @@ export function EquipmentList() {
               )}
             </ModernCard>
           ) : (
-            <div className="space-y-3 sm:space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-5">
               {equipmentData?.data?.map((item) => (
-                <div key={item.id} className={`bg-white rounded-2xl border transition-all duration-300 p-4 sm:p-5 lg:p-6 ${selectedIds.has(item.id) ? 'border-[#ff007a] ring-1 ring-[#ff007a] bg-[#fff0f7]' : 'border-gray-100 hover:shadow-lg'}`}>
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-4">
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <div className="pt-1">
-                        <input
-                          type="checkbox"
-                          className="w-5 h-5 rounded border-gray-300 text-[#ff007a] focus:ring-[#ff007a] cursor-pointer"
-                          checked={selectedIds.has(item.id)}
-                          onChange={() => toggleSelection(item.id)}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 mb-1 sm:mb-2">
-                          <h3 className="font-semibold text-base lg:text-lg xl:text-xl truncate">{item.name}</h3>
-                          <div className="flex items-center gap-2">
-                            {getStatusBadge(item.status)}
-                          </div>
-                        </div>
-                        {item.description && (
-                          <p className="text-sm lg:text-base text-gray-600 line-clamp-2">{item.description}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex gap-1 lg:gap-2">
-                      <button
-                        onClick={() => setViewingEquipment(item)}
-                        className="border border-[#dfe2ec] p-2 lg:p-2.5 hover:border-[#ff007a] hover:bg-[#ffe4f2] hover:text-[#ff007a] transition-all rounded-lg"
-                        title="Lihat detail"
-                      >
-                        <Eye className="w-4 h-4 lg:w-5 lg:h-5" />
-                      </button>
-                      {/* Only show edit/delete for admin and lab_staff */}
-                      {canManageEquipment && (
-                        <>
-                          <button
-                            onClick={() => setEditingEquipment(item)}
-                            className="border border-[#dfe2ec] p-2 lg:p-2.5 hover:border-[#ff007a] hover:bg-[#ffe4f2] hover:text-[#ff007a] transition-all rounded-lg"
-                            title="Ubah peralatan"
-                          >
-                            <Edit className="w-4 h-4 lg:w-5 lg:h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(item.id)}
-                            disabled={deleteMutation.isPending}
-                            className="border border-[#dfe2ec] p-2 lg:p-2.5 hover:border-red-600 hover:bg-red-50 hover:text-red-600 transition-all rounded-lg"
-                            title="Hapus peralatan"
-                          >
-                            <Trash2 className="w-4 h-4 lg:w-5 lg:h-5" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-                    <div className="space-y-1">
-                      <span className="text-xs lg:text-sm font-medium text-gray-500 uppercase tracking-wider">Kategori</span>
-                      <p className="text-sm lg:text-base font-medium truncate" title={item.category?.name || 'Tidak Berkategori'}>
-                        {item.category?.name || 'Tidak Berkategori'}
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-xs lg:text-sm font-medium text-gray-500 uppercase tracking-wider">Nomor Seri</span>
-                      <p className="text-sm lg:text-base font-mono truncate" title={item.serial_number}>
-                        {item.serial_number}
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-xs lg:text-sm font-medium text-gray-500 uppercase tracking-wider">Kondisi</span>
-                      <div>{getConditionBadge(item.condition)}</div>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-xs lg:text-sm font-medium text-gray-500 uppercase tracking-wider">Lokasi</span>
-                      <p className="text-sm lg:text-base font-medium truncate" title={item.location}>
-                        {item.location}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <EquipmentGridCard
+                  key={item.id}
+                  item={item}
+                  selected={selectedIds.has(item.id)}
+                  onToggleSelect={toggleSelection}
+                  onView={setViewingEquipment}
+                  onEdit={canManageEquipment ? setEditingEquipment : undefined}
+                  onDelete={canManageEquipment ? handleDelete : undefined}
+                  canManage={canManageEquipment}
+                />
               ))}
             </div>
           )}
@@ -437,6 +385,9 @@ export function EquipmentList() {
           <DialogContent className="sm:max-w-[600px] mx-4 max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Ubah Peralatan</DialogTitle>
+              <DialogDescription className="sr-only">
+                Modifikasi data peralatan yang sudah ada.
+              </DialogDescription>
             </DialogHeader>
             <div className="py-2">
               <EquipmentForm

@@ -74,8 +74,8 @@ export async function POST(request: NextRequest) {
             'Nomor Seri': item.serial_number,
             'Deskripsi': item.description || '-',
             'Kategori': (item.categories as { name: string } | null)?.name || '-',
-            'Kondisi': translateCondition(item.condition),
-            'Status': translateStatus(item.status),
+            'Kondisi': translateCondition(item.condition || ''),
+            'Status': translateStatus(item.status || ''),
             'Lokasi': item.location || '-',
             'Tanggal Pembelian': item.purchase_date ? formatDate(item.purchase_date) : '-',
             'Harga Pembelian': item.purchase_price ? formatCurrency(item.purchase_price) : '-',
@@ -117,15 +117,15 @@ export async function POST(request: NextRequest) {
 
             const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
-            // Log export
-            await supabase.from('report_exports').insert({
-                user_id: userId,
-                report_type: 'equipment',
-                format: format,
-                filters: filters,
-                status: 'completed',
-                completed_at: new Date().toISOString(),
-            });
+            // Log export (commented out - table doesn't exist)
+            // await supabase.from('report_exports').insert({
+            //     user_id: userId,
+            //     report_type: 'equipment',
+            //     format: format,
+            //     filters: filters,
+            //     status: 'completed',
+            //     completed_at: new Date().toISOString(),
+            // });
 
             return new NextResponse(buffer, {
                 headers: {

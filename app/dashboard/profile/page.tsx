@@ -5,7 +5,6 @@ import { useCustomAuth } from "@/components/auth/custom-auth-provider"
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { User, Mail, Phone, Building, Calendar, Edit2, Save, X, BookOpen, Award, GraduationCap } from "lucide-react"
 import { supabase } from '@/lib/supabase'
-import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { ModernCard, ModernCardHeader, ModernCardContent } from '@/components/ui/modern-card'
 import { ModernBadge } from '@/components/ui/modern-badge'
 import { ModernButton } from '@/components/ui/modern-button'
@@ -69,15 +68,13 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-screen">
+              <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="animate-spin w-8 h-8 border-4 border-[#ff007a] border-t-transparent rounded-full mx-auto mb-4"></div>
             <p className="text-gray-500">Memuat...</p>
           </div>
         </div>
-      </DashboardLayout>
-    )
+          )
   }
 
   const handleSave = () => {
@@ -160,8 +157,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <DashboardLayout>
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-h-screen bg-gradient-to-br from-[#f8f7fc] via-white to-[#fff5f9]">
+          <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-h-screen bg-gradient-to-br from-[#f8f7fc] via-white to-[#fff5f9]">
 
         {/* Header */}
         <div className="relative overflow-hidden bg-gradient-to-r from-[#ff007a] to-[#ff4d9e] rounded-3xl p-6 sm:p-8 mb-8 shadow-xl shadow-[rgba(255,0,122,0.2)]">
@@ -445,6 +441,5 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-    </DashboardLayout>
-  )
+      )
 }

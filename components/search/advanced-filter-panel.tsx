@@ -46,7 +46,7 @@ const statusOptions: FilterOption[] = [
     { value: 'available', label: 'Tersedia' },
     { value: 'borrowed', label: 'Dipinjam' },
     { value: 'maintenance', label: 'Pemeliharaan' },
-    { value: 'lost', label: 'Hilang' },
+    { value: 'retired', label: 'Rusak / Hilang' },
 ];
 
 const conditionOptions: FilterOption[] = [

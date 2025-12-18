@@ -23,10 +23,11 @@ import {
   FileDown
 } from "lucide-react"
 import { supabase } from '@/lib/supabase'
-import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { BorrowRequestForm } from '@/components/student/borrow-request-form'
+import { EarlyReturnForm } from '@/components/student/early-return-form'
 import { generateBorrowingLetter } from '@/lib/pdf-generator'
+import { RotateCcw } from 'lucide-react'
 
 
 interface BorrowingTransaction {
@@ -40,12 +41,15 @@ interface BorrowingTransaction {
     condition?: string
     image_url?: string
   }
+  quantity: number
   borrow_date: string
   expected_return_date: string
   actual_return_date: string | null
   status: 'pending' | 'active' | 'returned' | 'overdue' | 'rejected'
   notes?: string
   created_at?: string
+  return_requested?: boolean
+  return_requested_at?: string
 }
 
 export default function MyBorrowingsPage() {
@@ -56,6 +60,7 @@ export default function MyBorrowingsPage() {
   const [selectedTransaction, setSelectedTransaction] = useState<BorrowingTransaction | null>(null)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
   const [isExtensionDialogOpen, setIsExtensionDialogOpen] = useState(false)
+  const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false)
   const [extensionDate, setExtensionDate] = useState('')
   const [extensionReason, setExtensionReason] = useState('')
 
@@ -188,14 +193,12 @@ export default function MyBorrowingsPage() {
 
   if (!user) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin w-8 h-8 border-4 border-[#ff007a] border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-500">Memuat...</p>
-          </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-[#ff007a] border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-gray-500">Memuat...</p>
         </div>
-      </DashboardLayout>
+      </div>
     )
   }
 
@@ -338,403 +341,444 @@ export default function MyBorrowingsPage() {
   const returnedCount = transactions?.filter(t => t.status === 'returned').length || 0
 
   return (
-    <DashboardLayout>
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-h-screen bg-gradient-to-br from-[#f8f7fc] via-white to-[#fff5f9]">
+    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-h-screen bg-gradient-to-br from-[#f8f7fc] via-white to-[#fff5f9]">
 
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
-              Peminjaman Saya
-            </h1>
-            <p className="text-gray-500">Kelola dan pantau peralatan yang Anda pinjam</p>
-          </div>
-          <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
-            <DialogTrigger asChild>
-              <button className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-[#ff007a] to-[#ff4d9e] text-white rounded-2xl font-semibold shadow-lg shadow-[rgba(255,0,122,0.3)] hover:shadow-xl hover:shadow-[rgba(255,0,122,0.4)] transition-all flex items-center justify-center gap-2">
-                <Plus className="w-5 h-5" />
-                Pinjam Peralatan
-              </button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto border-0 rounded-3xl p-6">
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-bold text-gray-900">Pinjam Peralatan Baru</DialogTitle>
-              </DialogHeader>
-              <BorrowRequestForm
-                onSuccess={() => {
-                  setIsRequestDialogOpen(false)
-                  refetch()
-                }}
-              />
-            </DialogContent>
-          </Dialog>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
+            Peminjaman Saya
+          </h1>
+          <p className="text-gray-500">Kelola dan pantau peralatan yang Anda pinjam</p>
         </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-          {/* Pending */}
-          <div className="group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:shadow-amber-500/5 transition-all duration-300">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
-                <HourglassIcon className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-3 py-1 rounded-full">MENUNGGU</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">{pendingCount}</div>
-            <div className="text-sm text-amber-600">{pendingCount > 0 ? 'Menunggu persetujuan' : 'Tidak ada'}</div>
-          </div>
-
-          {/* Active */}
-          <div className="group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-                <Package className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">AKTIF</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">{activeCount}</div>
-            <div className="text-sm text-gray-500">Sedang dipinjam</div>
-          </div>
-
-          {/* Overdue */}
-          <div className="group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:shadow-red-500/5 transition-all duration-300">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/30">
-                <AlertTriangle className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-xs font-semibold text-red-600 bg-red-50 px-3 py-1 rounded-full">TERLAMBAT</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">{overdueCount}</div>
-            <div className="text-sm text-red-500">{overdueCount > 0 ? 'Segera kembalikan' : 'Tidak ada'}</div>
-          </div>
-
-          {/* Returned */}
-          <div className="group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:shadow-emerald-500/5 transition-all duration-300">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                <CheckCircle className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">SELESAI</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">{returnedCount}</div>
-            <div className="text-sm text-gray-500">Dikembalikan</div>
-          </div>
-        </div>
-
-        {/* Search and Filter */}
-        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm mb-6">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Cari nama peralatan atau nomor seri..."
-                className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:bg-white focus:ring-4 focus:ring-[rgba(255,0,122,0.08)] outline-none transition-all text-sm"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-3.5 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:ring-4 focus:ring-[rgba(255,0,122,0.08)] outline-none transition-all text-sm min-w-[150px]"
-            >
-              <option value="">Semua Status</option>
-              <option value="pending">Menunggu</option>
-              <option value="active">Aktif</option>
-              <option value="returned">Dikembalikan</option>
-              <option value="overdue">Terlambat</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Borrowings List */}
-        {isLoading ? (
-          <div className="text-center py-16">
-            <div className="relative w-16 h-16 mx-auto mb-4">
-              <div className="absolute inset-0 rounded-full border-4 border-[#ff007a]/20"></div>
-              <div className="absolute inset-0 rounded-full border-4 border-[#ff007a] border-t-transparent animate-spin"></div>
-            </div>
-            <div className="text-gray-500 font-medium">Memuat peminjaman...</div>
-          </div>
-        ) : transactions && transactions.length > 0 ? (
-          <div className="space-y-4">
-            {transactions.map((transaction) => {
-              const statusConfig = getStatusConfig(transaction.status)
-              const daysInfo = getDaysInfo(transaction.expected_return_date, transaction.status)
-
-              return (
-                <div
-                  key={transaction.id}
-                  className={`group bg-white rounded-2xl border shadow-sm hover:shadow-xl hover:shadow-gray-100 transition-all duration-300 overflow-hidden ${transaction.status === 'pending' ? 'border-amber-200' : 'border-gray-100'
-                    }`}
-                >
-                  <div className="p-5 sm:p-6">
-                    <div className="flex flex-col lg:flex-row lg:items-center gap-5">
-                      {/* Equipment Info */}
-                      <div className="flex items-start gap-4 flex-1 min-w-0">
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${transaction.status === 'pending'
-                          ? 'bg-gradient-to-br from-amber-100 to-amber-50'
-                          : 'bg-gradient-to-br from-[#ff007a]/10 to-[#ff007a]/5'
-                          }`}>
-                          {transaction.status === 'pending' ? (
-                            <HourglassIcon className="w-7 h-7 text-amber-500" />
-                          ) : (
-                            <Package className="w-7 h-7 text-[#ff007a]" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="font-bold text-lg text-gray-900 truncate">{transaction.equipment.name}</h3>
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${statusConfig.bg} ${statusConfig.color} ${statusConfig.border}`}>
-                              {statusConfig.icon}
-                              {statusConfig.label}
-                            </span>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
-                            <span className="flex items-center gap-1.5">
-                              <Tag className="w-3.5 h-3.5" />
-                              {transaction.equipment.category?.name || 'Tidak berkategori'}
-                            </span>
-                            <span className="flex items-center gap-1.5 font-mono text-xs">
-                              SN: {transaction.equipment.serial_number}
-                            </span>
-                            {transaction.equipment.location && (
-                              <span className="flex items-center gap-1.5">
-                                <MapPin className="w-3.5 h-3.5" />
-                                {transaction.equipment.location}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Dates */}
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-sm">
-                            <span className="flex items-center gap-1.5 text-gray-500">
-                              <CalendarDays className="w-3.5 h-3.5" />
-                              Diajukan: <span className="font-medium text-gray-700">{formatDate(transaction.borrow_date)}</span>
-                            </span>
-                            <span className="flex items-center gap-1.5 text-gray-500">
-                              <Timer className="w-3.5 h-3.5" />
-                              Batas: <span className="font-medium text-gray-700">{formatDate(transaction.expected_return_date)}</span>
-                            </span>
-                          </div>
-
-                          {transaction.notes && (
-                            <p className="mt-3 text-sm text-gray-400 bg-gray-50 px-3 py-2 rounded-lg">
-                              {transaction.notes}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Right Side - Status & Actions */}
-                      <div className="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-end gap-3">
-                        {/* Days indicator */}
-                        <div className={`px-4 py-2 rounded-xl text-sm font-semibold ${daysInfo.bg} ${daysInfo.color}`}>
-                          {daysInfo.text}
-                        </div>
-
-                        {/* Action buttons */}
-                        <div className="flex gap-2">
-                          {transaction.status === 'pending' && (
-                            <button
-                              onClick={() => handleCancelBorrowing(transaction.id)}
-                              disabled={cancelBorrowingMutation.isPending}
-                              className="px-4 py-2.5 bg-red-100 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-200 transition-all flex items-center gap-2 disabled:opacity-50"
-                            >
-                              <X className="w-4 h-4" />
-                              Batalkan
-                            </button>
-                          )}
-                          {transaction.status === 'active' && (
-                            <button
-                              onClick={() => handleExtendBorrowing(transaction.id)}
-                              disabled={extendBorrowingMutation.isPending}
-                              className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-all flex items-center gap-2 disabled:opacity-50"
-                            >
-                              <RefreshCw className="w-4 h-4" />
-                              Perpanjang
-                            </button>
-                          )}
-                          {(transaction.status === 'active' || transaction.status === 'pending') && (
-                            <button
-                              onClick={() => handleDownloadPDF(transaction)}
-                              className="px-4 py-2.5 bg-emerald-100 text-emerald-700 rounded-xl text-sm font-semibold hover:bg-emerald-200 transition-all flex items-center gap-2"
-                              title="Download Surat Peminjaman"
-                            >
-                              <FileDown className="w-4 h-4" />
-                              Surat
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleViewDetails(transaction)}
-                            className="px-4 py-2.5 bg-[#ff007a]/10 text-[#ff007a] rounded-xl text-sm font-semibold hover:bg-[#ff007a]/20 transition-all flex items-center gap-2"
-                          >
-                            <Eye className="w-4 h-4" />
-                            Detail
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Progress bar for active items */}
-                  {transaction.status === 'active' && (
-                    <div className="h-1 bg-gray-100">
-                      <div
-                        className="h-full bg-gradient-to-r from-[#ff007a] to-[#ff4d9e] transition-all duration-500"
-                        style={{
-                          width: `${Math.max(0, Math.min(100,
-                            ((new Date().getTime() - new Date(transaction.borrow_date).getTime()) /
-                              (new Date(transaction.expected_return_date).getTime() - new Date(transaction.borrow_date).getTime())) * 100
-                          ))}%`
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  {/* Pending indicator bar */}
-                  {transaction.status === 'pending' && (
-                    <div className="h-1 bg-amber-100 overflow-hidden">
-                      <div className="h-full w-20 bg-amber-400 animate-pulse" />
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        ) : (
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center">
-            <div className="w-24 h-24 bg-gradient-to-br from-[#ff007a]/10 to-[#ff007a]/5 rounded-3xl flex items-center justify-center mx-auto mb-6">
-              <Sparkles className="w-12 h-12 text-[#ff007a]" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Belum ada peminjaman</h3>
-            <p className="text-gray-500 mb-6 max-w-sm mx-auto">
-              Mulai pinjam peralatan laboratorium yang Anda butuhkan untuk proyek Anda
-            </p>
-            <button
-              onClick={() => setIsRequestDialogOpen(true)}
-              className="px-6 py-3.5 bg-gradient-to-r from-[#ff007a] to-[#ff4d9e] text-white rounded-2xl font-semibold shadow-lg shadow-[rgba(255,0,122,0.3)] hover:shadow-xl hover:shadow-[rgba(255,0,122,0.4)] transition-all inline-flex items-center gap-2"
-            >
+        <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+          <DialogTrigger asChild>
+            <button className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-[#ff007a] to-[#ff4d9e] text-white rounded-2xl font-semibold shadow-lg shadow-[rgba(255,0,122,0.3)] hover:shadow-xl hover:shadow-[rgba(255,0,122,0.4)] transition-all flex items-center justify-center gap-2">
               <Plus className="w-5 h-5" />
-              Pinjam Peralatan Pertama
+              Pinjam Peralatan
             </button>
-          </div>
-        )}
-
-        {/* Detail Dialog */}
-        <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-          <DialogContent className="sm:max-w-[500px] border-0 rounded-3xl p-0 overflow-hidden">
-            <DialogHeader className="sr-only">
-              <DialogTitle>Detail Peminjaman</DialogTitle>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto border-0 rounded-3xl p-6">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold text-gray-900">Pinjam Peralatan Baru</DialogTitle>
             </DialogHeader>
-            {selectedTransaction && (
-              <>
-                {/* Header with gradient */}
-                <div className={`p-6 ${selectedTransaction.status === 'pending' ? 'bg-gradient-to-br from-amber-400 to-amber-500' :
-                  selectedTransaction.status === 'active' ? 'bg-gradient-to-br from-emerald-400 to-emerald-500' :
-                    selectedTransaction.status === 'overdue' ? 'bg-gradient-to-br from-red-400 to-red-500' :
-                      selectedTransaction.status === 'rejected' ? 'bg-gradient-to-br from-red-400 to-red-500' :
-                        'bg-gradient-to-br from-gray-400 to-gray-500'
-                  }`}>
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
-                      <Package className="w-8 h-8 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white">{selectedTransaction.equipment.name}</h3>
-                      <p className="text-white/80 text-sm font-mono">SN: {selectedTransaction.equipment.serial_number}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Details */}
-                <div className="p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500">Status</span>
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold border ${getStatusConfig(selectedTransaction.status).bg} ${getStatusConfig(selectedTransaction.status).color} ${getStatusConfig(selectedTransaction.status).border}`}>
-                      {getStatusConfig(selectedTransaction.status).icon}
-                      {getStatusConfig(selectedTransaction.status).label}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500">Kategori</span>
-                    <span className="font-medium text-gray-900">{selectedTransaction.equipment.category?.name || '-'}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500">Lokasi</span>
-                    <span className="font-medium text-gray-900">{selectedTransaction.equipment.location || '-'}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500">Kondisi</span>
-                    <span className="font-medium text-gray-900">{selectedTransaction.equipment.condition || '-'}</span>
-                  </div>
-
-                  <hr className="border-gray-100" />
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500">Tanggal Pengajuan</span>
-                    <span className="font-medium text-gray-900">{formatDate(selectedTransaction.borrow_date)}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500">Batas Pengembalian</span>
-                    <span className="font-medium text-gray-900">{formatDate(selectedTransaction.expected_return_date)}</span>
-                  </div>
-
-                  {selectedTransaction.actual_return_date && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500">Tanggal Dikembalikan</span>
-                      <span className="font-medium text-gray-900">{formatDate(selectedTransaction.actual_return_date)}</span>
-                    </div>
-                  )}
-
-                  {selectedTransaction.notes && (
-                    <div className="pt-2">
-                      <span className="text-gray-500 text-sm block mb-2">Catatan</span>
-                      <p className="text-gray-700 bg-gray-50 p-3 rounded-xl text-sm">{selectedTransaction.notes}</p>
-                    </div>
-                  )}
-
-                  {/* Pending message */}
-                  {selectedTransaction.status === 'pending' && (
-                    <div className="flex gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                      <HourglassIcon className="w-5 h-5 text-amber-600 flex-shrink-0" />
-                      <p className="text-sm text-amber-800">
-                        Permintaan peminjaman Anda sedang menunggu persetujuan dari admin lab. Anda akan mendapat notifikasi setelah disetujui.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer actions */}
-                <div className="p-6 pt-0 flex gap-3">
-                  {selectedTransaction.status === 'pending' && (
-                    <button
-                      onClick={() => handleCancelBorrowing(selectedTransaction.id)}
-                      disabled={cancelBorrowingMutation.isPending}
-                      className="flex-1 py-3 bg-red-100 text-red-600 rounded-xl font-semibold hover:bg-red-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      <X className="w-4 h-4" />
-                      Batalkan Permintaan
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setIsDetailDialogOpen(false)}
-                    className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all"
-                  >
-                    Tutup
-                  </button>
-                </div>
-              </>
-            )}
+            <BorrowRequestForm
+              onSuccess={() => {
+                setIsRequestDialogOpen(false)
+                refetch()
+              }}
+            />
           </DialogContent>
         </Dialog>
       </div>
-    </DashboardLayout>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+        {/* Pending */}
+        <div className="group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:shadow-amber-500/5 transition-all duration-300">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
+              <HourglassIcon className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-3 py-1 rounded-full">MENUNGGU</span>
+          </div>
+          <div className="text-3xl font-bold text-gray-900 mb-1">{pendingCount}</div>
+          <div className="text-sm text-amber-600">{pendingCount > 0 ? 'Menunggu persetujuan' : 'Tidak ada'}</div>
+        </div>
+
+        {/* Active */}
+        <div className="group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+              <Package className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">AKTIF</span>
+          </div>
+          <div className="text-3xl font-bold text-gray-900 mb-1">{activeCount}</div>
+          <div className="text-sm text-gray-500">Sedang dipinjam</div>
+        </div>
+
+        {/* Overdue */}
+        <div className="group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:shadow-red-500/5 transition-all duration-300">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/30">
+              <AlertTriangle className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-xs font-semibold text-red-600 bg-red-50 px-3 py-1 rounded-full">TERLAMBAT</span>
+          </div>
+          <div className="text-3xl font-bold text-gray-900 mb-1">{overdueCount}</div>
+          <div className="text-sm text-red-500">{overdueCount > 0 ? 'Segera kembalikan' : 'Tidak ada'}</div>
+        </div>
+
+        {/* Returned */}
+        <div className="group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:shadow-emerald-500/5 transition-all duration-300">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+              <CheckCircle className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">SELESAI</span>
+          </div>
+          <div className="text-3xl font-bold text-gray-900 mb-1">{returnedCount}</div>
+          <div className="text-sm text-gray-500">Dikembalikan</div>
+        </div>
+      </div>
+
+      {/* Search and Filter */}
+      <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm mb-6">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Cari nama peralatan atau nomor seri..."
+              className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:bg-white focus:ring-4 focus:ring-[rgba(255,0,122,0.08)] outline-none transition-all text-sm"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-3.5 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:ring-4 focus:ring-[rgba(255,0,122,0.08)] outline-none transition-all text-sm min-w-[150px]"
+          >
+            <option value="">Semua Status</option>
+            <option value="pending">Menunggu</option>
+            <option value="active">Aktif</option>
+            <option value="returned">Dikembalikan</option>
+            <option value="overdue">Terlambat</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Borrowings List */}
+      {isLoading ? (
+        <div className="text-center py-16">
+          <div className="relative w-16 h-16 mx-auto mb-4">
+            <div className="absolute inset-0 rounded-full border-4 border-[#ff007a]/20"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-[#ff007a] border-t-transparent animate-spin"></div>
+          </div>
+          <div className="text-gray-500 font-medium">Memuat peminjaman...</div>
+        </div>
+      ) : transactions && transactions.length > 0 ? (
+        <div className="space-y-4">
+          {transactions.map((transaction) => {
+            const statusConfig = getStatusConfig(transaction.status)
+            const daysInfo = getDaysInfo(transaction.expected_return_date, transaction.status)
+
+            return (
+              <div
+                key={transaction.id}
+                className={`group bg-white rounded-2xl border shadow-sm hover:shadow-xl hover:shadow-gray-100 transition-all duration-300 overflow-hidden ${transaction.status === 'pending' ? 'border-amber-200' : 'border-gray-100'
+                  }`}
+              >
+                <div className="p-5 sm:p-6">
+                  <div className="flex flex-col lg:flex-row lg:items-center gap-5">
+                    {/* Equipment Info */}
+                    <div className="flex items-start gap-4 flex-1 min-w-0">
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${transaction.status === 'pending'
+                        ? 'bg-gradient-to-br from-amber-100 to-amber-50'
+                        : 'bg-gradient-to-br from-[#ff007a]/10 to-[#ff007a]/5'
+                        }`}>
+                        {transaction.status === 'pending' ? (
+                          <HourglassIcon className="w-7 h-7 text-amber-500" />
+                        ) : (
+                          <Package className="w-7 h-7 text-[#ff007a]" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-bold text-lg text-gray-900 truncate">{transaction.equipment.name}</h3>
+                          {(transaction.quantity || 1) > 1 && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[#ff007a] text-white">
+                              ×{transaction.quantity || 1}
+                            </span>
+                          )}
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${statusConfig.bg} ${statusConfig.color} ${statusConfig.border}`}>
+                            {statusConfig.icon}
+                            {statusConfig.label}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
+                          <span className="flex items-center gap-1.5">
+                            <Tag className="w-3.5 h-3.5" />
+                            {transaction.equipment.category?.name || 'Tidak berkategori'}
+                          </span>
+                          <span className="flex items-center gap-1.5 font-mono text-xs">
+                            SN: {transaction.equipment.serial_number}
+                          </span>
+                          {transaction.equipment.location && (
+                            <span className="flex items-center gap-1.5">
+                              <MapPin className="w-3.5 h-3.5" />
+                              {transaction.equipment.location}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Dates */}
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-sm">
+                          <span className="flex items-center gap-1.5 text-gray-500">
+                            <CalendarDays className="w-3.5 h-3.5" />
+                            Diajukan: <span className="font-medium text-gray-700">{formatDate(transaction.borrow_date)}</span>
+                          </span>
+                          <span className="flex items-center gap-1.5 text-gray-500">
+                            <Timer className="w-3.5 h-3.5" />
+                            Batas: <span className="font-medium text-gray-700">{formatDate(transaction.expected_return_date)}</span>
+                          </span>
+                        </div>
+
+                        {transaction.notes && (
+                          <p className="mt-3 text-sm text-gray-400 bg-gray-50 px-3 py-2 rounded-lg">
+                            {transaction.notes}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right Side - Status & Actions */}
+                    <div className="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-end gap-3">
+                      {/* Days indicator */}
+                      <div className={`px-4 py-2 rounded-xl text-sm font-semibold ${daysInfo.bg} ${daysInfo.color}`}>
+                        {daysInfo.text}
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex gap-2">
+                        {transaction.status === 'pending' && (
+                          <button
+                            onClick={() => handleCancelBorrowing(transaction.id)}
+                            disabled={cancelBorrowingMutation.isPending}
+                            className="px-4 py-2.5 bg-red-100 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-200 transition-all flex items-center gap-2 disabled:opacity-50"
+                          >
+                            <X className="w-4 h-4" />
+                            Batalkan
+                          </button>
+                        )}
+                        {transaction.status === 'active' && (
+                          <button
+                            onClick={() => handleExtendBorrowing(transaction.id)}
+                            disabled={extendBorrowingMutation.isPending}
+                            className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-all flex items-center gap-2 disabled:opacity-50"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                            Perpanjang
+                          </button>
+                        )}
+                        {(transaction.status === 'active' || transaction.status === 'overdue') && (
+                          transaction.return_requested ? (
+                            <span className="px-4 py-2.5 bg-amber-100 text-amber-700 rounded-xl text-sm font-semibold flex items-center gap-2">
+                              <Clock className="w-4 h-4" />
+                              Menunggu Verifikasi
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setSelectedTransaction(transaction)
+                                setIsReturnDialogOpen(true)
+                              }}
+                              className="px-4 py-2.5 bg-[#FD1278] text-white rounded-xl text-sm font-semibold hover:bg-[#e0106c] transition-all flex items-center gap-2"
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                              Kembalikan
+                            </button>
+                          )
+                        )}
+                        {(transaction.status === 'active' || transaction.status === 'pending') && (
+                          <button
+                            onClick={() => handleDownloadPDF(transaction)}
+                            className="px-4 py-2.5 bg-emerald-100 text-emerald-700 rounded-xl text-sm font-semibold hover:bg-emerald-200 transition-all flex items-center gap-2"
+                            title="Download Surat Peminjaman"
+                          >
+                            <FileDown className="w-4 h-4" />
+                            Surat
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleViewDetails(transaction)}
+                          className="px-4 py-2.5 bg-[#ff007a]/10 text-[#ff007a] rounded-xl text-sm font-semibold hover:bg-[#ff007a]/20 transition-all flex items-center gap-2"
+                        >
+                          <Eye className="w-4 h-4" />
+                          Detail
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress bar for active items */}
+                {transaction.status === 'active' && (
+                  <div className="h-1 bg-gray-100">
+                    <div
+                      className="h-full bg-gradient-to-r from-[#ff007a] to-[#ff4d9e] transition-all duration-500"
+                      style={{
+                        width: `${Math.max(0, Math.min(100,
+                          ((new Date().getTime() - new Date(transaction.borrow_date).getTime()) /
+                            (new Date(transaction.expected_return_date).getTime() - new Date(transaction.borrow_date).getTime())) * 100
+                        ))}%`
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Pending indicator bar */}
+                {transaction.status === 'pending' && (
+                  <div className="h-1 bg-amber-100 overflow-hidden">
+                    <div className="h-full w-20 bg-amber-400 animate-pulse" />
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center">
+          <div className="w-24 h-24 bg-gradient-to-br from-[#ff007a]/10 to-[#ff007a]/5 rounded-3xl flex items-center justify-center mx-auto mb-6">
+            <Sparkles className="w-12 h-12 text-[#ff007a]" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Belum ada peminjaman</h3>
+          <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+            Mulai pinjam peralatan laboratorium yang Anda butuhkan untuk proyek Anda
+          </p>
+          <button
+            onClick={() => setIsRequestDialogOpen(true)}
+            className="px-6 py-3.5 bg-gradient-to-r from-[#ff007a] to-[#ff4d9e] text-white rounded-2xl font-semibold shadow-lg shadow-[rgba(255,0,122,0.3)] hover:shadow-xl hover:shadow-[rgba(255,0,122,0.4)] transition-all inline-flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Pinjam Peralatan Pertama
+          </button>
+        </div>
+      )}
+
+      {/* Detail Dialog */}
+      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+        <DialogContent className="sm:max-w-[500px] border-0 rounded-3xl p-0 overflow-hidden">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Detail Peminjaman</DialogTitle>
+          </DialogHeader>
+          {selectedTransaction && (
+            <>
+              {/* Header with gradient */}
+              <div className={`p-6 ${selectedTransaction.status === 'pending' ? 'bg-gradient-to-br from-amber-400 to-amber-500' :
+                selectedTransaction.status === 'active' ? 'bg-gradient-to-br from-emerald-400 to-emerald-500' :
+                  selectedTransaction.status === 'overdue' ? 'bg-gradient-to-br from-red-400 to-red-500' :
+                    selectedTransaction.status === 'rejected' ? 'bg-gradient-to-br from-red-400 to-red-500' :
+                      'bg-gradient-to-br from-gray-400 to-gray-500'
+                }`}>
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
+                    <Package className="w-8 h-8 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-white">{selectedTransaction.equipment.name}</h3>
+                    <p className="text-white/80 text-sm font-mono">SN: {selectedTransaction.equipment.serial_number}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Details */}
+              <div className="p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">Status</span>
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold border ${getStatusConfig(selectedTransaction.status).bg} ${getStatusConfig(selectedTransaction.status).color} ${getStatusConfig(selectedTransaction.status).border}`}>
+                    {getStatusConfig(selectedTransaction.status).icon}
+                    {getStatusConfig(selectedTransaction.status).label}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">Kategori</span>
+                  <span className="font-medium text-gray-900">{selectedTransaction.equipment.category?.name || '-'}</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">Lokasi</span>
+                  <span className="font-medium text-gray-900">{selectedTransaction.equipment.location || '-'}</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">Kondisi</span>
+                  <span className="font-medium text-gray-900">{selectedTransaction.equipment.condition || '-'}</span>
+                </div>
+
+                <hr className="border-gray-100" />
+
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">Tanggal Pengajuan</span>
+                  <span className="font-medium text-gray-900">{formatDate(selectedTransaction.borrow_date)}</span>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">Batas Pengembalian</span>
+                  <span className="font-medium text-gray-900">{formatDate(selectedTransaction.expected_return_date)}</span>
+                </div>
+
+                {selectedTransaction.actual_return_date && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">Tanggal Dikembalikan</span>
+                    <span className="font-medium text-gray-900">{formatDate(selectedTransaction.actual_return_date)}</span>
+                  </div>
+                )}
+
+                {selectedTransaction.notes && (
+                  <div className="pt-2">
+                    <span className="text-gray-500 text-sm block mb-2">Catatan</span>
+                    <p className="text-gray-700 bg-gray-50 p-3 rounded-xl text-sm">{selectedTransaction.notes}</p>
+                  </div>
+                )}
+
+                {/* Pending message */}
+                {selectedTransaction.status === 'pending' && (
+                  <div className="flex gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                    <HourglassIcon className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                    <p className="text-sm text-amber-800">
+                      Permintaan peminjaman Anda sedang menunggu persetujuan dari admin lab. Anda akan mendapat notifikasi setelah disetujui.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer actions */}
+              <div className="p-6 pt-0 flex gap-3">
+                {selectedTransaction.status === 'pending' && (
+                  <button
+                    onClick={() => handleCancelBorrowing(selectedTransaction.id)}
+                    disabled={cancelBorrowingMutation.isPending}
+                    className="flex-1 py-3 bg-red-100 text-red-600 rounded-xl font-semibold hover:bg-red-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <X className="w-4 h-4" />
+                    Batalkan Permintaan
+                  </button>
+                )}
+                <button
+                  onClick={() => setIsDetailDialogOpen(false)}
+                  className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all"
+                >
+                  Tutup
+                </button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Return Dialog */}
+      <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto border-0 rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-gray-900">Pengembalian Barang</DialogTitle>
+          </DialogHeader>
+          {selectedTransaction && (
+            <EarlyReturnForm
+              transaction={selectedTransaction}
+              onSuccess={() => {
+                setIsReturnDialogOpen(false)
+                refetch()
+              }}
+              onCancel={() => setIsReturnDialogOpen(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }

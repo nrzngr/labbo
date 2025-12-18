@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { ModernCard, ModernCardHeader } from '@/components/ui/modern-card'
 import { ModernButton } from '@/components/ui/modern-button'
 import { ModernBadge } from '@/components/ui/modern-badge'
@@ -65,18 +64,15 @@ export default function SettingsPage() {
 
   if (!user) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-screen">
+              <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">Please log in to continue...</div>
         </div>
-      </DashboardLayout>
-    )
+          )
   }
 
   if (user?.role !== 'admin') {
     return (
-      <DashboardLayout>
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-8 page-gradient min-h-screen">
+              <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-8 page-gradient min-h-screen">
           <ModernCard variant="default" className="text-center py-16">
             <div className="p-4 bg-red-100 rounded-full w-20 h-20 mx-auto mb-6">
               <Shield className="w-12 h-12 text-red-600 mx-auto" />
@@ -88,14 +84,12 @@ export default function SettingsPage() {
             <ModernBadge variant="destructive" size="sm">Admin Only</ModernBadge>
           </ModernCard>
         </div>
-      </DashboardLayout>
-    )
+          )
   }
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-8 page-gradient min-h-screen">
+              <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-8 page-gradient min-h-screen">
           <div className="flex items-center justify-center min-h-screen">
             <ModernCard variant="default" className="text-center py-12">
               <div className="animate-spin w-8 h-8 border-4 border-black border-t-transparent rounded-full mx-auto mb-4"></div>
@@ -103,13 +97,11 @@ export default function SettingsPage() {
             </ModernCard>
           </div>
         </div>
-      </DashboardLayout>
-    )
+          )
   }
 
   return (
-    <DashboardLayout>
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-8 page-gradient min-h-screen">
+          <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-8 page-gradient min-h-screen">
         {/* Enhanced Page Header */}
         <ModernCard variant="elevated" padding="lg" className="mb-6 sm:mb-8 fade-in">
           <div className="flex items-center gap-3 sm:gap-4">
@@ -332,6 +324,5 @@ export default function SettingsPage() {
           </ModernButton>
         </div>
       </div>
-    </DashboardLayout>
-  )
+      )
 }

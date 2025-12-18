@@ -8,9 +8,10 @@ export const equipmentSchema = z.object({
   purchase_date: z.string().optional(),
   purchase_price: z.string().optional(),
   condition: z.enum(['excellent', 'good', 'fair', 'poor']),
-  status: z.enum(['available', 'borrowed', 'maintenance', 'lost']),
+  status: z.enum(['available', 'borrowed', 'maintenance', 'retired']),
   location: z.string().min(1, 'Location is required'),
-  image_url: z.string().url('Invalid URL format').optional().or(z.literal(''))
+  image_url: z.string().url('Invalid URL format').optional().or(z.literal('')),
+  stock: z.number().min(0, 'Stock cannot be negative')
 })
 
 export const categorySchema = z.object({

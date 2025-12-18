@@ -30,11 +30,11 @@ function PrintLabelsContent() {
             return data.map(item => ({
                 id: item.id,
                 name: item.name,
-                serial_number: item.serial_number,
+                serial_number: item.serial_number || '',
                 qr_data: JSON.stringify({
                     id: item.id,
                     name: item.name,
-                    sn: item.serial_number,
+                    sn: item.serial_number || '',
                     g: new Date().toISOString()
                 })
             }))

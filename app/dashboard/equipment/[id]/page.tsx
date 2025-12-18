@@ -19,14 +19,27 @@ import {
   Camera,
   Clock,
   AlertTriangle,
-  CheckCircle,
-  Edit,
-  Share,
-  Download,
   QrCode,
   Tag,
-  DollarSign
+  DollarSign,
+  Activity,
+  History,
+  CheckCircle2,
+  XCircle,
+  HelpCircle
 } from 'lucide-react'
+
+interface LastBorrowing {
+  id: string
+  borrow_date: string
+  expected_return_date: string
+  actual_return_date?: string
+  status: string
+  user?: {
+    full_name: string
+    email: string
+  }
+}
 
 interface Equipment {
   id: string
@@ -63,6 +76,7 @@ export default function EquipmentDetailPage() {
 
   const { user } = useCustomAuth()
   const [equipment, setEquipment] = useState<Equipment | null>(null)
+  const [lastBorrowing, setLastBorrowing] = useState<LastBorrowing | null>(null)
   const [maintenanceHistory, setMaintenanceHistory] = useState<MaintenanceRecord[]>([])
   const [images, setImages] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -71,9 +85,11 @@ export default function EquipmentDetailPage() {
 
   useEffect(() => {
     if (equipmentId) {
-      fetchEquipmentDetails()
-      fetchMaintenanceHistory()
-      fetchImages()
+      Promise.all([
+        fetchEquipmentDetails(),
+        fetchMaintenanceHistory(),
+        fetchImages()
+      ]).finally(() => setIsLoading(false))
     }
   }, [equipmentId])
 
@@ -107,13 +123,12 @@ export default function EquipmentDetailPage() {
       if (response.ok) {
         const data = await response.json()
         setEquipment(data.equipment)
+        setLastBorrowing(data.lastBorrowing)
       } else {
         setError('Gagal memuat detail peralatan')
       }
     } catch (error) {
       setError('Kesalahan jaringan. Silakan coba lagi.')
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -131,52 +146,30 @@ export default function EquipmentDetailPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'available':
-        return 'bg-green-100 text-green-800'
-      case 'borrowed':
-        return 'bg-red-100 text-red-800'
-      case 'maintenance':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'lost':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
+      case 'available': return 'bg-emerald-100 text-emerald-800 border-emerald-200'
+      case 'borrowed': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'maintenance': return 'bg-amber-100 text-amber-800 border-amber-200'
+      case 'lost': return 'bg-rose-100 text-rose-800 border-rose-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
     }
   }
 
   const getConditionColor = (condition: string) => {
     switch (condition) {
-      case 'excellent':
-        return 'bg-green-100 text-green-800'
-      case 'good':
-        return 'bg-blue-100 text-blue-800'
-      case 'fair':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'poor':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
+      case 'excellent': return 'text-emerald-600 bg-emerald-50 border-emerald-100'
+      case 'good': return 'text-blue-600 bg-blue-50 border-blue-100'
+      case 'fair': return 'text-amber-600 bg-amber-50 border-amber-100'
+      case 'poor': return 'text-rose-600 bg-rose-50 border-rose-100'
+      default: return 'text-gray-600 bg-gray-50 border-gray-100'
     }
-  }
-
-  const handleBorrowEquipment = () => {
-    router.push(`/dashboard/checkout?equipment=${equipmentId}`)
-  }
-
-  const handleReserveEquipment = () => {
-    router.push(`/dashboard/scheduling?equipment=${equipmentId}`)
-  }
-
-  const handleEditEquipment = () => {
-    router.push(`/dashboard/equipment/${equipmentId}/edit`)
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen page-gradient flex items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-4 border-[#ff007a] border-t-transparent"></div>
-          <p className="text-sm font-medium text-[#6d7079]">Memuat detail peralatan...</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-full border-4 border-gray-200 border-t-[#ff007a] animate-spin"></div>
+          <p className="text-gray-500 font-medium animate-pulse">Memuat data...</p>
         </div>
       </div>
     )
@@ -184,12 +177,15 @@ export default function EquipmentDetailPage() {
 
   if (error || !equipment) {
     return (
-      <div className="min-h-screen page-gradient flex items-center justify-center">
-        <div className="text-center">
-          <AlertTriangle className="mx-auto mb-4 h-12 w-12 text-[#ff007a]" />
-          <p className="mb-4 text-sm font-medium text-[#b4235d]">{error || 'Peralatan tidak ditemukan'}</p>
-          <ModernButton onClick={() => router.back()} variant="outline">
-            Kembali
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center max-w-md w-full bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+          <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-8 h-8 text-rose-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Terjadi Kesalahan</h2>
+          <p className="text-gray-500 mb-6">{error || 'Peralatan tidak ditemukan'}</p>
+          <ModernButton onClick={() => router.back()} variant="outline" className="w-full justify-center">
+            Kembali ke Daftar
           </ModernButton>
         </div>
       </div>
@@ -197,441 +193,418 @@ export default function EquipmentDetailPage() {
   }
 
   return (
-    <div className="min-h-screen page-gradient pb-10">
-      {/* Enhanced Header with Gradient */}
-      <div className="bg-white border-b border-gray-200 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500"></div>
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <ModernButton
-                onClick={() => router.back()}
-                variant="ghost"
-                size="sm"
-                className="text-gray-500 hover:text-gray-900"
-                leftIcon={<ArrowLeft className="w-5 h-5" />}
-              >
-                Kembali
-              </ModernButton>
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <h1 className="text-3xl font-bold text-gray-900 tracking-tight">{equipment.name}</h1>
-                  <ModernBadge variant="outline" className={getStatusColor(equipment.status)}>
-                    {equipment.status}
-                  </ModernBadge>
-                </div>
-                <div className="flex items-center gap-4 text-sm text-gray-500 text-muted-foreground">
-                  <span className="flex items-center gap-1.5 font-mono bg-gray-100 px-2 py-0.5 rounded text-xs">
-                    <QrCode className="w-3 h-3" />
-                    {equipment.serial_number}
-                  </span>
-                  {equipment.category && (
-                    <span className="flex items-center gap-1.5">
-                      <Tag className="w-3.5 h-3.5" />
-                      {typeof equipment.category === 'object' ? equipment.category?.name : equipment.category}
-                    </span>
-                  )}
-                  {equipment.location && (
-                    <span className="flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5" />
-                      {equipment.location}
-                    </span>
-                  )}
-                </div>
+    <div className="min-h-screen bg-[#f8fafe]">
+      {/* Hero Section */}
+      <div className="relative bg-[#1a1f37] text-white pb-32 overflow-hidden">
+        {/* Abstract Background Shapes */}
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-[#ff007a]/20 to-purple-600/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-blue-600/20 to-cyan-400/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none"></div>
+
+        <div className="container mx-auto px-4 pt-8 relative z-10">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center text-gray-400 hover:text-white transition-colors mb-8 group"
+          >
+            <div className="p-2 rounded-full bg-white/5 group-hover:bg-white/10 mr-3 transition-all">
+              <ArrowLeft className="w-5 h-5" />
+            </div>
+            <span className="font-medium">Kembali ke Daftar</span>
+          </button>
+
+          <div className="flex flex-col md:flex-row gap-8 items-start justify-between">
+            <div className="space-y-4 max-w-3xl">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${getStatusColor(equipment.status)}`}>
+                  {equipment.status}
+                </span>
+                <span className="text-gray-400 text-sm font-mono bg-white/5 px-3 py-1 rounded-full border border-white/10 flex items-center gap-2">
+                  <Tag className="w-3 h-3" />
+                  {equipment.serial_number}
+                </span>
               </div>
-            </div>
 
-            <div className="flex items-center gap-3">
-              <ModernButton
-                onClick={handleEditEquipment}
-                variant="outline"
-                leftIcon={<Edit className="w-4 h-4" />}
-              >
-                Edit
-              </ModernButton>
+              <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">
+                {equipment.name}
+              </h1>
 
-              {equipment.status === 'available' && (
-                <>
-                  <ModernButton
-                    onClick={handleBorrowEquipment}
-                    variant="default"
-                    className="shadow-lg shadow-pink-200"
-                  >
-                    Pinjam Sekarang
-                  </ModernButton>
-                  <ModernButton
-                    onClick={handleReserveEquipment}
-                    variant="outline"
-                    leftIcon={<Calendar className="w-4 h-4" />}
-                  >
-                    Reservasi
-                  </ModernButton>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs Navigation */}
-      <div className="bg-white/80 backdrop-blur-sm sticky top-0 z-10 border-b border-gray-200">
-        <div className="container mx-auto px-4">
-          <div className="flex space-x-8 overflow-x-auto scrollbar-hide">
-            {[
-              { id: 'overview', label: 'Ringkasan', icon: FileText },
-              { id: 'maintenance', label: 'Pemeliharaan', icon: Wrench },
-              { id: 'images', label: `Foto (${images.length})`, icon: Camera },
-              { id: 'qr', label: 'QR Code', icon: QrCode },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`group flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-all whitespace-nowrap ${activeTab === tab.id
-                  ? 'border-[#ff007a] text-[#ff007a]'
-                  : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300'
-                  }`}
-              >
-                <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-[#ff007a]' : 'text-gray-400 group-hover:text-gray-600'}`} />
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="container mx-auto px-4 py-8">
-        {/* Overview Tab */}
-        {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main Details */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Basic Information Card */}
-              <ModernCard variant="default" padding="lg">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <FileText className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <h2 className="text-xl font-bold text-gray-900">Detail Peralatan</h2>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-8">
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center gap-2">
-                      <Tag className="w-3 h-3" /> Kategori
-                    </p>
-                    <p className="font-medium text-gray-900">
-                      {typeof equipment.category === 'object' ? equipment.category?.name : equipment.category || '-'}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center gap-2">
-                      <AlertTriangle className="w-3 h-3" /> Kondisi
-                    </p>
-                    {equipment.condition ? (
-                      <ModernBadge variant="outline" className={getConditionColor(equipment.condition)}>
-                        {equipment.condition}
-                      </ModernBadge>
-                    ) : (
-                      <span className="text-gray-400 italic">Tidak spesifik</span>
-                    )}
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center gap-2">
-                      <MapPin className="w-3 h-3" /> Lokasi
-                    </p>
-                    <p className="font-medium text-gray-900">{equipment.location || '-'}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 flex items-center gap-2">
-                      <Clock className="w-3 h-3" /> Tanggal Ditambahkan
-                    </p>
-                    <p className="font-medium text-gray-900">
-                      {new Date(equipment.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
-                    </p>
-                  </div>
-                </div>
-
-                {equipment.description && (
-                  <div className="mt-8 pt-6 border-t border-gray-100">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Deskripsi</p>
-                    <p className="text-gray-600 leading-relaxed bg-gray-50/50 p-4 rounded-xl border border-gray-100">
-                      {equipment.description}
-                    </p>
+              <div className="flex flex-wrap items-center gap-6 text-gray-300 text-sm md:text-base">
+                {equipment.category && (
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400">
+                      <Tag className="w-4 h-4" />
+                    </div>
+                    {typeof equipment.category === 'object' ? equipment.category?.name : equipment.category}
                   </div>
                 )}
-              </ModernCard>
-
-              {/* Purchase Information Card */}
-              <ModernCard variant="default" padding="lg">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-emerald-100 rounded-lg">
-                    <DollarSign className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  <h2 className="text-xl font-bold text-gray-900">Informasi Aset</h2>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100/50">
-                    <p className="text-xs text-emerald-600 font-medium mb-1">Tanggal Pembelian</p>
-                    <p className="font-bold text-emerald-900">
-                      {equipment.purchase_date
-                        ? new Date(equipment.purchase_date).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })
-                        : '-'}
-                    </p>
-                  </div>
-                  <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100/50">
-                    <p className="text-xs text-blue-600 font-medium mb-1">Harga Pembelian</p>
-                    <p className="font-bold text-blue-900">
-                      {equipment.purchase_price
-                        ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(equipment.purchase_price)
-                        : '-'}
-                    </p>
-                  </div>
-                  <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100/50">
-                    <p className="text-xs text-amber-600 font-medium mb-1">Garansi Berakhir</p>
-                    <p className="font-bold text-amber-900">
-                      {equipment.warranty_expiry
-                        ? new Date(equipment.warranty_expiry).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })
-                        : '-'}
-                    </p>
-                  </div>
-                </div>
-              </ModernCard>
-            </div>
-
-            {/* Sidebar */}
-            <div className="space-y-8">
-              {/* Quick Actions Card */}
-              <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-6 text-white shadow-xl">
-                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-pink-400" />
-                  Aksi Cepat
-                </h3>
-                <div className="space-y-3">
-                  {equipment.status === 'available' ? (
-                    <button
-                      onClick={handleBorrowEquipment}
-                      className="w-full py-3 px-4 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl flex items-center gap-3 transition-colors backdrop-blur-sm"
-                    >
-                      <div className="p-2 bg-pink-500 rounded-lg">
-                        <User className="w-4 h-4 text-white" />
-                      </div>
-                      <div className="text-left">
-                        <p className="font-medium text-sm">Pinjam Barang</p>
-                        <p className="text-xs text-gray-400">Proses peminjaman instan</p>
-                      </div>
-                    </button>
-                  ) : (
-                    <div className="p-4 bg-white/5 border border-white/10 rounded-xl text-center">
-                      <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto mb-2" />
-                      <p className="font-medium text-amber-400">Sedang Tidak Tersedia</p>
-                      <p className="text-xs text-gray-400 mt-1">Cek status atau tanggal kembali</p>
+                {equipment.location && (
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                      <MapPin className="w-4 h-4" />
                     </div>
-                  )}
-
-                  <button
-                    onClick={() => setActiveTab('qr')}
-                    className="w-full py-3 px-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex items-center gap-3 transition-colors group"
-                  >
-                    <div className="p-2 bg-blue-500 rounded-lg group-hover:bg-blue-400 transition-colors">
-                      <QrCode className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-medium text-sm">Cetak / Lihat QR</p>
-                      <p className="text-xs text-gray-400">Generate label untuk item ini</p>
-                    </div>
-                  </button>
+                    {equipment.location}
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  Ditambahkan {new Date(equipment.created_at).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
                 </div>
               </div>
+            </div>
 
-              {/* Maintenance Info */}
-              {(equipment.last_maintenance || equipment.next_maintenance) && (
-                <ModernCard variant="default" padding="lg">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 bg-orange-100 rounded-lg">
-                      <Wrench className="w-4 h-4 text-orange-600" />
+            <div className="flex gap-3">
+              {equipment.status === 'available' && (
+                <button
+                  onClick={() => router.push(`/dashboard/checkout?equipment=${equipmentId}`)}
+                  className="px-6 py-3 bg-[#ff007a] hover:bg-[#d60066] text-white rounded-xl font-bold shadow-lg shadow-pink-500/30 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+                >
+                  <User className="w-5 h-5" />
+                  Pinjam Sekarang
+                </button>
+              )}
+              <button
+                onClick={() => router.push(`/dashboard/equipment/${equipmentId}/edit`)}
+                className="px-5 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold border border-white/10 transition-all hover:border-white/30 backdrop-blur-sm"
+              >
+                Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 -mt-20 relative z-20 pb-12">
+        {/* Navigation Tabs */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-2 mb-8 flex flex-wrap gap-2">
+          {[
+            { id: 'overview', label: 'Ringkasan', icon: FileText },
+            { id: 'maintenance', label: 'Riwayat Servis', icon: Wrench },
+            { id: 'images', label: `Galeri (${images.length})`, icon: Camera },
+            { id: 'qr', label: 'Kode QR', icon: QrCode },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex-1 min-w-[120px] py-3 px-4 rounded-xl text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === tab.id
+                  ? 'bg-[#1a1f37] text-white shadow-lg shadow-indigo-900/20 ring-2 ring-indigo-500 ring-offset-2'
+                  : 'bg-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+            >
+              <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-[#ff007a]' : ''}`} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Content Area */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-8">
+            {activeTab === 'overview' && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {/* Description Card */}
+                <ModernCard className="bg-white hover:shadow-lg transition-shadow duration-300">
+                  <div className="flex items-center gap-3 mb-6 pb-6 border-b border-gray-100">
+                    <div className="p-3 bg-indigo-50 rounded-xl">
+                      <FileText className="w-6 h-6 text-indigo-600" />
                     </div>
-                    <h3 className="text-lg font-bold">Status Pemeliharaan</h3>
+                    <div>
+                      <h2 className="text-xl font-extrabold text-[#1a1f37]">Deskripsi & Spesifikasi</h2>
+                      <p className="text-gray-400 text-sm">Informasi detail mengenai peralatan</p>
+                    </div>
                   </div>
 
-                  <div className="space-y-4">
-                    {equipment.last_maintenance && (
-                      <div className="flex items-start gap-4">
-                        <div className="w-1 h-full bg-gray-200 rounded-full my-1"></div>
-                        <div>
-                          <p className="text-xs text-gray-500 uppercase font-semibold">Servis Terakhir</p>
-                          <p className="font-medium text-gray-900">{new Date(equipment.last_maintenance).toLocaleDateString()}</p>
-                        </div>
-                      </div>
-                    )}
-                    {equipment.next_maintenance && (
-                      <div className="flex items-start gap-4">
-                        <div className="w-1 h-full bg-orange-400 rounded-full my-1"></div>
-                        <div>
-                          <p className="text-xs text-orange-600 uppercase font-semibold">Jadwal Berikutnya</p>
-                          <p className="font-medium text-gray-900">{new Date(equipment.next_maintenance).toLocaleDateString()}</p>
-                        </div>
-                      </div>
+                  <div className="text-gray-600 leading-relaxed space-y-4">
+                    {equipment.description ? (
+                      <p>{equipment.description}</p>
+                    ) : (
+                      <p className="italic text-gray-400">Tidak ada deskripsi tersedia.</p>
                     )}
                   </div>
-                  <div className="mt-4 pt-4 border-t">
-                    <button
-                      onClick={() => setActiveTab('maintenance')}
-                      className="text-sm text-pink-600 hover:text-pink-700 font-medium flex items-center gap-1"
-                    >
-                      Lihat Riwayat <ArrowLeft className="w-4 h-4 rotate-180" />
-                    </button>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+                    <div className={`p-4 rounded-xl border ${getConditionColor(equipment.condition)} flex items-center justify-between`}>
+                      <span className="text-sm font-medium opacity-80">Kondisi Fisik</span>
+                      <span className="font-bold uppercase tracking-wider">{equipment.condition || '-'}</span>
+                    </div>
+                    <div className="p-4 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-500">Garansi</span>
+                      <span className="font-bold text-gray-900">
+                        {equipment.warranty_expiry
+                          ? new Date(equipment.warranty_expiry).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+                          : 'Tidak ada'}
+                      </span>
+                    </div>
                   </div>
                 </ModernCard>
-              )}
-            </div>
-          </div>
-        )}
 
-        {/* Maintenance Tab */}
-        {activeTab === 'maintenance' && (
-          <div className="space-y-6">
-            <ModernCard variant="default" padding="lg">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-lg font-bold">Riwayat Pemeliharaan</h2>
-                  <p className="text-gray-500 text-sm">Lacak semua perbaikan dan servis</p>
-                </div>
-                <ModernButton
-                  variant="default"
-                  size="sm"
-                  leftIcon={<Wrench className="w-4 h-4" />}
-                >
-                  Catat Pemeliharaan
-                </ModernButton>
+                {/* Purchase Info */}
+                <ModernCard className="bg-white hover:shadow-lg transition-shadow duration-300">
+                  <div className="flex items-center gap-3 mb-6 pb-6 border-b border-gray-100">
+                    <div className="p-3 bg-emerald-50 rounded-xl">
+                      <DollarSign className="w-6 h-6 text-emerald-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-extrabold text-[#1a1f37]">Informasi Pembelian</h2>
+                      <p className="text-gray-400 text-sm">Nilai aset dan tanggal pengadaan</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Harga Beli</label>
+                      <p className="text-2xl font-black text-[#1a1f37] tracking-tight">
+                        {equipment.purchase_price
+                          ? new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(equipment.purchase_price)
+                          : '-'}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Tanggal Beli</label>
+                      <p className="text-lg font-bold text-gray-700">
+                        {equipment.purchase_date
+                          ? new Date(equipment.purchase_date).toLocaleDateString('id-ID', { dateStyle: 'long' })
+                          : '-'}
+                      </p>
+                    </div>
+                  </div>
+                </ModernCard>
               </div>
+            )}
 
-              {maintenanceHistory.length > 0 ? (
-                <div className="space-y-3">
-                  {maintenanceHistory.map((record) => (
-                    <div key={record.id} className="p-4 border border-gray-100 bg-gray-50/50 hover:bg-white rounded-xl transition-all hover:shadow-md">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <ModernBadge variant="outline" size="sm" className={
-                              record.type === 'preventive'
-                                ? 'bg-blue-100 text-blue-800'
-                                : record.type === 'calibration'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-yellow-100 text-yellow-800'
-                            }>
-                              {record.type}
-                            </ModernBadge>
-                            <span className="text-sm text-gray-600 flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {new Date(record.date).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-800 font-medium mb-1">{record.description}</p>
-                          <div className="flex items-center gap-4 text-xs text-gray-500 mt-2">
-                            <div className="flex items-center gap-1">
-                              <User className="w-3 h-3" /> {record.performed_by}
-                            </div>
-                            {record.cost && (
-                              <div className="flex items-center gap-1">
-                                <DollarSign className="w-3 h-3" /> ${record.cost.toLocaleString()}
+            {activeTab === 'maintenance' && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <ModernCard>
+                  <div className="flex items-center justify-between mb-8">
+                    <div>
+                      <h2 className="text-xl font-extrabold text-[#1a1f37]">Riwayat Pemeliharaan</h2>
+                      <p className="text-gray-400 text-sm">Log servis dan perbaikan</p>
+                    </div>
+                    <button className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-bold hover:bg-gray-800 transition-colors">
+                      + Catat Servis
+                    </button>
+                  </div>
+
+                  {maintenanceHistory.length > 0 ? (
+                    <div className="relative border-l-2 border-gray-100 pl-8 space-y-8 ml-4">
+                      {maintenanceHistory.map((record) => (
+                        <div key={record.id} className="relative group">
+                          {/* Timeline Dot */}
+                          <div className={`absolute -left-[41px] top-1 w-5 h-5 rounded-full border-4 border-white shadow-sm transition-colors ${record.status === 'completed' ? 'bg-emerald-500' : 'bg-amber-500'
+                            }`}></div>
+
+                          <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 group-hover:bg-white group-hover:shadow-md transition-all">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                              <div className="flex items-center gap-3">
+                                <span className={`px-2 py-1 rounded-md text-xs font-bold uppercase ${record.type === 'preventive' ? 'bg-blue-100 text-blue-700' :
+                                    record.type === 'corrective' ? 'bg-orange-100 text-orange-700' : 'bg-purple-100 text-purple-700'
+                                  }`}>
+                                  {record.type}
+                                </span>
+                                <span className="text-sm text-gray-500 font-medium">
+                                  {new Date(record.date).toLocaleDateString('id-ID', { dateStyle: 'full' })}
+                                </span>
                               </div>
-                            )}
+                              <span className={`text-xs font-bold px-2 py-1 rounded-full border ${record.status === 'completed' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' : 'border-amber-200 text-amber-700 bg-amber-50'
+                                }`}>
+                                {record.status}
+                              </span>
+                            </div>
+
+                            <h3 className="font-bold text-gray-900 mb-2">{record.description}</h3>
+
+                            <div className="flex items-center gap-6 text-sm text-gray-500">
+                              <div className="flex items-center gap-2">
+                                <User className="w-4 h-4" />
+                                {record.performed_by}
+                              </div>
+                              {record.cost && (
+                                <div className="flex items-center gap-2">
+                                  <DollarSign className="w-4 h-4" />
+                                  {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(record.cost)}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <ModernBadge variant="outline" size="sm" className={
-                          record.status === 'completed'
-                            ? 'bg-green-100 text-green-800 border-green-200'
-                            : 'bg-yellow-100 text-yellow-800 border-yellow-200'
-                        }>
-                          {record.status}
-                        </ModernBadge>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
-                  <div className="bg-white p-4 rounded-full inline-block shadow-sm mb-3">
-                    <Wrench className="w-8 h-8 text-gray-300" />
-                  </div>
-                  <h3 className="text-gray-900 font-medium font-medium">Belum ada riwayat</h3>
-                  <p className="text-gray-500 text-sm mt-1">Belum ada catatan pemeliharaan untuk alat ini.</p>
-                </div>
-              )}
-            </ModernCard>
-          </div>
-        )}
-
-        {/* Images Tab */}
-        {activeTab === 'images' && (
-          <div className="space-y-6">
-            <ModernCard variant="default" padding="lg">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-xl font-bold flex items-center gap-2">
-                    <Camera className="w-5 h-5 text-[#ff007a]" />
-                    Galeri Foto
-                  </h2>
-                  <p className="text-gray-500 text-sm">Dokumentasi visual peralatan</p>
-                </div>
+                  ) : (
+                    <div className="text-center py-16 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                      <Wrench className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500 font-medium">Belum ada riwayat pemeliharaan.</p>
+                    </div>
+                  )}
+                </ModernCard>
               </div>
+            )}
 
-              {/* Image Gallery */}
-              <ImageGallery
-                images={images}
-                equipmentId={equipmentId}
-                editable={user?.role === 'admin' || user?.role === 'lab_staff'}
-                onDelete={handleImageDelete}
-                onSetPrimary={handleImageSetPrimary}
-                className="mb-8"
-              />
-            </ModernCard>
+            {activeTab === 'images' && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <ModernCard>
+                  <div className="flex items-center justify-between mb-8">
+                    <div>
+                      <h2 className="text-xl font-extrabold text-[#1a1f37]">Galeri Foto</h2>
+                      <p className="text-gray-400 text-sm">Dokumentasi fisik</p>
+                    </div>
+                  </div>
+                  <ImageGallery
+                    images={images}
+                    equipmentId={equipmentId}
+                    editable={user?.role === 'admin' || user?.role === 'lab_staff'}
+                    onDelete={handleImageDelete}
+                    onSetPrimary={handleImageSetPrimary}
+                  />
+                  {(user?.role === 'admin' || user?.role === 'lab_staff') && (
+                    <div className="mt-8 pt-8 border-t border-gray-100">
+                      <h3 className="text-sm font-bold text-gray-900 mb-4">Upload Foto Baru</h3>
+                      <ImageUpload
+                        equipmentId={equipmentId}
+                        onUploadComplete={handleImageUploadComplete}
+                        maxFiles={5}
+                      />
+                    </div>
+                  )}
+                </ModernCard>
+              </div>
+            )}
 
-            {/* Image Upload - Admin Only */}
-            {(user?.role === 'admin' || user?.role === 'lab_staff') && (
-              <ModernCard variant="default" padding="lg" className="bg-gradient-to-r from-gray-50 to-white">
-                <h3 className="text-lg font-semibold mb-2">Upload Foto Baru</h3>
-                <p className="text-sm text-gray-500 mb-6">Tambahkan foto untuk mendokumentasikan kondisi atau fitur.</p>
-                <ImageUpload
-                  equipmentId={equipmentId}
-                  onUploadComplete={handleImageUploadComplete}
-                  maxFiles={5}
-                />
-              </ModernCard>
+            {activeTab === 'qr' && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex justify-center">
+                <ModernCard className="max-w-md w-full text-center">
+                  <h2 className="text-xl font-extrabold text-[#1a1f37] mb-2">Kode QR Digital</h2>
+                  <p className="text-gray-400 text-sm mb-8">Scan untuk identifikasi cepat</p>
+
+                  <div className="bg-white p-8 rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 inline-block mb-8">
+                    <QRCodeDisplay
+                      equipmentId={equipment.id}
+                      equipmentName={equipment.name}
+                      serialNumber={equipment.serial_number}
+                      category={typeof equipment.category === 'object' ? equipment.category?.name : equipment.category}
+                      location={equipment.location}
+                    />
+                  </div>
+
+                  <p className="text-xs text-gray-400">ID: {equipment.id}</p>
+                </ModernCard>
+              </div>
             )}
           </div>
-        )}
 
-        {/* QR Code Tab */}
-        {activeTab === 'qr' && (
-          <div className="max-w-xl mx-auto">
-            <ModernCard variant="default" padding="lg" className="text-center">
-              <h2 className="text-xl font-bold mb-2">Identifikasi Digital</h2>
-              <p className="text-gray-500 text-sm mb-8">Scan untuk akses cepat ke detail peralatan</p>
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Last Activity Card - NEW FEATURE */}
+            <div className="bg-white rounded-3xl p-6 shadow-lg shadow-purple-500/5 border border-purple-100 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-purple-500/20 transition-all duration-700"></div>
 
-              <div className="bg-white p-8 rounded-2xl shadow-[0_0_40px_-10px_rgba(0,0,0,0.1)] inline-block mb-8 border border-gray-100">
-                <QRCodeDisplay
-                  equipmentId={equipment.id}
-                  equipmentName={equipment.name}
-                  serialNumber={equipment.serial_number}
-                  category={typeof equipment.category === 'object' ? equipment.category?.name : equipment.category}
-                  location={equipment.location}
-                />
+              <div className="flex items-center gap-3 mb-6 relative z-10">
+                <div className="p-3 bg-purple-100 rounded-xl text-purple-600">
+                  <Activity className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900">Aktivitas Terakhir</h3>
+                  <p className="text-xs text-gray-500">Status peminjaman terkini</p>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
-                <ModernButton variant="outline" className="w-full">
-                  <Download className="w-4 h-4 mr-2" /> Download
-                </ModernButton>
-                <ModernButton variant="default" className="w-full">
-                  <Share className="w-4 h-4 mr-2" /> Bagikan
-                </ModernButton>
+              {lastBorrowing ? (
+                <div className="relative z-10 space-y-4">
+                  <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${lastBorrowing.status === 'active' ? 'bg-blue-100 text-blue-700' :
+                          lastBorrowing.status === 'returned' ? 'bg-green-100 text-green-700' :
+                            lastBorrowing.status === 'overdue' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                        {lastBorrowing.status}
+                      </span>
+                      <span className="text-xs text-gray-400 font-mono">
+                        {new Date(lastBorrowing.borrow_date).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
+                        {lastBorrowing.user?.full_name?.charAt(0) || 'U'}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{lastBorrowing.user?.full_name || 'Pengguna'}</p>
+                        <p className="text-xs text-gray-500 truncate max-w-[150px]">{lastBorrowing.user?.email}</p>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-gray-500 space-y-1 pt-3 border-t border-gray-100">
+                      <div className="flex justify-between">
+                        <span>Dipinjam:</span>
+                        <span className="font-medium">{new Date(lastBorrowing.borrow_date).toLocaleDateString('id-ID')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Jatuh Tempo:</span>
+                        <span className="font-medium text-purple-600">{new Date(lastBorrowing.expected_return_date).toLocaleDateString('id-ID')}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => router.push('/dashboard/transactions')}
+                    className="w-full py-2.5 text-xs font-bold text-purple-600 border border-purple-200 rounded-xl hover:bg-purple-50 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <History className="w-3 h-3" />
+                    Lihat Semua Riwayat
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-8 relative z-10">
+                  <p className="text-sm text-gray-500 italic mb-2">Belum ada aktivitas peminjaman.</p>
+                  <p className="text-xs text-gray-400">Peralatan ini belum pernah dipinjam.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Actions */}
+            <div className="bg-gradient-to-br from-[#1a1f37] to-[#0f1225] rounded-3xl p-6 text-white shadow-xl shadow-gray-900/10">
+              <h3 className="font-bold mb-4 flex items-center gap-2">
+                <span className="w-2 h-6 bg-[#ff007a] rounded-full inline-block"></span>
+                Menu Cepat
+              </h3>
+
+              <div className="space-y-3">
+                {equipment.status === 'available' ? (
+                  <button
+                    onClick={() => router.push(`/dashboard/checkout?equipment=${equipmentId}`)}
+                    className="w-full py-3 px-4 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl flex items-center gap-3 transition-all group"
+                  >
+                    <div className="p-2 bg-[#ff007a] rounded-lg group-hover:scale-110 transition-transform">
+                      <Activity className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-bold text-sm">Pinjam Alat</div>
+                      <div className="text-[10px] text-gray-400">Proses sekarang</div>
+                    </div>
+                  </button>
+                ) : (
+                  <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                    <p className="text-xs text-amber-200">Tidak tersedia untuk dipinjam saat ini.</p>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setActiveTab('qr')}
+                  className="w-full py-3 px-4 bg-transparent hover:bg-white/5 border border-white/10 rounded-xl flex items-center gap-3 transition-colors"
+                >
+                  <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400">
+                    <QrCode className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold text-sm">Cetak QR</div>
+                    <div className="text-[10px] text-gray-400">Download label</div>
+                  </div>
+                </button>
               </div>
-            </ModernCard>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   )

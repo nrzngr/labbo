@@ -61,7 +61,25 @@ export async function GET(
             )
         }
 
-        return NextResponse.json({ equipment })
+        // Get last borrowing activity
+        const { data: lastBorrowing } = await supabase
+            .from('borrowing_transactions')
+            .select(`
+                *,
+                user:users!user_id (
+                    full_name,
+                    email
+                )
+            `)
+            .eq('equipment_id', id)
+            .order('borrow_date', { ascending: false })
+            .limit(1)
+            .single()
+
+        return NextResponse.json({
+            equipment,
+            lastBorrowing: lastBorrowing || null
+        })
     } catch (error) {
         console.error('Error in equipment detail route:', error)
         return NextResponse.json(

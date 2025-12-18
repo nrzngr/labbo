@@ -1,21 +1,18 @@
-"use client"
+'use client'
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import {
-    AlertTriangle, Clock, DollarSign, User, Package,
-    Calendar, CheckCircle, XCircle, Search, ChevronDown,
-    Mail, Send, Eye, Timer, AlertCircle
+    AlertTriangle, Clock, DollarSign, Package,
+    CheckCircle, XCircle, Search, AlertCircle
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { DashboardLayout } from '@/components/layout/dashboard-layout'
-import { ModernCard } from '@/components/ui/modern-card'
 import { ModernButton } from '@/components/ui/modern-button'
+import { PenaltyItemCard } from '@/components/monitoring/penalty-item-card'
 import { BORROWING_CONFIG } from '@/lib/borrowing-config'
 
 const PENALTY_RATE_PER_DAY = BORROWING_CONFIG.PENALTY_RATE_PER_DAY
-
 
 // Calculate penalty based on days late
 const calculatePenalty = (daysLate: number): number => {
@@ -160,246 +157,122 @@ export default function PenaltiesPage() {
     }
 
     return (
-        <DashboardLayout>
-            <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-h-screen bg-gradient-to-br from-[#f8f7fc] via-white to-[#fff5f9]">
-
+                    <div className="w-full px-4 sm:px-6 lg:px-8 py-8 min-h-screen bg-[#f8f9fc] space-y-8 max-w-[1600px] mx-auto">
                 {/* Header */}
-                <div className="mb-8">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2.5 bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg shadow-red-500/30">
-                            <AlertTriangle className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Denda & Pelanggaran</h1>
-                            <p className="text-gray-500 text-sm">Kelola denda keterlambatan dan pelanggaran peminjaman</p>
-                        </div>
-                    </div>
+                <div>
+                    <h1 className="text-3xl sm:text-4xl font-black text-[#1a1f36] tracking-tight mb-2">
+                        Denda & Pelanggaran.
+                    </h1>
+                    <p className="text-gray-500 font-medium text-lg">
+                        Kelola data keterlambatan dan status pembayaran denda.
+                    </p>
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    <ModernCard variant="default" padding="md" className="border-l-4 border-l-red-500">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-red-100 rounded-xl">
-                                <AlertTriangle className="w-5 h-5 text-red-600" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    {[
+                        { label: 'Total Kasus', value: stats.total, icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-200' },
+                        { label: 'Menunggu', value: stats.pending, icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50', border: 'border-amber-200' },
+                        { label: 'Diselesaikan', value: stats.resolved, icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50', border: 'border-green-200' },
+                        { label: 'Total Estimasi', value: formatCurrency(stats.totalFines), icon: DollarSign, color: 'text-pink-600', bg: 'bg-pink-50', border: 'border-pink-200', isCurrency: true },
+                    ].map((stat, idx) => (
+                        <div key={idx} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all duration-300 group">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className={`p-3 rounded-xl ${stat.bg} ${stat.color} group-hover:scale-110 transition-transform`}>
+                                    <stat.icon className="w-6 h-6" />
+                                </div>
                             </div>
                             <div>
-                                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-                                <p className="text-xs text-red-600 font-medium">Total Kasus</p>
+                                <h3 className={`font-black text-gray-900 mb-1 ${stat.isCurrency ? 'text-2xl' : 'text-4xl'}`}>{stat.value}</h3>
+                                <p className="text-gray-500 font-medium">{stat.label}</p>
                             </div>
                         </div>
-                    </ModernCard>
-
-                    <ModernCard variant="default" padding="md" className="border-l-4 border-l-amber-500">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-amber-100 rounded-xl">
-                                <Clock className="w-5 h-5 text-amber-600" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
-                                <p className="text-xs text-amber-600 font-medium">Menunggu</p>
-                            </div>
-                        </div>
-                    </ModernCard>
-
-                    <ModernCard variant="default" padding="md" className="border-l-4 border-l-green-500">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-green-100 rounded-xl">
-                                <CheckCircle className="w-5 h-5 text-green-600" />
-                            </div>
-                            <div>
-                                <p className="text-2xl font-bold text-gray-900">{stats.resolved}</p>
-                                <p className="text-xs text-green-600 font-medium">Diselesaikan</p>
-                            </div>
-                        </div>
-                    </ModernCard>
-
-                    <ModernCard variant="default" padding="md" className="border-l-4 border-l-pink-500">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-pink-100 rounded-xl">
-                                <DollarSign className="w-5 h-5 text-pink-600" />
-                            </div>
-                            <div>
-                                <p className="text-lg font-bold text-gray-900">{formatCurrency(stats.totalFines)}</p>
-                                <p className="text-xs text-pink-600 font-medium">Total Denda</p>
-                            </div>
-                        </div>
-                    </ModernCard>
+                    ))}
                 </div>
 
-                {/* Info Alert */}
-                <ModernCard variant="default" padding="md" className="mb-6 border-l-4 border-l-blue-500 bg-blue-50/50">
-                    <div className="flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                        <div>
-                            <p className="font-medium text-blue-800">Perhitungan Denda Otomatis</p>
-                            <p className="text-sm text-blue-700 mt-1">
-                                Denda dihitung otomatis: <strong>{formatCurrency(PENALTY_RATE_PER_DAY)}</strong> per hari keterlambatan.
-                                Kasus ditampilkan berdasarkan transaksi yang melewati batas waktu pengembalian.
-                            </p>
-                        </div>
-                    </div>
-                </ModernCard>
+                {/* Main Content Card */}
+                <div className="bg-white rounded-[2rem] border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden">
+                    {/* Toolbar */}
+                    <div className="p-6 border-b border-gray-100 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
+                        <div className="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center">
+                            {/* Search */}
+                            <div className="relative w-full xl:w-96 group">
+                                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-[#ff007a] transition-colors" />
+                                <input
+                                    type="text"
+                                    placeholder="Cari user, alat, atau info denda..."
+                                    className="w-full pl-12 h-12 bg-gray-50 border-gray-200 rounded-xl focus:bg-white focus:border-[#ff007a] focus:ring-[#ff007a]/20 transition-all text-base outline-none"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </div>
 
-                {/* Filters & Search */}
-                <ModernCard variant="default" padding="md" className="mb-6">
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder="Cari nama, email, atau peralatan..."
-                                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none transition-all text-sm"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                        </div>
-                        <div className="flex gap-2">
-                            {[
-                                { value: 'all', label: 'Semua' },
-                                { value: 'pending', label: 'Menunggu' },
-                                { value: 'paid', label: 'Dibayar' },
-                                { value: 'resolved', label: 'Dikembalikan' }
-                            ].map(opt => (
-                                <button
-                                    key={opt.value}
-                                    onClick={() => setFilter(opt.value as any)}
-                                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${filter === opt.value
-                                        ? 'bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg shadow-pink-500/30'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                        }`}
-                                >
-                                    {opt.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </ModernCard>
-
-                {/* Cases List */}
-                <ModernCard variant="default" padding="none" className="overflow-hidden">
-                    <div className="p-4 sm:p-6 border-b border-gray-100 bg-gradient-to-r from-red-50 to-white">
-                        <h2 className="text-lg font-bold text-gray-900">Daftar Kasus Keterlambatan</h2>
-                        <p className="text-sm text-gray-500">{filteredItems.length} kasus ditemukan</p>
-                    </div>
-
-                    {isLoading ? (
-                        <div className="flex items-center justify-center py-16">
-                            <div className="text-center">
-                                <div className="relative w-12 h-12 mx-auto mb-4">
-                                    <div className="absolute inset-0 rounded-full border-4 border-red-200"></div>
-                                    <div className="absolute inset-0 rounded-full border-4 border-red-500 border-t-transparent animate-spin"></div>
-                                </div>
-                                <p className="text-gray-500 font-medium">Memuat data...</p>
+                            {/* Filters */}
+                            <div className="flex flex-wrap gap-2">
+                                {[
+                                    { value: 'all', label: 'Semua Kasus' },
+                                    { value: 'pending', label: 'Menunggu Pembayaran' },
+                                    { value: 'paid', label: 'Lunas' },
+                                    { value: 'resolved', label: 'Selesai' }
+                                ].map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => setFilter(opt.value as any)}
+                                        className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${filter === opt.value
+                                            ? 'bg-[#ff007a] text-white shadow-lg shadow-pink-500/30'
+                                            : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                            }`}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
                             </div>
                         </div>
-                    ) : error ? (
-                        <div className="text-center py-16">
-                            <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                            <p className="text-red-600 font-medium">Gagal memuat data</p>
-                        </div>
-                    ) : filteredItems.length === 0 ? (
-                        <div className="text-center py-16">
-                            <CheckCircle className="w-16 h-16 text-green-300 mx-auto mb-4" />
-                            <p className="text-xl font-medium text-gray-900">Tidak Ada Kasus</p>
-                            <p className="text-gray-500 mt-2">
-                                {filter === 'all'
-                                    ? 'Tidak ada transaksi yang terlambat'
-                                    : 'Tidak ada kasus dengan filter ini'}
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="divide-y divide-gray-100">
-                            {filteredItems.map(item => {
-                                const daysLate = getDaysLate(item.expected_return_date)
-                                const penaltyAmount = calculatePenalty(daysLate)
-                                const isPaid = item.penalty_paid === true
-                                const isReturned = item.status === 'returned'
+                    </div>
 
-                                return (
-                                    <div key={item.id} className="p-4 sm:p-6 hover:bg-gray-50/50 transition-colors">
-                                        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                                            {/* User Info */}
-                                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold flex-shrink-0 ${isPaid || isReturned
-                                                    ? 'bg-gradient-to-br from-green-500 to-green-600'
-                                                    : 'bg-gradient-to-br from-red-500 to-red-600'
-                                                    }`}>
-                                                    {item.user?.full_name?.charAt(0) || '?'}
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="font-semibold text-gray-900 truncate">{item.user?.full_name || 'N/A'}</p>
-                                                    <p className="text-xs text-gray-500">{item.user?.nim || item.user?.email} • {item.user?.department}</p>
-                                                </div>
-                                            </div>
-
-                                            {/* Equipment */}
-                                            <div className="flex items-center gap-2 min-w-0 lg:w-48">
-                                                <Package className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                                                <div className="min-w-0">
-                                                    <p className="font-medium text-gray-900 truncate text-sm">{item.equipment?.name || 'N/A'}</p>
-                                                    <p className="text-xs text-gray-500 font-mono">{item.equipment?.serial_number}</p>
-                                                </div>
-                                            </div>
-
-                                            {/* Days Late */}
-                                            <div className="flex items-center gap-2 lg:w-32">
-                                                <Timer className="w-4 h-4 text-red-500" />
-                                                <div>
-                                                    <p className="font-bold text-red-600">{daysLate} hari</p>
-                                                    <p className="text-xs text-gray-500">terlambat</p>
-                                                </div>
-                                            </div>
-
-                                            {/* Penalty Amount */}
-                                            <div className="lg:w-32 text-right lg:text-left">
-                                                <p className="text-lg font-bold text-red-600">{formatCurrency(penaltyAmount)}</p>
-                                                <p className="text-xs text-gray-500">denda</p>
-                                            </div>
-
-                                            {/* Status & Actions */}
-                                            <div className="flex items-center gap-2">
-                                                {isPaid ? (
-                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                                                        <CheckCircle className="w-3.5 h-3.5" />
-                                                        Dibayar
-                                                    </span>
-                                                ) : isReturned ? (
-                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                                                        <CheckCircle className="w-3.5 h-3.5" />
-                                                        Dikembalikan
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
-                                                        <Clock className="w-3.5 h-3.5" />
-                                                        Menunggu
-                                                    </span>
-                                                )}
-
-                                                <ModernButton
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleViewDetail(item)}
-                                                    className="text-gray-500 hover:text-pink-600"
-                                                >
-                                                    <Eye className="w-4 h-4" />
-                                                </ModernButton>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    )}
-                </ModernCard>
+                    {/* Content List */}
+                    <div className="p-6 min-h-[400px]">
+                        {isLoading ? (
+                            <div className="flex flex-col items-center justify-center py-20">
+                                <div className="animate-spin h-12 w-12 border-4 border-[#ff007a] border-t-transparent rounded-full mb-4"></div>
+                                <p className="text-gray-500 font-medium animate-pulse">Memuat data denda...</p>
+                            </div>
+                        ) : filteredItems.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-20 text-center">
+                                <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+                                    <CheckCircle className="w-10 h-10 text-green-500" />
+                                </div>
+                                <h3 className="text-xl font-bold text-gray-900 mb-2">Tidak Ada Denda</h3>
+                                <p className="text-gray-500 max-w-sm mx-auto">
+                                    {filter === 'all'
+                                        ? 'Hebat! Tidak ada satupun keterlambatan atau denda yang tercatat saat ini.'
+                                        : 'Tidak ada data item yang sesuai dengan filter ini.'}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                {filteredItems.map(item => (
+                                    <PenaltyItemCard
+                                        key={item.id}
+                                        item={item}
+                                        onViewDetail={handleViewDetail}
+                                        getDaysLate={getDaysLate}
+                                        calculatePenalty={calculatePenalty}
+                                        formatCurrency={formatCurrency}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
 
                 {/* Detail Dialog */}
                 <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-                    <DialogContent className="max-w-lg rounded-2xl">
-                        <DialogHeader>
-                            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                    <DialogContent className="max-w-lg rounded-[24px] p-0 overflow-hidden border-none shadow-2xl">
+                        <DialogHeader className="p-6 bg-[#f8f9fc] border-b border-gray-100">
+                            <DialogTitle className="text-xl font-black text-gray-900 flex items-center gap-2">
                                 <AlertTriangle className="w-5 h-5 text-red-500" />
-                                Detail Kasus Denda
+                                Detail Denda
                             </DialogTitle>
                         </DialogHeader>
 
@@ -408,68 +281,60 @@ export default function PenaltiesPage() {
                             const penaltyAmount = calculatePenalty(daysLate)
 
                             return (
-                                <div className="space-y-4 mt-4">
-                                    <div className="p-4 bg-red-50 rounded-xl border border-red-100">
-                                        <div className="text-center">
-                                            <p className="text-3xl font-bold text-red-600">{formatCurrency(penaltyAmount)}</p>
-                                            <p className="text-sm text-red-700 mt-1">Total Denda ({daysLate} hari × {formatCurrency(PENALTY_RATE_PER_DAY)})</p>
+                                <div className="p-6 space-y-6">
+                                    <div className="p-6 bg-red-50 rounded-2xl border border-red-100 text-center">
+                                        <p className="text-4xl font-black text-red-600 tracking-tight">{formatCurrency(penaltyAmount)}</p>
+                                        <div className="flex items-center justify-center gap-2 mt-2 text-sm font-medium text-red-700 bg-red-100/50 py-1 px-3 rounded-full mx-auto w-fit">
+                                            <span>{daysLate} Hari Terlambat</span>
+                                            <span>×</span>
+                                            <span>{formatCurrency(PENALTY_RATE_PER_DAY)}/hari</span>
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-6">
                                         <div>
-                                            <label className="text-xs font-semibold text-gray-500 uppercase">Peminjam</label>
-                                            <p className="font-medium text-gray-900 mt-1">{selectedCase.user?.full_name}</p>
-                                            <p className="text-sm text-gray-500">{selectedCase.user?.email}</p>
+                                            <label className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1.5 block">Peminjam</label>
+                                            <div className="font-bold text-gray-900">{selectedCase.user?.full_name}</div>
+                                            <div className="text-xs text-gray-500 mt-0.5">{selectedCase.user?.email}</div>
                                         </div>
                                         <div>
-                                            <label className="text-xs font-semibold text-gray-500 uppercase">Peralatan</label>
-                                            <p className="font-medium text-gray-900 mt-1">{selectedCase.equipment?.name}</p>
-                                            <p className="text-sm text-gray-500 font-mono">{selectedCase.equipment?.serial_number}</p>
+                                            <label className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1.5 block">Peralatan</label>
+                                            <div className="font-bold text-gray-900">{selectedCase.equipment?.name}</div>
+                                            <div className="text-xs text-gray-500 font-mono mt-0.5">{selectedCase.equipment?.serial_number}</div>
                                         </div>
                                         <div>
-                                            <label className="text-xs font-semibold text-gray-500 uppercase">Batas Kembali</label>
-                                            <p className="font-medium text-red-600 mt-1">{formatDate(selectedCase.expected_return_date)}</p>
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-semibold text-gray-500 uppercase">Status</label>
-                                            <div className="mt-1">
-                                                {selectedCase.penalty_paid ? (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                                                        <CheckCircle className="w-3 h-3" /> Dibayar
-                                                    </span>
-                                                ) : selectedCase.status === 'returned' ? (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                                                        <CheckCircle className="w-3 h-3" /> Dikembalikan
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
-                                                        <Clock className="w-3 h-3" /> Menunggu
-                                                    </span>
-                                                )}
+                                            <label className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1.5 block">Jatuh Tempo</label>
+                                            <div className="font-bold text-red-600 flex items-center gap-2">
+                                                <Clock className="w-4 h-4" />
+                                                {formatDate(selectedCase.expected_return_date)}
                                             </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-1.5 block">Status</label>
+                                            {selectedCase.penalty_paid ? (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                                                    LUNAS
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700">
+                                                    BELUM LUNAS
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
 
                                     {!selectedCase.penalty_paid && (
-                                        <DialogFooter className="mt-6 flex gap-2">
-                                            <ModernButton
-                                                variant="outline"
-                                                onClick={() => setIsDetailOpen(false)}
-                                                className="flex-1"
-                                            >
-                                                Tutup
-                                            </ModernButton>
+                                        <div className="pt-2">
                                             <ModernButton
                                                 variant="default"
                                                 onClick={() => markPaidMutation.mutate(selectedCase.id)}
                                                 loading={markPaidMutation.isPending}
-                                                className="flex-1"
+                                                className="w-full h-12 text-base rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 border-none shadow-lg shadow-green-500/30"
                                             >
-                                                <CheckCircle className="w-4 h-4 mr-2" />
-                                                Tandai Dibayar
+                                                <CheckCircle className="w-5 h-5 mr-2" />
+                                                Konfirmasi Pembayaran
                                             </ModernButton>
-                                        </DialogFooter>
+                                        </div>
                                     )}
                                 </div>
                             )
@@ -477,6 +342,5 @@ export default function PenaltiesPage() {
                     </DialogContent>
                 </Dialog>
             </div>
-        </DashboardLayout>
-    )
+            )
 }

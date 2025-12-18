@@ -8,7 +8,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import DashboardLayout from '@/components/layout/dashboard-layout';
 ;
 
 ;
@@ -150,8 +149,7 @@ export default function SessionsPage() {
     const otherSessions = sessions.filter(s => !s.is_current);
 
     return (
-        <DashboardLayout>
-            <div className="space-y-6">
+                    <div className="space-y-6">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
@@ -322,6 +320,5 @@ export default function SessionsPage() {
                     </CardContent>
                 </Card>
             </div>
-        </DashboardLayout>
-    );
+            );
 }

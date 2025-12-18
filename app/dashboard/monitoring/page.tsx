@@ -4,24 +4,17 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useCustomAuth } from '@/components/auth/custom-auth-provider'
 import { supabase } from '@/lib/supabase'
-import { ModernCard, ModernCardContent } from '@/components/ui/modern-card'
-import { ModernBadge } from '@/components/ui/modern-badge'
+import { MonitoringItemCard } from '@/components/monitoring/monitoring-item-card'
 import { Input } from '@/components/ui/input'
 import {
     Search,
-    Users,
-    Calendar,
     Package,
-    FileText,
     Clock,
-    CheckCircle,
     AlertCircle,
-    XCircle,
     TrendingUp,
-    Building2,
-    ArrowRight
+    XCircle,
+    Filter
 } from 'lucide-react'
-import { DashboardLayout } from '@/components/layout/dashboard-layout'
 
 interface BorrowingTransaction {
     id: string
@@ -75,7 +68,6 @@ export default function MonitoringPage() {
         }
     })
 
-    // Calculate statistics
     const stats = useMemo(() => {
         if (!transactions) return { total: 0, active: 0, pending: 0, overdue: 0 }
 
@@ -87,143 +79,72 @@ export default function MonitoringPage() {
         }
     }, [transactions])
 
-    const getStatusBadge = (status: string) => {
-        const config: Record<string, { variant: "default" | "success" | "warning" | "destructive", icon: any, label: string }> = {
-            pending: { variant: 'warning', icon: Clock, label: 'Menunggu' },
-            active: { variant: 'default', icon: TrendingUp, label: 'Aktif' },
-            returned: { variant: 'success', icon: CheckCircle, label: 'Dikembalikan' },
-            overdue: { variant: 'destructive', icon: AlertCircle, label: 'Terlambat' },
-            rejected: { variant: 'destructive', icon: XCircle, label: 'Ditolak' },
-        }
-
-        const { variant, icon: Icon, label } = config[status] || config.active
-
-        return (
-            <ModernBadge variant={variant} size="sm" className="flex items-center gap-1.5">
-                <Icon className="w-3.5 h-3.5" />
-                {label}
-            </ModernBadge>
-        )
-    }
-
-    const formatDate = (dateString: string | null) => {
-        if (!dateString) return '-'
-        return new Date(dateString).toLocaleDateString('id-ID', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric'
-        })
-    }
-
-    const getDaysRemaining = (expectedDate: string) => {
-        const today = new Date()
-        const returnDate = new Date(expectedDate)
-        const diffTime = returnDate.getTime() - today.getTime()
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-        return diffDays
-    }
-
-    // Only allow dosen, admin, lab_staff
     if (!user || !['dosen', 'admin', 'lab_staff'].includes(user.role)) {
         return (
-            <DashboardLayout>
-                <div className="flex items-center justify-center min-h-screen">
-                    <div className="text-center">
-                        <XCircle className="mx-auto h-16 w-16 text-red-500 mb-4" />
-                        <h1 className="text-2xl font-bold text-gray-900 mb-2">Akses Ditolak</h1>
-                        <p className="text-gray-600">Anda tidak memiliki izin untuk mengakses halaman ini.</p>
-                    </div>
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="text-center">
+                    <XCircle className="mx-auto h-16 w-16 text-red-500 mb-4" />
+                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Akses Ditolak</h1>
+                    <p className="text-gray-600">Anda tidak memiliki izin untuk mengakses halaman ini.</p>
                 </div>
-            </DashboardLayout>
+            </div>
         )
     }
 
     return (
-        <DashboardLayout>
-            <div className="space-y-6">
-                {/* Header */}
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-gray-900">Monitoring Mahasiswa</h1>
-                    <p className="text-gray-600 mt-1">Pantau status peminjaman peralatan secara real-time</p>
-                </div>
+        <div className="space-y-8">
+            {/* Header Section */}
+            <div>
+                <h1 className="text-3xl sm:text-4xl font-black text-[#1a1f36] tracking-tight mb-2">
+                    Monitoring Mahasiswa.
+                </h1>
+                <p className="text-gray-500 font-medium text-lg">
+                    Pantau aktivitas peminjaman dan pengembalian peralatan secara real-time.
+                </p>
+            </div>
 
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <ModernCard variant="default" padding="md" className="border-l-4 border-l-blue-500">
-                        <ModernCardContent>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">Total Transaksi</p>
-                                    <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
-                                </div>
-                                <div className="p-3 bg-blue-50 rounded-2xl">
-                                    <Package className="w-6 h-6 text-blue-600" />
-                                </div>
+            {/* Stats Overview */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {[
+                    { label: 'Total Transaksi', value: stats.total, icon: Package, color: 'text-blue-600', bg: 'bg-blue-50' },
+                    { label: 'Sedang Dipinjam', value: stats.active, icon: TrendingUp, color: 'text-purple-600', bg: 'bg-purple-50' },
+                    { label: 'Menunggu Approval', value: stats.pending, icon: Clock, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+                    { label: 'Terlambat', value: stats.overdue, icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
+                ].map((stat, idx) => (
+                    <div key={idx} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                        <div className="flex items-start justify-between mb-4">
+                            <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
+                                <stat.icon className="w-6 h-6" />
                             </div>
-                        </ModernCardContent>
-                    </ModernCard>
+                        </div>
+                        <div>
+                            <h3 className="text-4xl font-black text-gray-900 mb-1">{stat.value}</h3>
+                            <p className="text-gray-500 font-medium">{stat.label}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
 
-                    <ModernCard variant="default" padding="md" className="border-l-4 border-l-purple-500">
-                        <ModernCardContent>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">Sedang Dipinjam</p>
-                                    <p className="text-3xl font-bold text-gray-900 mt-1">{stats.active}</p>
-                                </div>
-                                <div className="p-3 bg-purple-50 rounded-2xl">
-                                    <TrendingUp className="w-6 h-6 text-purple-600" />
-                                </div>
-                            </div>
-                        </ModernCardContent>
-                    </ModernCard>
-
-                    <ModernCard variant="default" padding="md" className="border-l-4 border-l-yellow-500">
-                        <ModernCardContent>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">Menunggu Approval</p>
-                                    <p className="text-3xl font-bold text-gray-900 mt-1">{stats.pending}</p>
-                                </div>
-                                <div className="p-3 bg-yellow-50 rounded-2xl">
-                                    <Clock className="w-6 h-6 text-yellow-600" />
-                                </div>
-                            </div>
-                        </ModernCardContent>
-                    </ModernCard>
-
-                    <ModernCard variant="default" padding="md" className="border-l-4 border-l-red-500">
-                        <ModernCardContent>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">Terlambat</p>
-                                    <p className="text-3xl font-bold text-gray-900 mt-1">{stats.overdue}</p>
-                                </div>
-                                <div className="p-3 bg-red-50 rounded-2xl">
-                                    <AlertCircle className="w-6 h-6 text-red-600" />
-                                </div>
-                            </div>
-                        </ModernCardContent>
-                    </ModernCard>
-                </div>
-
-                {/* Filters and Transactions */}
-                <ModernCard variant="default" padding="lg">
-                    <ModernCardContent>
-                        {/* Filters */}
-                        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                <Input
-                                    placeholder="Cari NIM atau Nama Mahasiswa..."
-                                    className="pl-10"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </div>
+            {/* Main Content Area */}
+            <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
+                {/* Toolbar */}
+                <div className="p-6 border-b border-gray-100">
+                    <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="relative flex-1 group">
+                            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-[#ff007a] transition-colors" />
+                            <Input
+                                placeholder="Cari NIM atau Nama Mahasiswa..."
+                                className="pl-12 h-12 bg-gray-50 border-gray-200 rounded-xl focus:bg-white focus:border-[#ff007a] transition-all"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <div className="relative">
+                            <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                             <select
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value)}
-                                className="px-5 py-3 border border-[#dfe2ec] bg-[#eef0f8] rounded-[16px] text-[15px] font-medium text-[#1f2937] shadow-sm outline-none transition focus:border-[#ff007a] focus:ring-4 focus:ring-[rgba(255,0,122,0.16)] min-w-[160px]"
+                                className="pl-12 pr-10 h-12 w-full sm:w-[200px] appearance-none bg-gray-50 border border-gray-200 rounded-xl text-gray-700 font-medium focus:bg-white focus:border-[#ff007a] outline-none transition-all cursor-pointer"
                             >
                                 <option value="">Semua Status</option>
                                 <option value="pending">Menunggu</option>
@@ -232,129 +153,42 @@ export default function MonitoringPage() {
                                 <option value="overdue">Terlambat</option>
                             </select>
                         </div>
+                    </div>
+                </div>
 
-                        {/* Transactions List */}
-                        {isLoading ? (
-                            <div className="text-center py-16">
-                                <div className="animate-spin mx-auto h-10 w-10 border-4 border-[#ff007a] border-t-transparent rounded-full mb-4"></div>
-                                <p className="text-gray-500 font-medium">Memuat data...</p>
+                {/* Content */}
+                <div className="p-6 min-h-[400px]">
+                    {isLoading ? (
+                        <div className="flex flex-col items-center justify-center py-20">
+                            <div className="animate-spin h-12 w-12 border-4 border-[#ff007a] border-t-transparent rounded-full mb-4"></div>
+                            <p className="text-gray-500 font-medium animate-pulse">Memuat data real-time...</p>
+                        </div>
+                    ) : transactions && transactions.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-center">
+                            <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+                                <Search className="w-10 h-10 text-gray-300" />
                             </div>
-                        ) : transactions && transactions.length === 0 ? (
-                            <div className="text-center py-16">
-                                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 mb-4">
-                                    <Users className="w-10 h-10 text-gray-400" />
-                                </div>
-                                <h3 className="text-lg font-semibold text-gray-900 mb-2">Tidak ada data</h3>
-                                <p className="text-gray-600">
-                                    {searchTerm || statusFilter
-                                        ? 'Coba ubah filter pencarian Anda'
-                                        : 'Belum ada transaksi peminjaman'}
-                                </p>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Tidak ada data ditemukan</h3>
+                            <p className="text-gray-500 max-w-sm mx-auto">
+                                Tidak ada transaksi yang cocok dengan filter pencarian Anda saat ini.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between px-2 mb-2">
+                                <span className="text-sm font-bold text-gray-400 uppercase tracking-wider">Daftar Transaksi</span>
+                                <span className="text-sm font-medium text-gray-500">{transactions?.length} Item</span>
                             </div>
-                        ) : (
-                            <div className="space-y-4">
-                                {transactions?.map((transaction) => {
-                                    const daysRemaining = getDaysRemaining(transaction.expected_return_date)
-                                    const isUrgent = daysRemaining <= 2 && daysRemaining >= 0 && transaction.status === 'active'
 
-                                    return (
-                                        <div
-                                            key={transaction.id}
-                                            className={`group relative border-2 rounded-2xl p-5 transition-all duration-300 hover:shadow-lg ${isUrgent
-                                                ? 'border-orange-200 bg-orange-50/30'
-                                                : 'border-gray-100 hover:border-[#ff007a]/20'
-                                                }`}
-                                        >
-                                            {/* Status Indicator Line */}
-                                            <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl ${transaction.status === 'active' ? 'bg-purple-500' :
-                                                transaction.status === 'pending' ? 'bg-yellow-500' :
-                                                    transaction.status === 'returned' ? 'bg-green-500' :
-                                                        transaction.status === 'overdue' ? 'bg-red-500' :
-                                                            'bg-gray-500'
-                                                }`} />
-
-                                            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                                                {/* Main Content */}
-                                                <div className="flex-1 space-y-3">
-                                                    {/* Equipment Name & Status */}
-                                                    <div className="flex items-start gap-3 flex-wrap">
-                                                        <h3 className="font-bold text-lg text-gray-900 group-hover:text-[#ff007a] transition-colors">
-                                                            {transaction.equipment.name}
-                                                        </h3>
-                                                        {getStatusBadge(transaction.status)}
-                                                        {isUrgent && (
-                                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-orange-100 text-orange-700 rounded-lg text-xs font-semibold">
-                                                                <AlertCircle className="w-3 h-3" />
-                                                                Segera Kembali
-                                                            </span>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Student Info */}
-                                                    <div className="flex items-center gap-2 text-gray-700">
-                                                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-[#ff88c4] to-[#ff007a] text-white text-xs font-bold">
-                                                            {transaction.user.full_name.charAt(0).toUpperCase()}
-                                                        </div>
-                                                        <div>
-                                                            <span className="font-semibold">{transaction.user.full_name}</span>
-                                                            {transaction.user.nim && (
-                                                                <span className="ml-2 text-sm text-gray-500">• {transaction.user.nim}</span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Details Grid */}
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                                                        <div className="flex items-center gap-2 text-gray-600">
-                                                            <Building2 className="w-4 h-4 text-gray-400" />
-                                                            <span>{transaction.user.department}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 text-gray-600">
-                                                            <Package className="w-4 h-4 text-gray-400" />
-                                                            <span className="font-mono text-xs">{transaction.equipment.serial_number}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 text-gray-600">
-                                                            <Calendar className="w-4 h-4 text-gray-400" />
-                                                            <span className="text-xs">
-                                                                {formatDate(transaction.borrow_date)}
-                                                                <ArrowRight className="w-3 h-3 inline mx-1" />
-                                                                {formatDate(transaction.expected_return_date)}
-                                                            </span>
-                                                        </div>
-                                                        {transaction.purpose && (
-                                                            <div className="flex items-center gap-2">
-                                                                <FileText className="w-4 h-4 text-gray-400" />
-                                                                <span className="text-xs bg-gray-100 px-2.5 py-1 rounded-lg font-medium">
-                                                                    {transaction.purpose.replace('[', '').replace(']', '')}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                {/* Timeline Indicator (Right Side) */}
-                                                {transaction.status === 'active' && (
-                                                    <div className="lg:w-32 text-center lg:border-l-2 lg:border-gray-100 lg:pl-6">
-                                                        <div className={`text-3xl font-bold ${daysRemaining < 0 ? 'text-red-600' :
-                                                            daysRemaining <= 2 ? 'text-orange-600' :
-                                                                'text-gray-900'
-                                                            }`}>
-                                                            {Math.abs(daysRemaining)}
-                                                        </div>
-                                                        <div className="text-xs font-medium text-gray-500 mt-1">
-                                                            {daysRemaining < 0 ? 'Hari Terlambat' : 'Hari Tersisa'}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )
-                                })}
+                            <div className="grid gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                {transactions?.map((transaction) => (
+                                    <MonitoringItemCard key={transaction.id} transaction={transaction} />
+                                ))}
                             </div>
-                        )}
-                    </ModernCardContent>
-                </ModernCard>
+                        </div>
+                    )}
+                </div>
             </div>
-        </DashboardLayout>
+        </div>
     )
 }

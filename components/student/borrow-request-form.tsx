@@ -32,6 +32,7 @@ interface Equipment {
   location: string
   description?: string
   image_url?: string
+  stock: number
 }
 
 interface BorrowRequestFormProps {
@@ -48,8 +49,9 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
   })
   const [notes, setNotes] = useState('')
   const [purpose, setPurpose] = useState<'praktikum' | 'tugas_akhir' | 'penelitian' | 'lainnya'>('praktikum')
+  const [quantity, setQuantity] = useState(1)
   const [searchTerm, setSearchTerm] = useState('')
-  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
 
   const queryClient = useQueryClient()
 
@@ -99,8 +101,9 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
     queryFn: async () => {
       let query = supabase
         .from('equipment')
-        .select('*, categories(name)')
+        .select('*, categories(name), stock')
         .eq('status', 'available')
+        .gt('stock', 0)
         .order('name')
 
       if (searchTerm) {
@@ -115,11 +118,12 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
   })
 
   const borrowMutation = useMutation({
-    mutationFn: async ({ equipmentId, expectedReturnDate, notes, purpose }: {
+    mutationFn: async ({ equipmentId, expectedReturnDate, notes, purpose, quantity }: {
       equipmentId: string
       expectedReturnDate: string
       notes: string
       purpose: string
+      quantity: number
     }) => {
       if (!user) throw new Error('User not authenticated')
 
@@ -133,6 +137,19 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
         throw new Error(`Anda telah mencapai batas maksimal peminjaman (${userLimits.maxItems} item)`)
       }
 
+      // Check stock availability
+      const { data: equipmentData, error: stockError } = await supabase
+        .from('equipment')
+        .select('stock, name')
+        .eq('id', equipmentId)
+        .single()
+
+      if (stockError) throw stockError
+
+      if (!equipmentData || equipmentData.stock < quantity) {
+        throw new Error(`Stok tidak cukup! Tersedia: ${equipmentData?.stock || 0} unit, diminta: ${quantity} unit`)
+      }
+
       const borrowDate = new Date().toISOString().split('T')[0]
 
       // Create the borrowing transaction with pending status (requires admin approval)
@@ -144,6 +161,7 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
           borrow_date: borrowDate,
           expected_return_date: expectedReturnDate,
           notes: purpose ? `[${purpose.toUpperCase()}] ${notes}` : notes, // Include purpose in notes
+          quantity: quantity,
           status: 'pending' as any  // Menunggu persetujuan admin
         })
         .select()
@@ -160,11 +178,15 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
       queryClient.invalidateQueries({ queryKey: ['equipment'] })
       queryClient.invalidateQueries({ queryKey: ['active-borrowings-count'] })
 
-      onSuccess()
+      // Show success step
+      setStep(4)
     }
   })
 
   const handleSelectEquipment = (equipment: Equipment) => {
+    // Block if user reached borrowing limit or is banned
+    if (hasReachedLimit || isBanned) return
+
     setSelectedEquipment(equipment)
     setStep(2)
   }
@@ -176,7 +198,8 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
       equipmentId: selectedEquipment.id,
       expectedReturnDate: returnDate,
       notes,
-      purpose
+      purpose,
+      quantity
     })
   }
 
@@ -254,16 +277,35 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
           </div>
         )}
 
-        {/* Borrowing Limit Warning */}
-        {!isBanned && hasReachedLimit ? (
-          <div className="flex gap-3 p-4 bg-red-50 border-2 border-red-200 rounded-2xl">
-            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-red-800">
-              <p className="font-semibold mb-1">Batas Peminjaman Tercapai</p>
-              <p className="text-red-600">Anda sudah meminjam {activeBorrowingsCount} item (maksimal {userLimits.maxItems}). Kembalikan item terlebih dahulu untuk meminjam lagi.</p>
+        {/* Borrowing Limit Warning - More Prominent */}
+        {!isBanned && hasReachedLimit && (
+          <div className="relative overflow-hidden p-6 bg-gradient-to-r from-red-500 to-red-600 rounded-2xl text-white shadow-lg shadow-red-500/30">
+            {/* Background decoration */}
+            <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full"></div>
+            <div className="absolute -right-2 -bottom-2 w-16 h-16 bg-white/10 rounded-full"></div>
+
+            <div className="relative flex items-start gap-4">
+              {/* Warning Icon */}
+              <div className="flex-shrink-0 w-14 h-14 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
+                <AlertTriangle className="w-8 h-8 text-white" />
+              </div>
+
+              <div className="flex-1">
+                <h4 className="text-xl font-bold mb-2">⚠️ Batas Peminjaman Tercapai!</h4>
+                <p className="text-red-100 text-sm leading-relaxed mb-3">
+                  Anda sudah meminjam <span className="font-bold text-white">{activeBorrowingsCount} item</span> dari maksimal <span className="font-bold text-white">{userLimits.maxItems} item</span> yang diperbolehkan.
+                </p>
+                <div className="flex items-center gap-2 text-xs text-red-200">
+                  <Clock className="w-4 h-4" />
+                  <span>Kembalikan item terlebih dahulu untuk dapat meminjam lagi</span>
+                </div>
+              </div>
             </div>
           </div>
-        ) : !isBanned && (
+        )}
+
+        {/* Remaining slots indicator - shown when not at limit */}
+        {!isBanned && !hasReachedLimit && (
           <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-xl">
             <span className="text-sm text-blue-700">Sisa kuota peminjaman:</span>
             <span className="font-bold text-blue-800">{remainingSlots} dari {userLimits.maxItems} item</span>
@@ -299,7 +341,10 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
                 return (
                   <div
                     key={equipment.id}
-                    className="group relative p-4 bg-white border-2 border-gray-100 rounded-2xl cursor-pointer transition-all duration-300 hover:border-[#ff007a] hover:shadow-xl hover:shadow-[rgba(255,0,122,0.1)] hover:-translate-y-0.5"
+                    className={`group relative p-4 bg-white border-2 rounded-2xl transition-all duration-300 ${hasReachedLimit || isBanned
+                      ? 'border-gray-200 opacity-50 cursor-not-allowed'
+                      : 'border-gray-100 cursor-pointer hover:border-[#ff007a] hover:shadow-xl hover:shadow-[rgba(255,0,122,0.1)] hover:-translate-y-0.5'
+                      }`}
                     onClick={() => handleSelectEquipment(equipment)}
                   >
                     <div className="flex items-center gap-4">
@@ -463,6 +508,67 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
           })}
         </div>
 
+        {/* Quantity Input */}
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+            <Package className="w-4 h-4" />
+            Jumlah Barang
+          </label>
+
+          {/* Stock Warning */}
+          {selectedEquipment && (selectedEquipment.stock || 1) <= 3 && (
+            <div className={`flex items-center gap-2 p-3 rounded-xl ${(selectedEquipment.stock || 1) === 0
+                ? 'bg-red-50 border border-red-200'
+                : 'bg-amber-50 border border-amber-200'
+              }`}>
+              <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${(selectedEquipment.stock || 1) === 0 ? 'text-red-500' : 'text-amber-500'
+                }`} />
+              <span className={`text-sm font-medium ${(selectedEquipment.stock || 1) === 0 ? 'text-red-700' : 'text-amber-700'
+                }`}>
+                {(selectedEquipment.stock || 1) === 0
+                  ? 'Stok habis! Barang tidak tersedia untuk dipinjam.'
+                  : `Stok terbatas! Hanya tersedia ${selectedEquipment.stock} unit.`}
+              </span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+              disabled={quantity <= 1}
+              className="w-12 h-12 rounded-xl bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center text-xl font-bold text-gray-600"
+            >
+              −
+            </button>
+            <div className="flex-1 text-center">
+              <span className={`text-3xl font-bold ${quantity > (selectedEquipment?.stock || 1) ? 'text-red-500' : 'text-[#222222]'
+                }`}>{quantity}</span>
+              <p className="text-sm text-gray-500">unit</p>
+            </div>
+            <button
+              onClick={() => setQuantity(Math.min(selectedEquipment?.stock || 10, Math.min(10, quantity + 1)))}
+              disabled={quantity >= (selectedEquipment?.stock || 10) || quantity >= 10}
+              className="w-12 h-12 rounded-xl bg-[#ff007a] hover:bg-[#e0106c] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center text-xl font-bold text-white shadow-lg shadow-[rgba(255,0,122,0.3)]"
+            >
+              +
+            </button>
+          </div>
+
+          {/* Quantity Warning */}
+          {quantity > (selectedEquipment?.stock || 1) && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200">
+              <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+              <span className="text-sm font-medium text-red-700">
+                Jumlah melebihi stok! Tersedia: {selectedEquipment?.stock || 0} unit
+              </span>
+            </div>
+          )}
+
+          <p className="text-xs text-gray-400 text-center">
+            Tersedia: {selectedEquipment?.stock || 0} unit | Maks: 10 unit per peminjaman
+          </p>
+        </div>
+
         {/* Notes */}
         <div className="space-y-3">
           <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
@@ -608,6 +714,39 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
             )}
           </button>
         </div>
+      </div>
+    )
+  }
+
+  // Step 4: Success
+  if (step === 4) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8">
+        {/* Success Container */}
+        <div className="w-full max-w-[469px] bg-[#F3F5F7] rounded-[20px] py-12 px-8 flex flex-col items-center">
+          {/* Pink Circle with Check Icon */}
+          <div className="w-[113px] h-[113px] bg-[#FD1278] rounded-full flex items-center justify-center mb-8 shadow-lg shadow-[rgba(253,18,120,0.3)]">
+            <CheckCircle className="w-16 h-16 text-white" strokeWidth={2.5} />
+          </div>
+
+          {/* Success Title */}
+          <h2 className="text-[32px] font-bold text-[#222222] text-center mb-4 leading-tight">
+            Pengajuan berhasil!
+          </h2>
+
+          {/* Subtitle */}
+          <p className="text-[16px] text-[#222222] text-center leading-relaxed max-w-[262px]">
+            Tunggu ya, peminjaman kamu sedang dicek oleh admin 😊
+          </p>
+        </div>
+
+        {/* Close/Done Button */}
+        <button
+          onClick={() => onSuccess()}
+          className="mt-8 w-full max-w-[300px] py-4 px-6 bg-gradient-to-r from-[#FD1278] to-[#ff4d9e] text-white rounded-full font-bold text-sm shadow-lg shadow-[rgba(253,18,120,0.3)] hover:shadow-xl hover:shadow-[rgba(253,18,120,0.4)] transition-all"
+        >
+          Selesai
+        </button>
       </div>
     )
   }

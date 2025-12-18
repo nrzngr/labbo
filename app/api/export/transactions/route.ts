@@ -40,8 +40,8 @@ export async function POST(request: NextRequest) {
         status,
         notes,
         equipment:equipment_id (name, serial_number),
-        borrower:users!borrowing_transactions_user_id_fkey (full_name, email, department),
-        approved_by_user:users!borrowing_transactions_approved_by_fkey (full_name),
+        borrower:user_profiles!borrowing_transactions_user_id_fkey (full_name, email, department),
+        approved_by_user:user_profiles!borrowing_transactions_approved_by_fkey (full_name),
         created_at
       `)
             .order('created_at', { ascending: false });
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
             'Tanggal Pinjam': formatDate(item.borrow_date),
             'Tanggal Jatuh Tempo': formatDate(item.expected_return_date),
             'Tanggal Kembali': item.actual_return_date ? formatDate(item.actual_return_date) : '-',
-            'Status': translateStatus(item.status),
+            'Status': translateStatus(item.status || ''),
             'Disetujui Oleh': (item.approved_by_user as { full_name: string } | null)?.full_name || '-',
             'Catatan': item.notes || '-',
         })) || [];
@@ -116,14 +116,15 @@ export async function POST(request: NextRequest) {
 
             const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
-            await supabase.from('report_exports').insert({
-                user_id: userId,
-                report_type: 'transactions',
-                format: format,
-                filters: filters,
-                status: 'completed',
-                completed_at: new Date().toISOString(),
-            });
+            // Log export (commented out - table doesn't exist)
+            // await supabase.from('report_exports').insert({
+            //     user_id: userId,
+            //     report_type: 'transactions',
+            //     format: format,
+            //     filters: filters,
+            //     status: 'completed',
+            //     completed_at: new Date().toISOString(),
+            // });
 
             return new NextResponse(buffer, {
                 headers: {

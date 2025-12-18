@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCustomAuth } from '@/components/auth/custom-auth-provider'
 import { supabase } from '@/lib/supabase'
-import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
     Calendar,
@@ -219,21 +218,18 @@ export default function ExtensionRequestsPage() {
 
     if (!canManage) {
         return (
-            <DashboardLayout>
-                <div className="flex items-center justify-center min-h-screen">
+                            <div className="flex items-center justify-center min-h-screen">
                     <div className="text-center">
                         <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
                         <h2 className="text-xl font-bold text-gray-900 mb-2">Akses Ditolak</h2>
                         <p className="text-gray-600">Anda tidak memiliki akses ke halaman ini.</p>
                     </div>
                 </div>
-            </DashboardLayout>
-        )
+                    )
     }
 
     return (
-        <DashboardLayout>
-            <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-h-screen bg-gradient-to-br from-[#f8f7fc] via-white to-[#fff5f9]">
+                    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 min-h-screen bg-gradient-to-br from-[#f8f7fc] via-white to-[#fff5f9]">
 
                 {/* Header */}
                 <div className="mb-8">
@@ -520,6 +516,5 @@ export default function ExtensionRequestsPage() {
                     </DialogContent>
                 </Dialog>
             </div>
-        </DashboardLayout>
-    )
+            )
 }
