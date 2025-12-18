@@ -494,7 +494,7 @@ export function createEmailService(): EmailService {
         secure: false, // true for 465, false for other ports
         auth: {
           user: process.env.GMAIL_USER || process.env.SMTP_USER || '',
-          pass: process.env.GMAIL_PASS || process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || ''
+          pass: process.env.GMAIL_APP_PASSWORD || process.env.GMAIL_PASS || process.env.SMTP_PASS || ''
         },
         fromEmail: process.env.GMAIL_FROM_EMAIL || process.env.SMTP_FROM_EMAIL || process.env.GMAIL_USER || 'noreply@labbo.com',
         fromName: process.env.GMAIL_FROM_NAME || process.env.SMTP_FROM_NAME || 'Labbo'
