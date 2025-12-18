@@ -230,7 +230,11 @@ export default function Dashboard() {
             <div className="glass-panel p-6 rounded-[32px] border-white/60">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-black text-gray-900">Aktivitas Terbaru</h3>
-                <button onClick={() => router.push('/dashboard/transactions')} className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-primary transition-colors">
+                <button
+                  onClick={() => router.push('/dashboard/transactions')}
+                  className="p-2 rounded-full hover:bg-gray-100 text-gray-400 hover:text-primary transition-colors"
+                  aria-label="Lihat semua transaksi"
+                >
                   <ArrowUpRight className="w-5 h-5" />
                 </button>
               </div>
