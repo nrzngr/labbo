@@ -83,7 +83,7 @@ export const generatePDF = async ({ filename, title, columns, data }: ExportOpti
         // approx 10x10 mm aspect ratio? Adjust based on actual logo
         // Assuming square-ish or wide logo. Let's make it 15mm high.
         try {
-            doc.addImage(logoData, 'PNG', 14, 10, 15, 15);
+            doc.addImage(logoData, 'PNG', 14, 10, 30, 10);
         } catch (e) {
             // fallback if logo fails (wrong format etc)
         }

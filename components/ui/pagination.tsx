@@ -217,16 +217,16 @@ export function TablePagination({
   const endItem = Math.min(currentPage * itemsPerPage, totalItems)
 
   return (
-    <div className={`flex items-center justify-between gap-6 py-5 px-6 bg-gray-50/50 border-t border-gray-100 ${className}`}>
+    <div className={`flex flex-col sm:flex-row items-center sm:justify-between gap-4 sm:gap-6 py-5 px-6 bg-gray-50/50 border-t border-gray-100 ${className}`}>
       {/* Left: Item count info */}
       {showInfo && totalItems > 0 && (
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 w-full sm:w-auto text-center sm:text-left">
           Menampilkan <span className="font-bold text-[#ff007a]">{startItem}-{endItem}</span> dari <span className="font-bold text-gray-900">{totalItems}</span> item
         </p>
       )}
 
       {/* Right: Controls */}
-      <div className="flex items-center gap-6 ml-auto">
+      <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full sm:w-auto justify-center sm:justify-end">
         {/* Page size selector */}
         {onPageSizeChange && (
           <div className="flex items-center gap-3">
