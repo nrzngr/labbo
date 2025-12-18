@@ -252,7 +252,7 @@ export class EmailService {
   }
 
   private getLogoHtml(): string {
-    return `<img src="${this.appUrl}/logo.svg" alt="Labbo" class="logo" style="height: 40px; width: auto;">`
+    return `<img src="https://raw.githubusercontent.com/nrzngr/labbo/main/public/Logo.png" alt="Labbo" class="logo" style="height: 40px; width: auto;">`
   }
 
   private getPasswordResetTemplate(userName: string, resetLink: string): EmailTemplate {
