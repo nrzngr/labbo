@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { supabase } from '@/lib/supabase'
 import { Search, Plus, Users } from 'lucide-react'
 import { TablePagination } from '@/components/ui/pagination'
+import { ExportDropdown } from '@/components/common/ExportDropdown'
 
 
 interface User {
@@ -136,6 +137,29 @@ export function UserList() {
                 <option value="dosen">Dosen</option>
                 <option value="mahasiswa">Mahasiswa</option>
               </select>
+              <ExportDropdown
+                data={users || []}
+                columns={[
+                  { header: 'Nama Lengkap', key: 'full_name' },
+                  { header: 'Email', key: 'email' },
+                  { header: 'Peran', key: 'role', formatter: (r: any) => r?.replace('_', ' ').toUpperCase() || '-' },
+                  { header: 'Departemen', key: 'department', formatter: (d: any) => d || '-' },
+                  { header: 'ID (NIM/NIP)', key: 'nim', formatter: (v: any) => v || '-' }, // Assuming 'nim' captures both or logic handled in mapping if needed. The type has nim, nip.
+                  // Actually 'nim' and 'nip' are separate columns. Let's use a custom getter if needed or just use nim/nip logic?
+                  // ExportColumn supports 'key'. If I want computed, I'd need to preprocess data or allow formatter to take the whole row?
+                  // data[key]. But if I want to combine nim/nip?
+                  // ExportDropdown maps data.map(item => item[col.key]).
+                  // If I set key to 'nim', it gets nim.
+                  // I should probably export both or pick one?
+                  // Let's add separate columns for clarity.
+                  { header: 'NIM', key: 'nim', formatter: (v: any) => v || '-' },
+                  { header: 'NIP', key: 'nip', formatter: (v: any) => v || '-' },
+                  { header: 'Telepon', key: 'phone', formatter: (v: any) => v || '-' },
+                ]}
+                filename="Data_Pengguna_Labbo"
+                title="Laporan Data Pengguna"
+                disabled={isLoading}
+              />
             </div>
 
             {isLoading ? (

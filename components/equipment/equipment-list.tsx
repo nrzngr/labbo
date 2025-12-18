@@ -18,6 +18,9 @@ import { ModernButton } from '@/components/ui/modern-button'
 import { TablePagination } from '@/components/ui/pagination'
 import { useRouter } from 'next/navigation'
 import { Printer } from 'lucide-react'
+import { ExportDropdown } from '@/components/common/ExportDropdown'
+import { ImportModal } from './import-modal'
+import { Upload } from 'lucide-react'
 
 interface Equipment {
   id: string
@@ -76,6 +79,7 @@ export function EquipmentList() {
     availableOnly: false,
   })
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null)
   const [viewingEquipment, setViewingEquipment] = useState<Equipment | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
@@ -311,38 +315,77 @@ export function EquipmentList() {
                 Menampilkan {equipmentData?.data?.length || 0} dari {equipmentData?.totalCount || 0} peralatan
               </span>
             </div>
-            {canManageEquipment && (
-              <div className="hidden lg:block">
-                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                  <DialogTrigger asChild>
-                    <ModernButton
-                      variant="default"
-                      size="lg"
-                      className="button-hover-lift"
-                      leftIcon={<Plus className="w-5 h-5" />}
-                    >
-                      Tambah Peralatan
-                    </ModernButton>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[600px] mx-4 max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>Tambah Peralatan Baru</DialogTitle>
-                      <DialogDescription className="sr-only">
-                        Isi formulir berikut untuk menambahkan peralatan baru.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-2">
-                      <EquipmentForm
-                        onSuccess={() => {
-                          setIsAddDialogOpen(false)
-                          refetch()
-                        }}
-                      />
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-            )}
+
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <ExportDropdown
+                data={equipmentData?.data || []}
+                columns={[
+                  { header: 'Nama Peralatan', key: 'name' },
+                  { header: 'Kategori', key: 'category', formatter: (v: any) => v?.name || '-' },
+                  { header: 'Nomor Seri', key: 'serial_number' },
+                  { header: 'Kondisi', key: 'condition' },
+                  { header: 'Status', key: 'status' },
+                  { header: 'Lokasi', key: 'location' },
+                  { header: 'Harga Beli', key: 'purchase_price', formatter: (v: any) => v ? `Rp ${parseInt(v).toLocaleString('id-ID')}` : '-' },
+                  { header: 'Tanggal Beli', key: 'purchase_date', formatter: (v: any) => v ? new Date(v).toLocaleDateString('id-ID') : '-' },
+                ]}
+                filename="Data_Peralatan_Labbo"
+                title="Laporan Data Peralatan"
+              />
+
+              {canManageEquipment && (
+                <ModernButton
+                  variant="outline"
+                  className="bg-white hidden lg:flex"
+                  leftIcon={<Upload className="w-4 h-4" />}
+                  onClick={() => setIsImportModalOpen(true)}
+                >
+                  Impor
+                </ModernButton>
+              )}
+
+              {canManageEquipment && (
+                <div className="hidden lg:block">
+                  <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                    <DialogTrigger asChild>
+                      <ModernButton
+                        variant="default"
+                        size="lg"
+                        className="button-hover-lift"
+                        leftIcon={<Plus className="w-5 h-5" />}
+                      >
+                        Tambah Peralatan
+                      </ModernButton>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[600px] mx-4 max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Tambah Peralatan Baru</DialogTitle>
+                        <DialogDescription className="sr-only">
+                          Isi formulir berikut untuk menambahkan peralatan baru.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="py-2">
+                        <EquipmentForm
+                          onSuccess={() => {
+                            setIsAddDialogOpen(false)
+                            refetch()
+                          }}
+                        />
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              )}
+            </div>
+
+            {/* Import Modal */}
+            <ImportModal
+              isOpen={isImportModalOpen}
+              onClose={() => setIsImportModalOpen(false)}
+              onSuccess={() => {
+                refetch()
+              }}
+            />
           </div>
 
           {equipmentData?.data && equipmentData.data.length === 0 ? (
@@ -377,74 +420,83 @@ export function EquipmentList() {
             </div>
           )}
         </div>
-      )}
+      )
+      }
 
       {/* Edit Dialog - Only for admin/lab_staff */}
-      {canManageEquipment && editingEquipment && (
-        <Dialog open={!!editingEquipment} onOpenChange={() => setEditingEquipment(null)}>
-          <DialogContent className="sm:max-w-[600px] mx-4 max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Ubah Peralatan</DialogTitle>
-              <DialogDescription className="sr-only">
-                Modifikasi data peralatan yang sudah ada.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-2">
-              <EquipmentForm
-                equipment={editingEquipment}
-                onSuccess={() => {
-                  setEditingEquipment(null)
-                  refetch()
-                }}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      {
+        canManageEquipment && editingEquipment && (
+          <Dialog open={!!editingEquipment} onOpenChange={() => setEditingEquipment(null)}>
+            <DialogContent className="sm:max-w-[600px] mx-4 max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Ubah Peralatan</DialogTitle>
+                <DialogDescription className="sr-only">
+                  Modifikasi data peralatan yang sudah ada.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-2">
+                <EquipmentForm
+                  equipment={editingEquipment}
+                  onSuccess={() => {
+                    setEditingEquipment(null)
+                    refetch()
+                  }}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        )
+      }
 
       {/* View Detail Dialog */}
-      {viewingEquipment && (
-        <EquipmentDetailModal
-          equipment={viewingEquipment}
-          isOpen={!!viewingEquipment}
-          onClose={() => setViewingEquipment(null)}
-        />
-      )}
+      {
+        viewingEquipment && (
+          <EquipmentDetailModal
+            equipment={viewingEquipment}
+            isOpen={!!viewingEquipment}
+            onClose={() => setViewingEquipment(null)}
+          />
+        )
+      }
 
       {/* Pagination */}
-      {equipmentData && equipmentData.totalCount > 0 && (
-        <TablePagination
-          currentPage={currentPage}
-          totalPages={Math.ceil(equipmentData.totalCount / pageSize)}
-          onPageChange={setCurrentPage}
-          totalItems={equipmentData.totalCount}
-          itemsPerPage={pageSize}
-          onPageSizeChange={setPageSize}
-        />
-      )}
+      {
+        equipmentData && equipmentData.totalCount > 0 && (
+          <TablePagination
+            currentPage={currentPage}
+            totalPages={Math.ceil(equipmentData.totalCount / pageSize)}
+            onPageChange={setCurrentPage}
+            totalItems={equipmentData.totalCount}
+            itemsPerPage={pageSize}
+            onPageSizeChange={setPageSize}
+          />
+        )
+      }
       {/* Floating Bulk Action Bar */}
-      {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white rounded-full shadow-xl border border-gray-200 px-6 py-3 flex items-center gap-4 z-50 animate-in slide-in-from-bottom-10 fade-in duration-300">
-          <div className="font-medium text-gray-900">
-            {selectedIds.size} item dipilih
+      {
+        selectedIds.size > 0 && (
+          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white rounded-full shadow-xl border border-gray-200 px-6 py-3 flex items-center gap-4 z-50 animate-in slide-in-from-bottom-10 fade-in duration-300">
+            <div className="font-medium text-gray-900">
+              {selectedIds.size} item dipilih
+            </div>
+            <div className="h-6 w-px bg-gray-200"></div>
+            <ModernButton
+              variant="default"
+              size="sm"
+              onClick={handleBulkPrint}
+              leftIcon={<Printer className="w-4 h-4" />}
+            >
+              Cetak QR
+            </ModernButton>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="text-gray-500 hover:text-gray-900 text-sm font-medium"
+            >
+              Batal
+            </button>
           </div>
-          <div className="h-6 w-px bg-gray-200"></div>
-          <ModernButton
-            variant="default"
-            size="sm"
-            onClick={handleBulkPrint}
-            leftIcon={<Printer className="w-4 h-4" />}
-          >
-            Cetak QR
-          </ModernButton>
-          <button
-            onClick={() => setSelectedIds(new Set())}
-            className="text-gray-500 hover:text-gray-900 text-sm font-medium"
-          >
-            Batal
-          </button>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   )
 }

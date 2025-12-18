@@ -75,13 +75,6 @@ export default function TransactionsPage() {
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
           <ModernButton
-            variant="outline"
-            className="flex-1 sm:flex-none border-gray-200"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </ModernButton>
-          <ModernButton
             variant="default"
             className="flex-1 sm:flex-none bg-[#ff007a] hover:bg-[#df006b] text-white border-none"
             leftIcon={<Plus className="w-4 h-4" />}

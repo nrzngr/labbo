@@ -18,9 +18,11 @@ import {
     AlertTriangle,
     Loader2,
     ChevronRight,
-    Eye
+    Eye,
+    Printer
 } from 'lucide-react'
 import { BORROWING_CONFIG } from '@/lib/borrowing-config'
+import { ExportDropdown } from '@/components/common/ExportDropdown'
 
 
 interface BorrowingRequest {
@@ -322,6 +324,20 @@ export default function BorrowingRequestsPage() {
                                 )}
                             </button>
                         ))}
+                        <ExportDropdown
+                            data={requestsData?.data || []}
+                            columns={[
+                                { header: 'Peminjam', key: 'user', formatter: (u: any) => u?.full_name || '-' },
+                                { header: 'NIM', key: 'user', formatter: (u: any) => u?.nim || '-' },
+                                { header: 'Peralatan', key: 'equipment', formatter: (e: any) => e?.name || '-' },
+                                { header: 'No. Seri', key: 'equipment', formatter: (e: any) => e?.serial_number || '-' },
+                                { header: 'Tgl Pinjam', key: 'borrow_date', formatter: (d: any) => d ? new Date(d).toLocaleDateString('id-ID') : '-' },
+                                { header: 'Tgl Kembali', key: 'expected_return_date', formatter: (d: any) => d ? new Date(d).toLocaleDateString('id-ID') : '-' },
+                                { header: 'Status', key: 'status' }
+                            ]}
+                            filename="Permintaan_Peminjaman"
+                            title="Laporan Permintaan Peminjaman"
+                        />
                     </div>
                 </div>
             </div>
@@ -602,6 +618,6 @@ export default function BorrowingRequestsPage() {
                     </div>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     )
 }

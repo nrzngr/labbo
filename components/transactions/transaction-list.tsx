@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ModernButton } from '@/components/ui/modern-button'
 import { TransactionItemCard } from '@/components/transactions/transaction-item-card'
 import { ModernCard } from '@/components/ui/modern-card'
+import { ExportDropdown } from '@/components/common/ExportDropdown'
 
 interface Transaction {
   id: string
@@ -203,6 +204,21 @@ export function TransactionList() {
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
+            <ExportDropdown
+              data={transactions?.data || []}
+              columns={[
+                { header: 'Peminjam', key: 'user', formatter: (u: any) => u?.full_name || '-' },
+                { header: 'Peralatan', key: 'equipment', formatter: (e: any) => e?.name || '-' },
+                { header: 'No. Seri', key: 'equipment', formatter: (e: any) => e?.serial_number || '-' },
+                { header: 'Tgl Pinjam', key: 'borrow_date', formatter: (d: any) => d ? new Date(d).toLocaleDateString('id-ID') : '-' },
+                { header: 'Batas Kembali', key: 'expected_return_date', formatter: (d: any) => d ? new Date(d).toLocaleDateString('id-ID') : '-' },
+                { header: 'Aktual Kembali', key: 'actual_return_date', formatter: (d: any) => d ? new Date(d).toLocaleDateString('id-ID') : '-' },
+                { header: 'Status', key: 'status' },
+                { header: 'Catatan', key: 'notes' },
+              ]}
+              filename="Data_Transaksi_Labbo"
+              title="Laporan Transaksi Peminjaman"
+            />
           </div>
         </div>
 

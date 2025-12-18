@@ -102,32 +102,14 @@ export default function EquipmentPage() {
               </DialogContent>
             </Dialog>
           ) : (
-            <>
-              <ModernButton
-                variant="outline"
-                size="sm"
-                leftIcon={<Upload className="w-4 h-4" />}
-                className="w-full sm:w-auto border-gray-200 text-gray-600 hover:text-[#ff007a] hover:border-[#ff007a]/30"
-              >
-                Impor
-              </ModernButton>
-              <ModernButton
-                variant="outline"
-                size="sm"
-                leftIcon={<Download className="w-4 h-4" />}
-                className="w-full sm:w-auto border-gray-200 text-gray-600 hover:text-[#ff007a] hover:border-[#ff007a]/30"
-              >
-                Ekspor
-              </ModernButton>
-              <ModernButton
-                variant="secondary"
-                size="sm"
-                leftIcon={<Filter className="w-4 h-4" />}
-                className="w-full sm:w-auto text-[#ff007a] bg-[#ff007a]/10 hover:bg-[#ff007a]/20 border-none"
-              >
-                Filter Lanjutan
-              </ModernButton>
-            </>
+            <ModernButton
+              variant="secondary"
+              size="sm"
+              leftIcon={<Filter className="w-4 h-4" />}
+              className="w-full sm:w-auto text-[#ff007a] bg-[#ff007a]/10 hover:bg-[#ff007a]/20 border-none"
+            >
+              Filter Lanjutan
+            </ModernButton>
           )}
         </div>
       </div>
