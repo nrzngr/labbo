@@ -119,89 +119,19 @@ export default function ReturnRequestsPage() {
             requestId,
             condition,
             notes,
-            equipmentId,
-            expectedDate
         }: {
             requestId: string
             condition: string
             notes: string
-            equipmentId: string
-            expectedDate: string
         }) => {
-            const actualReturnDate = new Date()
-            const penaltyAmount = calculatePenalty(new Date(expectedDate), actualReturnDate)
+            const { confirmReturn } = await import('@/app/actions/borrowing')
 
-            // Update transaction status
-            const { error: transactionError } = await supabase
-                .from('borrowing_transactions')
-                .update({
-                    status: 'returned' as any,
-                    actual_return_date: actualReturnDate.toISOString().split('T')[0],
-                    return_condition: condition,
-                    return_notes: notes,
-                    penalty_amount: penaltyAmount,
-                    penalty_paid: penaltyAmount === 0
-                })
-                .eq('id', requestId)
-
-            if (transactionError) throw transactionError
-
-            // Get quantity from transaction
-            const { data: txData } = await supabase
-                .from('borrowing_transactions')
-                .select('quantity')
-                .eq('id', requestId)
-                .single()
-
-            const returnedQty = (txData as any)?.quantity || 1
-
-            // Get current stock
-            const { data: currentEquipment } = await supabase
-                .from('equipment')
-                .select('stock')
-                .eq('id', equipmentId)
-                .single()
-
-            const currentStock = (currentEquipment as any)?.stock || 0
-
-            // Update equipment status to available, increment stock, and update condition if damaged
-            const equipmentUpdate: any = {
-                status: 'available',
-                stock: currentStock + returnedQty
-            }
-            if (hasDamage) {
-                equipmentUpdate.condition = condition
-            }
-
-            await supabase
-                .from('equipment')
-                .update(equipmentUpdate)
-                .eq('id', equipmentId)
-
-            // Get user ID for notification
-            const { data: transaction } = await supabase
-                .from('borrowing_transactions')
-                .select('user_id')
-                .eq('id', requestId)
-                .single()
-
-            if (transaction) {
-                // Create notification for user
-                let message = 'Peralatan telah dikembalikan dan dikonfirmasi oleh admin.'
-                if (penaltyAmount > 0) {
-                    message += ` Denda keterlambatan: ${formatPenalty(penaltyAmount)}`
-                }
-
-                await supabase
-                    .from('notifications')
-                    .insert({
-                        user_id: transaction.user_id,
-                        title: 'Pengembalian Dikonfirmasi',
-                        message,
-                        type: 'equipment',
-                        is_read: false
-                    })
-            }
+            await confirmReturn({
+                requestId,
+                condition,
+                notes,
+                hasDamage: condition === 'poor' || condition === 'damaged'
+            })
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['return-requests'] })
@@ -210,6 +140,9 @@ export default function ReturnRequestsPage() {
             setReturnCondition('')
             setReturnNotes('')
             setHasDamage(false)
+        },
+        onError: (error) => {
+            alert(error.message)
         }
     })
 
@@ -224,9 +157,7 @@ export default function ReturnRequestsPage() {
             confirmReturnMutation.mutate({
                 requestId: selectedRequest.id,
                 condition: returnCondition,
-                notes: returnNotes,
-                equipmentId: selectedRequest.equipment?.id,
-                expectedDate: selectedRequest.expected_return_date
+                notes: returnNotes
             })
         }
     }

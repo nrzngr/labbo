@@ -152,25 +152,18 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
 
       const borrowDate = new Date().toISOString().split('T')[0]
 
-      // Create the borrowing transaction with pending status (requires admin approval)
-      const { data, error } = await supabase
-        .from('borrowing_transactions')
-        .insert({
-          user_id: user.id,
-          equipment_id: equipmentId,
-          borrow_date: borrowDate,
-          expected_return_date: expectedReturnDate,
-          notes: purpose ? `[${purpose.toUpperCase()}] ${notes}` : notes, // Include purpose in notes
-          quantity: quantity,
-          status: 'pending' as any  // Menunggu persetujuan admin
-        })
-        .select()
-        .single()
+      // Submit via Server Action (handles DB insert and email notifications)
+      const { submitBorrowRequest } = await import('@/app/actions/borrowing')
 
-      if (error) throw error
+      const result = await submitBorrowRequest({
+        equipmentId,
+        expectedReturnDate,
+        notes,
+        purpose,
+        quantity
+      })
 
-      // Note: Equipment status will be updated to 'borrowed' only after admin approval
-      return data
+      return result.data
     },
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['available-equipment'] })
@@ -518,8 +511,8 @@ export function BorrowRequestForm({ onSuccess }: BorrowRequestFormProps) {
           {/* Stock Warning */}
           {selectedEquipment && (selectedEquipment.stock || 1) <= 3 && (
             <div className={`flex items-center gap-2 p-3 rounded-xl ${(selectedEquipment.stock || 1) === 0
-                ? 'bg-red-50 border border-red-200'
-                : 'bg-amber-50 border border-amber-200'
+              ? 'bg-red-50 border border-red-200'
+              : 'bg-amber-50 border border-amber-200'
               }`}>
               <AlertTriangle className={`w-4 h-4 flex-shrink-0 ${(selectedEquipment.stock || 1) === 0 ? 'text-red-500' : 'text-amber-500'
                 }`} />

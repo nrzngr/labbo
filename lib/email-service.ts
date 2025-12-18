@@ -232,6 +232,42 @@ export class EmailService {
     })
   }
 
+  async sendBorrowRequestEmail(adminEmail: string, studentName: string, equipmentName: string, quantity: number, date: string, dashboardLink: string): Promise<{ success: boolean; error?: string }> {
+    const template = this.getBorrowRequestTemplate(studentName, equipmentName, quantity, date, dashboardLink)
+    return this.provider.send({
+      to: adminEmail,
+      subject: template.subject,
+      html: template.html
+    })
+  }
+
+  async sendBorrowApprovalEmail(studentEmail: string, studentName: string, equipmentName: string, quantity: number, returnDate: string): Promise<{ success: boolean; error?: string }> {
+    const template = this.getBorrowApprovalTemplate(studentName, equipmentName, quantity, returnDate)
+    return this.provider.send({
+      to: studentEmail,
+      subject: template.subject,
+      html: template.html
+    })
+  }
+
+  async sendBorrowRejectionEmail(studentEmail: string, studentName: string, equipmentName: string, quantity: number, reason: string): Promise<{ success: boolean; error?: string }> {
+    const template = this.getBorrowRejectionTemplate(studentName, equipmentName, quantity, reason)
+    return this.provider.send({
+      to: studentEmail,
+      subject: template.subject,
+      html: template.html
+    })
+  }
+
+  async sendReturnConfirmationEmail(studentEmail: string, studentName: string, equipmentName: string, quantity: number, returnDate: string, condition: string): Promise<{ success: boolean; error?: string }> {
+    const template = this.getReturnConfirmationTemplate(studentName, equipmentName, quantity, returnDate, condition)
+    return this.provider.send({
+      to: studentEmail,
+      subject: template.subject,
+      html: template.html
+    })
+  }
+
   private getCommonStyles(): string {
     return `
       body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; max-width: 600px; margin: 0 auto; padding: 0; background-color: #f9fafb; }
@@ -447,6 +483,164 @@ export class EmailService {
             <div class="footer">
               <p style="margin: 0;">&copy; ${new Date().getFullYear()} Lab Inventory System. Hak Cipta Dilindungi.</p>
               <p style="margin: 8px 0 0;">Terima kasih telah bergabung dengan kami!</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    }
+  }
+
+  private getBorrowRequestTemplate(studentName: string, equipmentName: string, quantity: number, date: string, dashboardLink: string): EmailTemplate {
+    return {
+      subject: 'Permintaan Peminjaman Baru 📦',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>${this.getCommonStyles()}</style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              ${this.getLogoHtml()}
+              <h1>Permintaan Peminjaman Baru</h1>
+            </div>
+            <div class="content">
+              <p>Halo Admin,</p>
+              <p>Ada permintaan peminjaman baru dari <strong>${studentName}</strong>.</p>
+              
+              <div style="background-color: #f3f4f6; padding: 20px; border-radius: 12px; margin: 24px 0;">
+                <p style="margin: 0; font-weight: bold; color: #374151;">Detail Peminjaman:</p>
+                <ul style="margin-top: 12px; margin-bottom: 0;">
+                  <li><strong>Alat:</strong> ${equipmentName}</li>
+                  <li><strong>Jumlah:</strong> ${quantity}</li>
+                  <li><strong>Tanggal Pinjam:</strong> ${date}</li>
+                </ul>
+              </div>
+
+              <div style="text-align: center;">
+                <a href="${dashboardLink}" class="button">Tinjau Permintaan</a>
+              </div>
+            </div>
+             <div class="footer">
+              <p>&copy; ${new Date().getFullYear()} Lab Inventory System.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    }
+  }
+
+  private getBorrowApprovalTemplate(studentName: string, equipmentName: string, quantity: number, returnDate: string): EmailTemplate {
+    return {
+      subject: 'Peminjaman Disetujui! ✅',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>${this.getCommonStyles()}</style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              ${this.getLogoHtml()}
+              <h1 style="color: #059669;">Permintaan Disetujui</h1>
+            </div>
+            <div class="content">
+              <p>Halo ${studentName},</p>
+              <p>Permintaan peminjaman Anda telah disetujui. Silakan ambil peralatan di laboratorium.</p>
+              
+               <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; padding: 20px; border-radius: 12px; margin: 24px 0;">
+                <p style="margin: 0; font-weight: bold; color: #065f46;">Detail Barang:</p>
+                <ul style="margin-top: 12px; margin-bottom: 0; color: #065f46;">
+                  <li><strong>Alat:</strong> ${equipmentName}</li>
+                  <li><strong>Jumlah:</strong> ${quantity}</li>
+                  <li><strong>Batas Pengembalian:</strong> ${returnDate}</li>
+                </ul>
+              </div>
+
+               <p>Harap jaga peralatan dengan baik dan kembalikan tepat waktu.</p>
+            </div>
+             <div class="footer">
+              <p>&copy; ${new Date().getFullYear()} Lab Inventory System.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    }
+  }
+
+  private getBorrowRejectionTemplate(studentName: string, equipmentName: string, quantity: number, reason: string): EmailTemplate {
+    return {
+      subject: 'Update Permintaan Peminjaman ❌',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>${this.getCommonStyles()}</style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              ${this.getLogoHtml()}
+              <h1 style="color: #dc2626;">Permintaan Ditolak</h1>
+            </div>
+            <div class="content">
+              <p>Halo ${studentName},</p>
+              <p>Maaf, permintaan peminjaman Anda untuk <strong>${equipmentName}</strong> (Jml: ${quantity}) belum dapat disetujui saat ini.</p>
+              
+              <div style="background-color: #fef2f2; border: 1px solid #fca5a5; padding: 20px; border-radius: 12px; margin: 24px 0;">
+                <p style="margin: 0; font-weight: bold; color: #991b1b;">Alasan Penolakan:</p>
+                <p style="margin-top: 8px; margin-bottom: 0; color: #7f1d1d;">"${reason}"</p>
+              </div>
+
+              <p>Silakan hubungi admin lab jika ada pertanyaan lebih lanjut.</p>
+            </div>
+            <div class="footer">
+              <p>&copy; ${new Date().getFullYear()} Lab Inventory System.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    }
+  }
+
+  private getReturnConfirmationTemplate(studentName: string, studentEquipmentName: string, quantity: number, returnDate: string, condition: string): EmailTemplate {
+    return {
+      subject: 'Konfirmasi Pengembalian Barang ↩️',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>${this.getCommonStyles()}</style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              ${this.getLogoHtml()}
+              <h1 style="color: #2563eb;">Pengembalian Berhasil</h1>
+            </div>
+            <div class="content">
+              <p>Halo ${studentName},</p>
+              <p>Terima kasih telah mengembalikan peralatan berikut:</p>
+              
+              <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 20px; border-radius: 12px; margin: 24px 0;">
+                <ul style="margin: 0; color: #1e40af;">
+                  <li><strong>Alat:</strong> ${studentEquipmentName}</li>
+                  <li><strong>Jumlah:</strong> ${quantity}</li>
+                  <li><strong>Tanggal Kembali:</strong> ${returnDate}</li>
+                   <li><strong>Kondisi:</strong> ${condition}</li>
+                </ul>
+              </div>
+
+              <p>Transaksi ini telah ditandai selesai.</p>
+            </div>
+            <div class="footer">
+              <p>&copy; ${new Date().getFullYear()} Lab Inventory System.</p>
             </div>
           </div>
         </body>

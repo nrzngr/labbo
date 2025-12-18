@@ -173,65 +173,8 @@ export default function BorrowingRequestsPage() {
     // Approve mutation
     const approveMutation = useMutation({
         mutationFn: async ({ requestId, notes }: { requestId: string, notes: string }) => {
-            // Get transaction details including quantity
-            const { data: transaction, error: fetchError } = await supabase
-                .from('borrowing_transactions')
-                .select('equipment_id, user_id, quantity')
-                .eq('id', requestId)
-                .single()
-
-            if (fetchError || !transaction) throw new Error('Transaksi tidak ditemukan')
-            if (!transaction.equipment_id) throw new Error('ID Peralatan tidak valid')
-
-            // Check current stock
-            const { data: equipment, error: stockError } = await supabase
-                .from('equipment')
-                .select('stock, name')
-                .eq('id', transaction.equipment_id)
-                .single()
-
-            if (stockError || !equipment) throw new Error('Peralatan tidak ditemukan')
-
-            const requestedQty = (transaction as any).quantity || 1
-            if ((equipment as any).stock < requestedQty) {
-                throw new Error(`Stok tidak cukup! Tersedia: ${(equipment as any).stock} unit, diminta: ${requestedQty} unit`)
-            }
-
-            // Update transaction status
-            const { error: transactionError } = await supabase
-                .from('borrowing_transactions')
-                .update({
-                    status: 'active',
-                    admin_notes: notes || null,
-                    approved_by: user?.id,
-                    approved_at: new Date().toISOString()
-                })
-                .eq('id', requestId)
-
-            if (transactionError) throw transactionError
-
-            // Decrement stock
-            const newStock = (equipment as any).stock - requestedQty
-            const { error: updateError } = await supabase
-                .from('equipment')
-                .update({
-                    stock: newStock,
-                    status: newStock === 0 ? 'borrowed' : 'available'
-                })
-                .eq('id', transaction.equipment_id!)
-
-            if (updateError) throw updateError
-
-            // Create notification for user
-            await supabase
-                .from('notifications')
-                .insert({
-                    user_id: transaction.user_id,
-                    title: 'Peminjaman Disetujui',
-                    message: `Permintaan peminjaman ${requestedQty} unit ${(equipment as any).name} telah disetujui. Silakan ambil peralatan di laboratorium.`,
-                    type: 'approval',
-                    is_read: false
-                })
+            const { approveBorrowRequest } = await import('@/app/actions/borrowing')
+            await approveBorrowRequest(requestId, notes)
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['borrowing-requests'] })
@@ -239,49 +182,26 @@ export default function BorrowingRequestsPage() {
             setIsApproveDialogOpen(false)
             setSelectedRequest(null)
             setAdminNotes('')
+        },
+        onError: (error) => {
+            alert(error.message)
         }
     })
 
     // Reject mutation
     const rejectMutation = useMutation({
         mutationFn: async ({ requestId, reason }: { requestId: string, reason: string }) => {
-            const { error } = await supabase
-                .from('borrowing_transactions')
-                .update({
-                    status: 'rejected' as any,
-                    rejected_reason: reason,
-                    approved_by: user?.id,
-                    approved_at: new Date().toISOString()
-                } as any)
-                .eq('id', requestId)
-
-            if (error) throw error
-
-            // Get user ID for notification
-            const { data: transaction } = await supabase
-                .from('borrowing_transactions')
-                .select('user_id')
-                .eq('id', requestId)
-                .single()
-
-            if (transaction) {
-                // Create notification for user
-                await supabase
-                    .from('notifications')
-                    .insert({
-                        user_id: transaction.user_id,
-                        title: 'Peminjaman Ditolak',
-                        message: `Permintaan peminjaman Anda ditolak. Alasan: ${reason}`,
-                        type: 'approval',
-                        is_read: false
-                    })
-            }
+            const { rejectBorrowRequest } = await import('@/app/actions/borrowing')
+            await rejectBorrowRequest(requestId, reason)
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['borrowing-requests'] })
             setIsRejectDialogOpen(false)
             setSelectedRequest(null)
             setRejectReason('')
+        },
+        onError: (error) => {
+            alert(error.message)
         }
     })
 
