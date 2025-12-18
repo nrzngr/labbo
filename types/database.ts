@@ -159,7 +159,7 @@ export type Database = {
                         foreignKeyName: "borrowing_transactions_approved_by_fkey"
                         columns: ["approved_by"]
                         isOneToOne: false
-                        referencedRelation: "user_profiles"
+                        referencedRelation: "users"
                         referencedColumns: ["id"]
                     },
                     {
@@ -173,14 +173,14 @@ export type Database = {
                         foreignKeyName: "borrowing_transactions_returned_to_fkey"
                         columns: ["returned_to"]
                         isOneToOne: false
-                        referencedRelation: "user_profiles"
+                        referencedRelation: "users"
                         referencedColumns: ["id"]
                     },
                     {
                         foreignKeyName: "borrowing_transactions_user_id_fkey"
                         columns: ["user_id"]
                         isOneToOne: false
-                        referencedRelation: "user_profiles"
+                        referencedRelation: "users"
                         referencedColumns: ["id"]
                     },
                 ]
@@ -242,7 +242,7 @@ export type Database = {
                         foreignKeyName: "email_verification_tokens_user_id_fkey"
                         columns: ["user_id"]
                         isOneToOne: false
-                        referencedRelation: "user_profiles"
+                        referencedRelation: "users"
                         referencedColumns: ["id"]
                     }
                 ]
@@ -349,7 +349,7 @@ export type Database = {
                         foreignKeyName: "equipment_images_uploaded_by_fkey"
                         columns: ["uploaded_by"]
                         isOneToOne: false
-                        referencedRelation: "user_profiles"
+                        referencedRelation: "users"
                         referencedColumns: ["id"]
                     },
                 ]
@@ -403,7 +403,7 @@ export type Database = {
                         foreignKeyName: "maintenance_records_performed_by_fkey"
                         columns: ["performed_by"]
                         isOneToOne: false
-                        referencedRelation: "user_profiles"
+                        referencedRelation: "users"
                         referencedColumns: ["id"]
                     },
                 ]
@@ -471,14 +471,14 @@ export type Database = {
                         foreignKeyName: "maintenance_schedules_assigned_to_fkey"
                         columns: ["assigned_to"]
                         isOneToOne: false
-                        referencedRelation: "user_profiles"
+                        referencedRelation: "users"
                         referencedColumns: ["id"]
                     },
                     {
                         foreignKeyName: "maintenance_schedules_created_by_fkey"
                         columns: ["created_by"]
                         isOneToOne: false
-                        referencedRelation: "user_profiles"
+                        referencedRelation: "users"
                         referencedColumns: ["id"]
                     },
                     {
@@ -523,7 +523,7 @@ export type Database = {
                         foreignKeyName: "notifications_user_id_fkey"
                         columns: ["user_id"]
                         isOneToOne: false
-                        referencedRelation: "user_profiles"
+                        referencedRelation: "users"
                         referencedColumns: ["id"]
                     },
                 ]
@@ -577,7 +577,7 @@ export type Database = {
                         foreignKeyName: "penalties_user_id_fkey"
                         columns: ["user_id"]
                         isOneToOne: false
-                        referencedRelation: "user_profiles"
+                        referencedRelation: "users"
                         referencedColumns: ["id"]
                     },
                 ]
@@ -636,7 +636,7 @@ export type Database = {
                         foreignKeyName: "reservations_approved_by_fkey"
                         columns: ["approved_by"]
                         isOneToOne: false
-                        referencedRelation: "user_profiles"
+                        referencedRelation: "users"
                         referencedColumns: ["id"]
                     },
                     {
@@ -650,7 +650,7 @@ export type Database = {
                         foreignKeyName: "reservations_user_id_fkey"
                         columns: ["user_id"]
                         isOneToOne: false
-                        referencedRelation: "user_profiles"
+                        referencedRelation: "users"
                         referencedColumns: ["id"]
                     },
                 ]
@@ -743,7 +743,7 @@ export type Database = {
                         foreignKeyName: "waitlist_user_id_fkey"
                         columns: ["user_id"]
                         isOneToOne: false
-                        referencedRelation: "user_profiles"
+                        referencedRelation: "users"
                         referencedColumns: ["id"]
                     },
                 ]

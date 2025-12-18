@@ -236,7 +236,7 @@ export class EmailService {
     return `
       body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; max-width: 600px; margin: 0 auto; padding: 0; background-color: #f9fafb; }
       .container { background-color: #ffffff; margin: 20px auto; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
-      .header { background: #ff007a; padding: 32px 20px; text-align: center; }
+      .header { background: #ffffff; padding: 32px 20px; text-align: center; border-bottom: 1px solid #e5e7eb; }
       .logo { height: 40px; width: auto; margin-bottom: 0; }
       .content { padding: 40px 32px; }
       .button { display: inline-block; background-color: #ff007a; color: #ffffff !important; text-decoration: none; padding: 14px 32px; border-radius: 9999px; font-weight: 600; font-size: 16px; margin: 24px 0; box-shadow: 0 4px 14px 0 rgba(255, 0, 122, 0.39); transition: transform 0.2s; }
@@ -244,7 +244,7 @@ export class EmailService {
       .footer { background-color: #f9fafb; padding: 24px; text-align: center; font-size: 12px; color: #6b7280; border-top: 1px solid #e5e7eb; }
       .note { background-color: #fff1f2; border-left: 4px solid #ff007a; color: #be123c; padding: 16px; border-radius: 4px; font-size: 14px; margin: 24px 0; }
       .link-fallback { word-break: break-all; color: #6b7280; background: #f3f4f6; padding: 12px; border-radius: 8px; font-size: 13px; margin-top: 8px; font-family: monospace; }
-      h1 { color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; margin-top: 16px; }
+      h1 { color: #1f2937; margin: 0; font-size: 24px; font-weight: 700; margin-top: 16px; }
       p { margin-bottom: 16px; font-size: 16px; color: #374151; }
       ul { padding-left: 20px; margin-bottom: 24px; }
       li { margin-bottom: 8px; color: #374151; }

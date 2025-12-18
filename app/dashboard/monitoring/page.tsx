@@ -13,8 +13,10 @@ import {
     AlertCircle,
     TrendingUp,
     XCircle,
+
     Filter
 } from 'lucide-react'
+import { TablePagination } from '@/components/ui/pagination'
 
 interface BorrowingTransaction {
     id: string
@@ -40,9 +42,25 @@ export default function MonitoringPage() {
     const { user } = useCustomAuth()
     const [searchTerm, setSearchTerm] = useState('')
     const [statusFilter, setStatusFilter] = useState('')
+    const [page, setPage] = useState(1)
+    const [pageSize, setPageSize] = useState(10)
+    const [totalItems, setTotalItems] = useState(0)
+
+    // Fetch stats (all items lightweight)
+    const { data: statsData } = useQuery({
+        queryKey: ['monitoring-stats'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('borrowing_transactions')
+                .select('id, status')
+
+            if (error) throw error
+            return data as { id: string, status: string }[]
+        }
+    })
 
     const { data: transactions, isLoading } = useQuery({
-        queryKey: ['monitoring-transactions', searchTerm, statusFilter],
+        queryKey: ['monitoring-transactions', searchTerm, statusFilter, page, pageSize],
         queryFn: async () => {
             let query = supabase
                 .from('borrowing_transactions')
@@ -50,7 +68,7 @@ export default function MonitoringPage() {
           *,
           equipment:equipment_id (name, serial_number),
           user:user_id (full_name, email, nim, department)
-        `)
+        `, { count: 'exact' })
                 .order('created_at', { ascending: false })
 
             if (searchTerm) {
@@ -61,23 +79,29 @@ export default function MonitoringPage() {
                 query = query.eq('status', statusFilter as any)
             }
 
-            const { data, error } = await query
+            const from = (page - 1) * pageSize
+            const to = from + pageSize - 1
+            query = query.range(from, to)
+
+            const { data, error, count } = await query
 
             if (error) throw error
+            if (count !== null) setTotalItems(count)
+
             return data as unknown as BorrowingTransaction[]
         }
     })
 
     const stats = useMemo(() => {
-        if (!transactions) return { total: 0, active: 0, pending: 0, overdue: 0 }
+        if (!statsData) return { total: 0, active: 0, pending: 0, overdue: 0 }
 
         return {
-            total: transactions.length,
-            active: transactions.filter(t => t.status === 'active').length,
-            pending: transactions.filter(t => t.status === 'pending').length,
-            overdue: transactions.filter(t => t.status === 'overdue').length,
+            total: statsData.length,
+            active: statsData.filter(t => t.status === 'active').length,
+            pending: statsData.filter(t => t.status === 'pending').length,
+            overdue: statsData.filter(t => t.status === 'overdue').length,
         }
-    }, [transactions])
+    }, [statsData])
 
     if (!user || !['dosen', 'admin', 'lab_staff'].includes(user.role)) {
         return (
@@ -156,39 +180,148 @@ export default function MonitoringPage() {
                     </div>
                 </div>
 
-                {/* Content */}
-                <div className="p-6 min-h-[400px]">
-                    {isLoading ? (
-                        <div className="flex flex-col items-center justify-center py-20">
-                            <div className="animate-spin h-12 w-12 border-4 border-[#ff007a] border-t-transparent rounded-full mb-4"></div>
-                            <p className="text-gray-500 font-medium animate-pulse">Memuat data real-time...</p>
-                        </div>
-                    ) : transactions && transactions.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-center">
-                            <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
-                                <Search className="w-10 h-10 text-gray-300" />
-                            </div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">Tidak ada data ditemukan</h3>
-                            <p className="text-gray-500 max-w-sm mx-auto">
-                                Tidak ada transaksi yang cocok dengan filter pencarian Anda saat ini.
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between px-2 mb-2">
-                                <span className="text-sm font-bold text-gray-400 uppercase tracking-wider">Daftar Transaksi</span>
-                                <span className="text-sm font-medium text-gray-500">{transactions?.length} Item</span>
-                            </div>
+                {/* Content Table */}
+                <div className="bg-white rounded-[20px] overflow-hidden shadow-sm border border-gray-100 min-h-[400px]">
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[1000px]">
+                            <thead>
+                                <tr className="border-b border-gray-100">
+                                    <th className="py-4 px-6 text-left w-[250px]">
+                                        <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Peminjam</span>
+                                    </th>
+                                    <th className="py-4 px-6 text-left w-[250px]">
+                                        <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Peralatan</span>
+                                    </th>
+                                    <th className="py-4 px-6 text-center w-[150px]">
+                                        <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Tgl Pinjam</span>
+                                    </th>
+                                    <th className="py-4 px-6 text-center w-[150px]">
+                                        <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Status</span>
+                                    </th>
+                                    <th className="py-4 px-6 text-left w-[200px]">
+                                        <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Keterangan</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {isLoading ? (
+                                    <tr>
+                                        <td colSpan={5} className="py-20 text-center">
+                                            <div className="flex justify-center">
+                                                <div className="animate-spin h-8 w-8 border-4 border-[#ff007a] border-t-transparent rounded-full" />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : transactions && transactions.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="py-20 text-center">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                                    <Search className="w-8 h-8 text-gray-300" />
+                                                </div>
+                                                <h3 className="text-lg font-bold text-gray-900 mb-1" style={{ fontFamily: 'Satoshi, sans-serif' }}>Tidak ada data</h3>
+                                                <p className="text-gray-400 text-sm" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                    Tidak ada transaksi yang cocok.
+                                                </p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    transactions?.map((transaction) => {
+                                        // Helper for date formatting
+                                        const formatDate = (date: string) => {
+                                            return new Date(date).toLocaleDateString('id-ID', {
+                                                day: 'numeric',
+                                                month: 'short',
+                                                year: 'numeric'
+                                            })
+                                        }
 
-                            <div className="grid gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                {transactions?.map((transaction) => (
-                                    <MonitoringItemCard key={transaction.id} transaction={transaction} />
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                                        // Status logic
+                                        let statusLabel = 'Dipinjam'
+                                        let statusDotColor = '#FFEE35' // Yellow
+                                        if (transaction.status === 'returned') {
+                                            statusLabel = 'Dikembalikan'
+                                            statusDotColor = '#3AFB57' // Green
+                                        } else if (transaction.status === 'overdue') {
+                                            statusLabel = 'Terlambat'
+                                            statusDotColor = '#FF6666' // Red
+                                        } else if (transaction.status === 'pending') {
+                                            statusLabel = 'Menunggu'
+                                            statusDotColor = '#FFA500' // Orange
+                                        }
+
+                                        return (
+                                            <tr
+                                                key={transaction.id}
+                                                className="group hover:bg-pink-50/10 transition-colors"
+                                            >
+                                                <td className="py-4 px-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff007a] to-[#ff4d9e] flex items-center justify-center flex-shrink-0 text-white text-xs font-bold">
+                                                            {transaction.user?.full_name?.charAt(0) || 'U'}
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                                {transaction.user?.full_name}
+                                                            </span>
+                                                            <span className="text-[12px] text-gray-400" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                                {transaction.user?.nim}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-6">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                            {transaction.equipment?.name}
+                                                        </span>
+                                                        <span className="text-[12px] text-gray-400 font-mono" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                            {transaction.equipment?.serial_number}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-6 text-center">
+                                                    <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                        {formatDate(transaction.borrow_date)}
+                                                    </span>
+                                                </td>
+                                                <td className="py-4 px-6">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <div
+                                                            className="w-[12px] h-[12px] rounded-full shadow-sm"
+                                                            style={{ backgroundColor: statusDotColor }}
+                                                        />
+                                                        <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                            {statusLabel}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-6 text-left">
+                                                    <span className="text-[14px] text-gray-500 line-clamp-2" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                        {transaction.purpose || transaction.notes || '-'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
+
+
+            {/* Pagination */}
+            <TablePagination
+                currentPage={page}
+                totalPages={Math.ceil(totalItems / pageSize)}
+                onPageChange={setPage}
+                totalItems={totalItems}
+                itemsPerPage={pageSize}
+                onPageSizeChange={setPageSize}
+            />
         </div>
     )
 }

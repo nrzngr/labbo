@@ -40,8 +40,8 @@ export async function POST(request: NextRequest) {
         status,
         notes,
         equipment:equipment_id (name, serial_number),
-        borrower:user_profiles!borrowing_transactions_user_id_fkey (full_name, email, department),
-        approved_by_user:user_profiles!borrowing_transactions_approved_by_fkey (full_name),
+        borrower:users!borrowing_transactions_user_id_fkey (full_name, email, department),
+        approved_by_user:users!borrowing_transactions_approved_by_fkey (full_name),
         created_at
       `)
             .order('created_at', { ascending: false });

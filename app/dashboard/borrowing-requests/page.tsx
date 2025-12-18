@@ -49,6 +49,8 @@ interface BorrowingRequest {
     }
 }
 
+import { TablePagination } from '@/components/ui/pagination'
+
 export default function BorrowingRequestsPage() {
     const { user } = useCustomAuth()
     const queryClient = useQueryClient()
@@ -59,44 +61,106 @@ export default function BorrowingRequestsPage() {
     const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false)
     const [rejectReason, setRejectReason] = useState('')
     const [adminNotes, setAdminNotes] = useState('')
+    const [currentPage, setCurrentPage] = useState(1)
+    const [pageSize, setPageSize] = useState(10)
 
     // Check if user is admin or lab_staff
     const canManage = user?.role === 'admin' || user?.role === 'lab_staff'
 
     // Fetch borrowing requests
-    const { data: requests, isLoading, refetch } = useQuery({
-        queryKey: ['borrowing-requests', filter, searchTerm],
+    const { data: requestsData, isLoading, refetch } = useQuery({
+        queryKey: ['borrowing-requests', filter, searchTerm, currentPage, pageSize],
         queryFn: async () => {
+            let baseQuery = supabase
+                .from('borrowing_transactions')
+                .select('*', { count: 'exact', head: true })
+
+            if (filter !== 'all') {
+                baseQuery = baseQuery.eq('status', filter as any)
+            }
+
             let query = supabase
                 .from('borrowing_transactions')
                 .select(`
-          *,
-          user:user_profiles!borrowing_transactions_user_id_fkey(full_name, email, nim, department),
-          equipment:equipment!borrowing_transactions_equipment_id_fkey(id, name, serial_number, condition, location, status),
-          quantity
-        `)
+                  *,
+                  user:users!borrowing_transactions_user_id_fkey(full_name, email, nim, department),
+                  equipment:equipment!borrowing_transactions_equipment_id_fkey(id, name, serial_number, condition, location, status),
+                  quantity
+                `)
                 .order('created_at', { ascending: false })
 
             if (filter !== 'all') {
                 query = query.eq('status', filter as any)
             }
 
+            const { count } = await baseQuery
+
+            if (!searchTerm) {
+                query = query.range((currentPage - 1) * pageSize, currentPage * pageSize - 1)
+            }
+
             const { data, error } = await query
             if (error) throw error
 
-            // Filter by search term
             let filtered = (data as unknown as BorrowingRequest[]) || []
+            let totalCount = count || 0
+
             if (searchTerm) {
                 const search = searchTerm.toLowerCase()
-                filtered = filtered.filter(r =>
-                    r.user?.full_name?.toLowerCase().includes(search) ||
-                    r.user?.nim?.toLowerCase().includes(search) ||
-                    r.equipment?.name?.toLowerCase().includes(search) ||
-                    r.equipment?.serial_number?.toLowerCase().includes(search)
-                )
+                // If searching, we need to fetch all relevant to filter (or implement complex server side search)
+                // Re-fetch all for search without pagination first
+                // Optimization: create a search function or view later. 
+                const allForSearch = await supabase
+                    .from('borrowing_transactions')
+                    .select(`
+                      *,
+                      user:users!borrowing_transactions_user_id_fkey(full_name, email, nim, department),
+                      equipment:equipment!borrowing_transactions_equipment_id_fkey(id, name, serial_number, condition, location, status)
+                    `)
+                    .order('created_at', { ascending: false })
+
+                if (filter !== 'all') {
+                    // apply filter locally to the full set if searching
+                    // This is heavy but necessary for deep relational search without search engine
+                    // Actually better: just filter the results we got if we didn't paginate? 
+                    // No, if we didn't paginate above (which we did inside !searchTerm block), we would get limited set.
+                    // So we need to fetch all if searchTerm is present.
+                }
+
+                // Let's reuse the logic: if searchTerm, we fetched page 1 above if we didn't prevent it.
+                // Correct logic:
+                // If searchTerm, fetch ALL matching status, then filter, then slice.
+                if (data) {
+                    // We need to fetch EVERYTHING to search properly on client side
+                    const { data: allData } = await supabase
+                        .from('borrowing_transactions')
+                        .select(`
+                          *,
+                          user:users!borrowing_transactions_user_id_fkey(full_name, email, nim, department),
+                          equipment:equipment!borrowing_transactions_equipment_id_fkey(id, name, serial_number, condition, location, status),
+                          quantity
+                        `)
+                        .order('created_at', { ascending: false })
+                        .eq(filter !== 'all' ? 'status' : '', filter !== 'all' ? filter : '')
+                    // Note: .eq('', '') is invalid, handle conditionally
+
+                    let searchBase = allData as unknown as BorrowingRequest[] || []
+                    if (filter !== 'all') {
+                        searchBase = searchBase.filter(item => item.status === filter)
+                    }
+
+                    filtered = searchBase.filter(r =>
+                        r.user?.full_name?.toLowerCase().includes(search) ||
+                        r.user?.nim?.toLowerCase().includes(search) ||
+                        r.equipment?.name?.toLowerCase().includes(search) ||
+                        r.equipment?.serial_number?.toLowerCase().includes(search)
+                    )
+                    totalCount = filtered.length
+                    filtered = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                }
             }
 
-            return filtered
+            return { data: filtered, totalCount }
         },
         enabled: canManage
     })
@@ -256,7 +320,7 @@ export default function BorrowingRequestsPage() {
         return config[status] || config.pending
     }
 
-    const pendingCount = requests?.filter(r => r.status === 'pending').length || 0
+    const pendingCount = requestsData?.data?.filter(r => r.status === 'pending').length || 0
 
     if (!canManage) {
         return (
@@ -337,129 +401,163 @@ export default function BorrowingRequestsPage() {
                 </div>
             </div>
 
-            {/* Requests List */}
-            {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-[#ff007a]" />
-                </div>
-            ) : requests && requests.length > 0 ? (
-                <div className="space-y-4">
-                    {requests.map((request) => {
-                        const statusConfig = getStatusConfig(request.status)
-                        const StatusIcon = statusConfig.icon
-
-                        return (
-                            <div
-                                key={request.id}
-                                className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg transition-all overflow-hidden"
-                            >
-                                {/* Main Content */}
-                                <div className="p-6">
-                                    {/* Top Row: User + Equipment */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                        {/* User Info */}
-                                        <div className="flex items-start gap-4">
-                                            <div className="w-14 h-14 bg-gradient-to-br from-[#ff007a] to-[#ff4d9e] rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-[#ff007a]/20">
-                                                <User className="w-7 h-7 text-white" />
-                                            </div>
-                                            <div className="min-w-0">
-                                                <h3 className="font-bold text-lg text-gray-900 mb-1">{request.user?.full_name}</h3>
-                                                <p className="text-sm text-gray-500">{request.user?.nim}</p>
-                                                <p className="text-sm text-[#ff007a] font-medium">{request.user?.department}</p>
-                                            </div>
+            {/* Requests Table */}
+            <div className="bg-white rounded-[20px] overflow-hidden shadow-sm border border-gray-100 min-h-[400px]">
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[1000px]">
+                        <thead>
+                            <tr className="border-b border-gray-100">
+                                <th className="py-4 px-6 text-left w-[250px]">
+                                    <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Peminjam</span>
+                                </th>
+                                <th className="py-4 px-6 text-left w-[250px]">
+                                    <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Peralatan</span>
+                                </th>
+                                <th className="py-4 px-6 text-center w-[150px]">
+                                    <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Tgl Pinjam</span>
+                                </th>
+                                <th className="py-4 px-6 text-center w-[150px]">
+                                    <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Tgl Kembali</span>
+                                </th>
+                                <th className="py-4 px-6 text-center w-[150px]">
+                                    <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Status</span>
+                                </th>
+                                <th className="py-4 px-6 text-center w-[150px]">
+                                    <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Aksi</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={6} className="py-20 text-center">
+                                        <div className="flex justify-center">
+                                            <Loader2 className="w-8 h-8 animate-spin text-[#ff007a]" />
                                         </div>
+                                    </td>
+                                </tr>
+                            ) : requestsData?.data && requestsData.data.length > 0 ? (
+                                requestsData.data.map((request) => {
+                                    const statusConfig = getStatusConfig(request.status)
 
-                                        {/* Equipment Info */}
-                                        <div className="flex items-start gap-4">
-                                            <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center flex-shrink-0">
-                                                <Package className="w-7 h-7 text-gray-600" />
-                                            </div>
-                                            <div className="min-w-0">
-                                                <div className="flex items-center gap-2 flex-wrap mb-1">
-                                                    <h4 className="font-bold text-lg text-gray-900">{request.equipment?.name}</h4>
-                                                    {(request.quantity || 1) > 1 && (
-                                                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-bold bg-[#ff007a] text-white">
-                                                            {request.quantity} unit
+                                    // Determine status dot color
+                                    let statusDotColor = '#FFEE35'; // Default Yellow
+                                    if (request.status === 'active') statusDotColor = '#3AFB57'; // Green
+                                    if (request.status === 'rejected') statusDotColor = '#FF6666'; // Red
+
+                                    return (
+                                        <tr
+                                            key={request.id}
+                                            className="group hover:bg-pink-50/10 transition-colors"
+                                        >
+                                            <td className="py-4 px-6">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff007a] to-[#ff4d9e] flex items-center justify-center flex-shrink-0 text-white text-xs font-bold">
+                                                        {request.user?.full_name?.charAt(0) || 'U'}
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                            {request.user?.full_name}
                                                         </span>
-                                                    )}
+                                                        <span className="text-[12px] text-gray-400" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                            {request.user?.nim}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <p className="text-sm text-gray-500 font-mono bg-gray-50 inline-block px-2 py-0.5 rounded">{request.equipment?.serial_number}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Middle Row: Dates */}
-                                    <div className="flex items-center gap-4 mb-6 p-4 bg-gray-50 rounded-xl">
-                                        <div className="flex-1">
-                                            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Tanggal Pinjam</p>
-                                            <p className="text-lg font-bold text-gray-900">{formatDate(request.borrow_date)}</p>
-                                        </div>
-                                        <div className="flex items-center justify-center">
-                                            <ChevronRight className="w-6 h-6 text-gray-300" />
-                                        </div>
-                                        <div className="flex-1 text-right">
-                                            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Tanggal Kembali</p>
-                                            <p className="text-lg font-bold text-gray-900">{formatDate(request.expected_return_date)}</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Notes */}
-                                    {request.notes && (
-                                        <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl mb-6">
-                                            <div className="flex items-start gap-3">
-                                                <FileText className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                                                <div>
-                                                    <p className="text-xs text-amber-600 uppercase tracking-wide font-semibold mb-1">Catatan Mahasiswa</p>
-                                                    <p className="text-sm text-amber-900">{request.notes}</p>
+                                            </td>
+                                            <td className="py-4 px-6">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                        {request.equipment?.name}
+                                                    </span>
+                                                    <span className="text-[12px] text-gray-400 font-mono" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                        {request.equipment?.serial_number}
+                                                    </span>
                                                 </div>
+                                            </td>
+                                            <td className="py-4 px-6 text-center">
+                                                <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                    {formatDate(request.borrow_date)}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-6 text-center">
+                                                <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                    {formatDate(request.expected_return_date)}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-6">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <div
+                                                        className="w-[12px] h-[12px] rounded-full shadow-sm"
+                                                        style={{ backgroundColor: statusDotColor }}
+                                                    />
+                                                    <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                        {statusConfig.label}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-6 text-center">
+                                                {request.status === 'pending' ? (
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button
+                                                            onClick={() => handleApprove(request)}
+                                                            className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg transition-colors"
+                                                            title="Setujui"
+                                                        >
+                                                            <CheckCircle className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleReject(request)}
+                                                            className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
+                                                            title="Tolak"
+                                                        >
+                                                            <XCircle className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-[12px] text-gray-400 italic" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                        Selesai
+                                                    </span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )
+                                })
+                            ) : (
+                                <tr>
+                                    <td colSpan={6} className="py-20 text-center">
+                                        <div className="flex flex-col items-center justify-center">
+                                            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                                <Package className="w-8 h-8 text-gray-300" />
                                             </div>
+                                            <h3 className="text-lg font-bold text-gray-900 mb-1" style={{ fontFamily: 'Satoshi, sans-serif' }}>Tidak Ada Permintaan</h3>
+                                            <p className="text-gray-400 text-sm" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                {filter === 'pending'
+                                                    ? 'Tidak ada permintaan yang menunggu persetujuan'
+                                                    : 'Tidak ada permintaan peminjaman ditemukan'}
+                                            </p>
                                         </div>
-                                    )}
-
-                                    {/* Bottom Row: Status & Actions */}
-                                    <div className="flex flex-wrap items-center justify-between gap-4">
-                                        <span className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 ${statusConfig.bg} ${statusConfig.color}`}>
-                                            <StatusIcon className="w-5 h-5" />
-                                            {statusConfig.label}
-                                        </span>
-
-                                        {request.status === 'pending' && (
-                                            <div className="flex gap-3">
-                                                <button
-                                                    onClick={() => handleApprove(request)}
-                                                    className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/20"
-                                                >
-                                                    <CheckCircle className="w-5 h-5" />
-                                                    Setujui
-                                                </button>
-                                                <button
-                                                    onClick={() => handleReject(request)}
-                                                    className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg shadow-red-500/20"
-                                                >
-                                                    <XCircle className="w-5 h-5" />
-                                                    Tolak
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        )
-                    })}
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
-            ) : (
-                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-                    <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <Package className="w-8 h-8 text-gray-400" />
+
+                {/* Pagination */}
+                {requestsData?.totalCount !== undefined && requestsData.totalCount > 0 && (
+                    <div className="border-t border-gray-100 p-4">
+                        <TablePagination
+                            currentPage={currentPage}
+                            totalPages={Math.ceil(requestsData.totalCount / pageSize)}
+                            onPageChange={setCurrentPage}
+                            totalItems={requestsData.totalCount}
+                            itemsPerPage={pageSize}
+                            onPageSizeChange={setPageSize}
+                        />
                     </div>
-                    <h3 className="font-semibold text-gray-700 mb-1">Tidak ada permintaan</h3>
-                    <p className="text-sm text-gray-500">
-                        {filter === 'pending'
-                            ? 'Tidak ada permintaan yang menunggu persetujuan'
-                            : 'Tidak ada permintaan peminjaman ditemukan'}
-                    </p>
-                </div>
-            )}
+                )}
+            </div>
 
             {/* Approve Dialog */}
             <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>

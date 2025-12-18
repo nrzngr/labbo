@@ -18,6 +18,7 @@ import { supabase } from '@/lib/supabase'
 import { DashboardCharts } from '@/components/analytics/dashboard-charts'
 import { DashboardSkeleton } from '@/components/ui/loading-skeleton'
 import { ModernButton } from '@/components/ui/modern-button'
+import { StatCard } from '@/components/dashboard/stat-card'
 import { cn } from '@/lib/utils'
 
 interface DashboardStats {
@@ -73,7 +74,7 @@ export default function Dashboard() {
           t.status === 'active' && new Date(t.expected_return_date) < new Date()
         ).length || 0
 
-        const { count: usersCount } = await supabase.from('user_profiles').select('*', { count: 'exact', head: true })
+        const { count: usersCount } = await supabase.from('users').select('*', { count: 'exact', head: true })
         const { count: categoriesCount } = await supabase.from('categories').select('*', { count: 'exact', head: true })
 
         setStats({
@@ -91,7 +92,7 @@ export default function Dashboard() {
           .from('borrowing_transactions')
           .select(`
             id, status, created_at, actual_return_date,
-            user:user_profiles!borrowing_transactions_user_id_fkey(full_name),
+            user:users!borrowing_transactions_user_id_fkey(full_name),
             equipment:equipment!borrowing_transactions_equipment_id_fkey(name)
           `)
           .order('created_at', { ascending: false })
@@ -131,41 +132,6 @@ export default function Dashboard() {
     return <DashboardSkeleton />
   }
 
-  const StatCard = ({
-    title,
-    value,
-    subtitle,
-    icon: Icon,
-    trend,
-    iconColorClass = "text-primary bg-primary/10",
-    delay = 0
-  }: any) => (
-    <div
-      className="glass-panel rounded-3xl p-6 relative overflow-hidden group hover-lift animate-in fade-in slide-in-from-bottom-4"
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <div className="flex justify-between items-start mb-4 relative z-10">
-        <div className={cn("p-3 rounded-2xl transition-transform duration-500 group-hover:rotate-6", iconColorClass)}>
-          <Icon className="w-6 h-6" />
-        </div>
-        {trend && (
-          <div className="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-100">
-            <TrendingUp className="w-3 h-3" />
-            {trend}
-          </div>
-        )}
-      </div>
-
-      <div className="relative z-10">
-        <h3 className="text-4xl font-black text-gray-900 tracking-tight mb-1 group-hover:translate-x-1 transition-transform">{value}</h3>
-        <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">{title}</p>
-        <p className="text-sm text-gray-500 font-medium leading-relaxed">{subtitle}</p>
-      </div>
-
-      <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-current opacity-[0.03] rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700 pointer-events-none"></div>
-    </div>
-  )
-
   return (
     <div className="space-y-8 pb-12">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 content-fade-in">
@@ -198,39 +164,29 @@ export default function Dashboard() {
         <StatCard
           title="Total Aset"
           value={stats?.totalEquipment || 0}
-          subtitle={`${stats?.availableEquipment} Barang tersedia untuk dipinjam`}
+          subtitle="Barang tersedia"
           icon={Package}
-          iconColorClass="text-blue-600 bg-blue-50"
           delay={100}
         />
         <StatCard
           title="Peminjaman Aktif"
           value={stats?.activeBorrowings || 0}
-          subtitle={
-            stats?.overdueBorrowings ? (
-              <span className="text-red-500 font-bold flex items-center gap-1">
-                {stats.overdueBorrowings} Terlambat dikembalikan
-              </span>
-            ) : "Semua pinjaman tepat waktu"
-          }
+          subtitle={stats?.overdueBorrowings ? `${stats.overdueBorrowings} Terlambat` : "Tepat waktu"}
           icon={Activity}
-          iconColorClass="text-primary bg-primary/10"
           delay={200}
         />
         <StatCard
           title="Total Pengguna"
           value={stats?.totalUsers || 0}
-          subtitle="Mahasiswa & Staff terdaftar aktif"
+          subtitle="Mahasiswa & Staff"
           icon={Users}
-          iconColorClass="text-purple-600 bg-purple-50"
           delay={300}
         />
         <StatCard
           title="Kategori"
           value={stats?.totalCategories || 0}
-          subtitle="Jenis klasifikasi peralatan lab"
+          subtitle="Jenis peralatan"
           icon={BarChart3}
-          iconColorClass="text-orange-600 bg-orange-50"
           delay={400}
         />
       </div>

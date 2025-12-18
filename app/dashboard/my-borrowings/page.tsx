@@ -23,6 +23,7 @@ import {
   FileDown
 } from "lucide-react"
 import { supabase } from '@/lib/supabase'
+import { TablePagination } from '@/components/ui/pagination'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { BorrowRequestForm } from '@/components/student/borrow-request-form'
 import { EarlyReturnForm } from '@/components/student/early-return-form'
@@ -56,6 +57,9 @@ export default function MyBorrowingsPage() {
   const { user } = useCustomAuth()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalItems, setTotalItems] = useState(0)
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false)
   const [selectedTransaction, setSelectedTransaction] = useState<BorrowingTransaction | null>(null)
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
@@ -67,7 +71,7 @@ export default function MyBorrowingsPage() {
   const queryClient = useQueryClient()
 
   const { data: transactions, isLoading, refetch } = useQuery({
-    queryKey: ['my-borrowings', searchTerm, statusFilter, user?.id],
+    queryKey: ['my-borrowings', searchTerm, statusFilter, user?.id, page, pageSize],
     queryFn: async () => {
       if (!user) {
 
@@ -81,7 +85,7 @@ export default function MyBorrowingsPage() {
         .select(`
           *,
           equipment(id, name, serial_number, location, condition)
-        `)
+        `, { count: 'exact' })
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
@@ -93,11 +97,16 @@ export default function MyBorrowingsPage() {
         query = query.eq('status', statusFilter as any)
       }
 
-      const { data, error } = await query
+      const from = (page - 1) * pageSize
+      const to = from + pageSize - 1
+      query = query.range(from, to)
+
+      const { data, error, count } = await query
 
 
 
       if (error) throw error
+      if (count !== null) setTotalItems(count)
 
       return data?.map((transaction: any) => {
         let status = transaction.status
@@ -293,15 +302,15 @@ export default function MyBorrowingsPage() {
     const transaction = transactions?.find(t => t.id === transactionId)
     if (!transaction) return
 
-    const newReturnDate = new Date(transaction.expected_return_date)
-    newReturnDate.setDate(newReturnDate.getDate() + 7)
+    setSelectedTransaction(transaction)
 
-    if (confirm('Perpanjang peminjaman selama 7 hari?')) {
-      extendBorrowingMutation.mutate({
-        transactionId,
-        newReturnDate: newReturnDate.toISOString().split('T')[0]
-      })
-    }
+    // Default 7 days from expected return date
+    const defaultDate = new Date(transaction.expected_return_date)
+    defaultDate.setDate(defaultDate.getDate() + 7)
+    setExtensionDate(defaultDate.toISOString().split('T')[0])
+    setExtensionReason('')
+
+    setIsExtensionDialogOpen(true)
   }
 
   const handleCancelBorrowing = async (transactionId: string) => {
@@ -450,7 +459,7 @@ export default function MyBorrowingsPage() {
         </div>
       </div>
 
-      {/* Borrowings List */}
+      {/* Borrowings Table */}
       {isLoading ? (
         <div className="text-center py-16">
           <div className="relative w-16 h-16 mx-auto mb-4">
@@ -460,194 +469,190 @@ export default function MyBorrowingsPage() {
           <div className="text-gray-500 font-medium">Memuat peminjaman...</div>
         </div>
       ) : transactions && transactions.length > 0 ? (
-        <div className="space-y-4">
-          {transactions.map((transaction) => {
-            const statusConfig = getStatusConfig(transaction.status)
-            const daysInfo = getDaysInfo(transaction.expected_return_date, transaction.status)
+        <div className="bg-white rounded-[20px] overflow-hidden shadow-sm border border-gray-100 min-h-[400px]">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1000px]">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="py-4 px-6 text-left w-[300px]">
+                    <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Peralatan</span>
+                  </th>
+                  <th className="py-4 px-6 text-center w-[150px]">
+                    <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Tgl Pinjam</span>
+                  </th>
+                  <th className="py-4 px-6 text-center w-[150px]">
+                    <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Batas</span>
+                  </th>
+                  <th className="py-4 px-6 text-center w-[150px]">
+                    <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Status</span>
+                  </th>
+                  <th className="py-4 px-6 text-center w-[200px]">
+                    <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Aksi</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {transactions.map((transaction) => {
+                  const statusConfig = getStatusConfig(transaction.status)
+                  const daysInfo = getDaysInfo(transaction.expected_return_date, transaction.status)
 
-            return (
-              <div
-                key={transaction.id}
-                className={`group bg-white rounded-2xl border shadow-sm hover:shadow-xl hover:shadow-gray-100 transition-all duration-300 overflow-hidden ${transaction.status === 'pending' ? 'border-amber-200' : 'border-gray-100'
-                  }`}
-              >
-                <div className="p-5 sm:p-6">
-                  <div className="flex flex-col lg:flex-row lg:items-center gap-5">
-                    {/* Equipment Info */}
-                    <div className="flex items-start gap-4 flex-1 min-w-0">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${transaction.status === 'pending'
-                        ? 'bg-gradient-to-br from-amber-100 to-amber-50'
-                        : 'bg-gradient-to-br from-[#ff007a]/10 to-[#ff007a]/5'
-                        }`}>
-                        {transaction.status === 'pending' ? (
-                          <HourglassIcon className="w-7 h-7 text-amber-500" />
-                        ) : (
-                          <Package className="w-7 h-7 text-[#ff007a]" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-bold text-lg text-gray-900 truncate">{transaction.equipment.name}</h3>
-                          {(transaction.quantity || 1) > 1 && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[#ff007a] text-white">
-                              ×{transaction.quantity || 1}
+                  return (
+                    <tr
+                      key={transaction.id}
+                      className="group hover:bg-pink-50/10 transition-colors"
+                    >
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${transaction.status === 'pending'
+                            ? 'bg-gradient-to-br from-amber-100 to-amber-50'
+                            : 'bg-gradient-to-br from-[#ff007a]/10 to-[#ff007a]/5'
+                            }`}>
+                            {transaction.status === 'pending' ? (
+                              <HourglassIcon className="w-5 h-5 text-amber-500" />
+                            ) : (
+                              <Package className="w-5 h-5 text-[#ff007a]" />
+                            )}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                              {transaction.equipment.name}
+                              {(transaction.quantity || 1) > 1 && (
+                                <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[#ff007a] text-white">
+                                  ×{transaction.quantity || 1}
+                                </span>
+                              )}
+                            </span>
+                            <span className="text-[12px] text-gray-400 font-mono" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                              {transaction.equipment.serial_number}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                          {formatDate(transaction.borrow_date)}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <div className="flex flex-col items-center">
+                          <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                            {formatDate(transaction.expected_return_date)}
+                          </span>
+                          {transaction.status === 'active' && (
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full mt-1 ${daysInfo.bg} ${daysInfo.color}`}>
+                              {daysInfo.text}
                             </span>
                           )}
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${statusConfig.bg} ${statusConfig.color} ${statusConfig.border}`}>
-                            {statusConfig.icon}
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="flex items-center justify-center gap-2">
+                          <div
+                            className={`w-2.5 h-2.5 rounded-full ${statusConfig.bg.replace('bg-', 'bg-').replace('50', '500')}`}
+                          />
+                          <span className={`text-[14px] font-medium ${statusConfig.color}`} style={{ fontFamily: 'Satoshi, sans-serif' }}>
                             {statusConfig.label}
                           </span>
                         </div>
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleViewDetails(transaction)}
+                            className="p-2 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg transition-colors"
+                            title="Detail"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
 
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
-                          <span className="flex items-center gap-1.5">
-                            <Tag className="w-3.5 h-3.5" />
-                            {transaction.equipment.category?.name || 'Tidak berkategori'}
-                          </span>
-                          <span className="flex items-center gap-1.5 font-mono text-xs">
-                            SN: {transaction.equipment.serial_number}
-                          </span>
-                          {transaction.equipment.location && (
-                            <span className="flex items-center gap-1.5">
-                              <MapPin className="w-3.5 h-3.5" />
-                              {transaction.equipment.location}
-                            </span>
+                          {transaction.status === 'pending' && (
+                            <button
+                              onClick={() => handleCancelBorrowing(transaction.id)}
+                              disabled={cancelBorrowingMutation.isPending}
+                              className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors disabled:opacity-50"
+                              title="Batalkan"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
+
+                          {transaction.status === 'active' && (
+                            <>
+                              <button
+                                onClick={() => handleExtendBorrowing(transaction.id)}
+                                disabled={extendBorrowingMutation.isPending}
+                                className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors disabled:opacity-50"
+                                title="Perpanjang"
+                              >
+                                <RefreshCw className="w-4 h-4" />
+                              </button>
+
+                              <button
+                                onClick={() => handleDownloadPDF(transaction)}
+                                className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg transition-colors"
+                                title="Surat Peminjaman"
+                              >
+                                <FileDown className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+
+                          {(transaction.status === 'active' || transaction.status === 'overdue') && (
+                            transaction.return_requested ? (
+                              <span className="p-2 bg-amber-50 text-amber-600 rounded-lg cursor-help" title="Menunggu Konfirmasi Pengembalian">
+                                <Clock className="w-4 h-4" />
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setSelectedTransaction(transaction)
+                                  setIsReturnDialogOpen(true)
+                                }}
+                                className="p-2 bg-[#ff007a]/10 hover:bg-[#ff007a]/20 text-[#ff007a] rounded-lg transition-colors"
+                                title="Kembalikan"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </button>
+                            )
                           )}
                         </div>
-
-                        {/* Dates */}
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-sm">
-                          <span className="flex items-center gap-1.5 text-gray-500">
-                            <CalendarDays className="w-3.5 h-3.5" />
-                            Diajukan: <span className="font-medium text-gray-700">{formatDate(transaction.borrow_date)}</span>
-                          </span>
-                          <span className="flex items-center gap-1.5 text-gray-500">
-                            <Timer className="w-3.5 h-3.5" />
-                            Batas: <span className="font-medium text-gray-700">{formatDate(transaction.expected_return_date)}</span>
-                          </span>
-                        </div>
-
-                        {transaction.notes && (
-                          <p className="mt-3 text-sm text-gray-400 bg-gray-50 px-3 py-2 rounded-lg">
-                            {transaction.notes}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Right Side - Status & Actions */}
-                    <div className="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-end gap-3">
-                      {/* Days indicator */}
-                      <div className={`px-4 py-2 rounded-xl text-sm font-semibold ${daysInfo.bg} ${daysInfo.color}`}>
-                        {daysInfo.text}
-                      </div>
-
-                      {/* Action buttons */}
-                      <div className="flex gap-2">
-                        {transaction.status === 'pending' && (
-                          <button
-                            onClick={() => handleCancelBorrowing(transaction.id)}
-                            disabled={cancelBorrowingMutation.isPending}
-                            className="px-4 py-2.5 bg-red-100 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-200 transition-all flex items-center gap-2 disabled:opacity-50"
-                          >
-                            <X className="w-4 h-4" />
-                            Batalkan
-                          </button>
-                        )}
-                        {transaction.status === 'active' && (
-                          <button
-                            onClick={() => handleExtendBorrowing(transaction.id)}
-                            disabled={extendBorrowingMutation.isPending}
-                            className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-200 transition-all flex items-center gap-2 disabled:opacity-50"
-                          >
-                            <RefreshCw className="w-4 h-4" />
-                            Perpanjang
-                          </button>
-                        )}
-                        {(transaction.status === 'active' || transaction.status === 'overdue') && (
-                          transaction.return_requested ? (
-                            <span className="px-4 py-2.5 bg-amber-100 text-amber-700 rounded-xl text-sm font-semibold flex items-center gap-2">
-                              <Clock className="w-4 h-4" />
-                              Menunggu Verifikasi
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                setSelectedTransaction(transaction)
-                                setIsReturnDialogOpen(true)
-                              }}
-                              className="px-4 py-2.5 bg-[#FD1278] text-white rounded-xl text-sm font-semibold hover:bg-[#e0106c] transition-all flex items-center gap-2"
-                            >
-                              <RotateCcw className="w-4 h-4" />
-                              Kembalikan
-                            </button>
-                          )
-                        )}
-                        {(transaction.status === 'active' || transaction.status === 'pending') && (
-                          <button
-                            onClick={() => handleDownloadPDF(transaction)}
-                            className="px-4 py-2.5 bg-emerald-100 text-emerald-700 rounded-xl text-sm font-semibold hover:bg-emerald-200 transition-all flex items-center gap-2"
-                            title="Download Surat Peminjaman"
-                          >
-                            <FileDown className="w-4 h-4" />
-                            Surat
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleViewDetails(transaction)}
-                          className="px-4 py-2.5 bg-[#ff007a]/10 text-[#ff007a] rounded-xl text-sm font-semibold hover:bg-[#ff007a]/20 transition-all flex items-center gap-2"
-                        >
-                          <Eye className="w-4 h-4" />
-                          Detail
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Progress bar for active items */}
-                {transaction.status === 'active' && (
-                  <div className="h-1 bg-gray-100">
-                    <div
-                      className="h-full bg-gradient-to-r from-[#ff007a] to-[#ff4d9e] transition-all duration-500"
-                      style={{
-                        width: `${Math.max(0, Math.min(100,
-                          ((new Date().getTime() - new Date(transaction.borrow_date).getTime()) /
-                            (new Date(transaction.expected_return_date).getTime() - new Date(transaction.borrow_date).getTime())) * 100
-                        ))}%`
-                      }}
-                    />
-                  </div>
-                )}
-
-                {/* Pending indicator bar */}
-                {transaction.status === 'pending' && (
-                  <div className="h-1 bg-amber-100 overflow-hidden">
-                    <div className="h-full w-20 bg-amber-400 animate-pulse" />
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      ) : (
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center">
-          <div className="w-24 h-24 bg-gradient-to-br from-[#ff007a]/10 to-[#ff007a]/5 rounded-3xl flex items-center justify-center mx-auto mb-6">
-            <Sparkles className="w-12 h-12 text-[#ff007a]" />
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">Belum ada peminjaman</h3>
-          <p className="text-gray-500 mb-6 max-w-sm mx-auto">
-            Mulai pinjam peralatan laboratorium yang Anda butuhkan untuk proyek Anda
-          </p>
-          <button
-            onClick={() => setIsRequestDialogOpen(true)}
-            className="px-6 py-3.5 bg-gradient-to-r from-[#ff007a] to-[#ff4d9e] text-white rounded-2xl font-semibold shadow-lg shadow-[rgba(255,0,122,0.3)] hover:shadow-xl hover:shadow-[rgba(255,0,122,0.4)] transition-all inline-flex items-center gap-2"
-          >
-            <Plus className="w-5 h-5" />
-            Pinjam Peralatan Pertama
-          </button>
         </div>
-      )}
+        
+        {/* Pagination */}
+      <TablePagination
+        currentPage={page}
+        totalPages={Math.ceil(totalItems / pageSize)}
+        onPageChange={setPage}
+        totalItems={totalItems}
+        itemsPerPage={pageSize}
+        onPageSizeChange={setPageSize}
+      />
+      ) : (
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center">
+        <div className="w-24 h-24 bg-gradient-to-br from-[#ff007a]/10 to-[#ff007a]/5 rounded-3xl flex items-center justify-center mx-auto mb-6">
+          <Sparkles className="w-12 h-12 text-[#ff007a]" />
+        </div>
+        <h3 className="text-xl font-bold text-gray-900 mb-2">Belum ada peminjaman</h3>
+        <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+          Mulai pinjam peralatan laboratorium yang Anda butuhkan untuk proyek Anda
+        </p>
+        <button
+          onClick={() => setIsRequestDialogOpen(true)}
+          className="px-6 py-3.5 bg-gradient-to-r from-[#ff007a] to-[#ff4d9e] text-white rounded-2xl font-semibold shadow-lg shadow-[rgba(255,0,122,0.3)] hover:shadow-xl hover:shadow-[rgba(255,0,122,0.4)] transition-all inline-flex items-center gap-2"
+        >
+          <Plus className="w-5 h-5" />
+          Pinjam Peralatan Pertama
+        </button>
+      </div>
+      )
+}
 
       {/* Detail Dialog */}
       <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
@@ -761,6 +766,75 @@ export default function MyBorrowingsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Extension Dialog */}
+      <Dialog open={isExtensionDialogOpen} onOpenChange={setIsExtensionDialogOpen}>
+        <DialogContent className="sm:max-w-[500px] border-0 rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-gray-900">Ajukan Perpanjangan</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
+              <HourglassIcon className="w-5 h-5 text-amber-600 flex-shrink-0" />
+              <p className="text-sm text-amber-800">
+                Pengajuan perpanjangan harus disetujui oleh admin lab. Status akan berubah menjadi "Pending Extension".
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Tanggal Pengembalian Baru</label>
+              <input
+                type="date"
+                value={extensionDate}
+                onChange={(e) => setExtensionDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:ring-4 focus:ring-[rgba(255,0,122,0.08)] outline-none transition-all"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Alasan Perpanjangan</label>
+              <textarea
+                value={extensionReason}
+                onChange={(e) => setExtensionReason(e.target.value)}
+                placeholder="Jelaskan kenapa Anda butuh waktu tambahan..."
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:ring-4 focus:ring-[rgba(255,0,122,0.08)] outline-none transition-all h-32 resize-none"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setIsExtensionDialogOpen(false)}
+                className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => {
+                  if (!selectedTransaction) return
+                  if (!extensionReason.trim()) {
+                    alert('Mohon isi alasan perpanjangan')
+                    return
+                  }
+                  if (!extensionDate) {
+                    alert('Mohon pilih tanggal pengembalian baru')
+                    return
+                  }
+                  requestExtensionMutation.mutate({
+                    transactionId: selectedTransaction.id,
+                    newDate: extensionDate,
+                    reason: extensionReason
+                  })
+                }}
+                disabled={requestExtensionMutation.isPending}
+                className="flex-1 py-3 bg-gradient-to-r from-[#ff007a] to-[#ff4d9e] text-white rounded-xl font-semibold shadow-lg shadow-[rgba(255,0,122,0.3)] hover:shadow-xl hover:shadow-[rgba(255,0,122,0.4)] transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+              >
+                {requestExtensionMutation.isPending ? 'Mengirim...' : 'Ajukan Perpanjangan'}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Return Dialog */}
       <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto border-0 rounded-3xl p-6">
@@ -779,6 +853,7 @@ export default function MyBorrowingsPage() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   )
 }
+

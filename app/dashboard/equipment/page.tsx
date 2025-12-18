@@ -5,8 +5,9 @@ import { useQuery } from '@tanstack/react-query'
 import { useCustomAuth } from '@/components/auth/custom-auth-provider'
 import { EquipmentList } from '@/components/equipment/equipment-list'
 import { ModernButton } from '@/components/ui/modern-button'
-import { Package, Filter, Download, Upload, BookOpen } from 'lucide-react'
+import { Package, Filter, Download, Upload, BookOpen, Activity } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { StatCard } from '@/components/dashboard/stat-card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { BorrowRequestForm } from '@/components/student/borrow-request-form'
 
@@ -133,53 +134,34 @@ export default function EquipmentPage() {
 
       {/* Stats Grid */}
       <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-3 rounded-xl bg-blue-50 text-blue-500">
-              <Package className="w-6 h-6" />
-            </div>
-          </div>
-          <h3 className="text-3xl font-black text-gray-900 mb-1">{totalCount || 0}</h3>
-          <p className="text-sm font-bold text-gray-400 uppercase tracking-wide">Total Peralatan</p>
-          <p className="text-xs text-gray-400 mt-1 font-medium">Semua aset terdaftar</p>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-3 rounded-xl bg-green-50 text-green-500">
-              <div className="w-6 h-6 rounded-full border-[5px] border-current"></div>
-            </div>
-          </div>
-          <h3 className="text-3xl font-black text-gray-900 mb-1">{availableCount || 0}</h3>
-          <p className="text-sm font-bold text-gray-400 uppercase tracking-wide">Tersedia</p>
-          <p className="text-xs text-gray-400 mt-1 font-medium">
-            {totalCount && availableCount ? `${Math.round((availableCount / totalCount) * 100)}% dari total aset` : '0%'}
-          </p>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-3 rounded-xl bg-yellow-50 text-yellow-500">
-              <div className="w-6 h-6 rounded-full border-[5px] border-current border-t-transparent"></div>
-            </div>
-          </div>
-          <h3 className="text-3xl font-black text-gray-900 mb-1">{borrowedCount || 0}</h3>
-          <p className="text-sm font-bold text-gray-400 uppercase tracking-wide">Sedang Digunakan</p>
-          <p className="text-xs text-gray-400 mt-1 font-medium">
-            {totalCount && borrowedCount ? `${Math.round((borrowedCount / totalCount) * 100)}% sedang dipinjam` : '0%'}
-          </p>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-3 rounded-xl bg-purple-50 text-purple-500">
-              <BookOpen className="w-6 h-6" />
-            </div>
-          </div>
-          <h3 className="text-3xl font-black text-gray-900 mb-1">{categories?.length || 0}</h3>
-          <p className="text-sm font-bold text-gray-400 uppercase tracking-wide">Kategori</p>
-          <p className="text-xs text-gray-400 mt-1 font-medium">Jenis peralatan</p>
-        </div>
+        <StatCard
+          title="Total Peralatan"
+          value={totalCount || 0}
+          subtitle="Semua aset terdaftar"
+          icon={Package}
+          delay={100}
+        />
+        <StatCard
+          title="Tersedia"
+          value={availableCount || 0}
+          subtitle={totalCount && availableCount ? `${Math.round((availableCount / totalCount) * 100)}% dari total aset` : '0%'}
+          icon={Package}
+          delay={200}
+        />
+        <StatCard
+          title="Sedang Digunakan"
+          value={borrowedCount || 0}
+          subtitle={totalCount && borrowedCount ? `${Math.round((borrowedCount / totalCount) * 100)}% sedang dipinjam` : '0%'}
+          icon={Activity}
+          delay={300}
+        />
+        <StatCard
+          title="Kategori"
+          value={categories?.length || 0}
+          subtitle="Jenis peralatan"
+          icon={BookOpen}
+          delay={400}
+        />
       </div>
 
       {/* Categories Quick Filter (Student Only) */}

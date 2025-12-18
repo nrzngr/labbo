@@ -79,7 +79,7 @@ export function EquipmentList() {
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null)
   const [viewingEquipment, setViewingEquipment] = useState<Equipment | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize] = useState(20)
+  const [pageSize, setPageSize] = useState(10)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const router = useRouter()
 
@@ -412,13 +412,14 @@ export function EquipmentList() {
       )}
 
       {/* Pagination */}
-      {equipmentData && equipmentData.totalCount > pageSize && (
+      {equipmentData && equipmentData.totalCount > 0 && (
         <TablePagination
           currentPage={currentPage}
           totalPages={Math.ceil(equipmentData.totalCount / pageSize)}
           onPageChange={setCurrentPage}
           totalItems={equipmentData.totalCount}
           itemsPerPage={pageSize}
+          onPageSizeChange={setPageSize}
         />
       )}
       {/* Floating Bulk Action Bar */}

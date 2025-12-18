@@ -164,12 +164,22 @@ export function PaginationInfo({
   )
 }
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
 interface TablePaginationProps {
   currentPage: number
   totalPages: number
   totalItems: number
   itemsPerPage: number
   onPageChange: (page: number) => void
+  onPageSizeChange?: (pageSize: number) => void
+  pageSizeOptions?: number[]
   showInfo?: boolean
   className?: string
 }
@@ -180,29 +190,59 @@ export function TablePagination({
   totalItems,
   itemsPerPage,
   onPageChange,
+  onPageSizeChange,
+  pageSizeOptions = [10, 20, 50, 100],
   showInfo = true,
   className = ''
 }: TablePaginationProps) {
   return (
-    <div className={`flex flex-col sm:flex-row items-center justify-between space-y-2 sm:space-y-0 ${className}`}>
-      {showInfo && (
-        <PaginationInfo
+    <div className={`flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 ${className}`}>
+      <div className="flex flex-col sm:flex-row items-center gap-4 text-sm text-muted-foreground order-2 sm:order-1">
+        {showInfo && (
+          <PaginationInfo
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            className="text-center sm:text-left"
+          />
+        )}
+
+        {onPageSizeChange && (
+          <div className="flex items-center gap-2">
+            <span className="whitespace-nowrap hidden sm:inline-block">Baris per halaman:</span>
+            <Select
+              value={itemsPerPage.toString()}
+              onValueChange={(value) => {
+                onPageSizeChange(Number(value))
+                onPageChange(1) // Reset to first page when changing page size
+              }}
+            >
+              <SelectTrigger className="h-8 w-[70px] border-gray-200 bg-white px-2 text-xs">
+                <SelectValue placeholder={itemsPerPage.toString()} />
+              </SelectTrigger>
+              <SelectContent side="top">
+                {pageSizeOptions.map((size) => (
+                  <SelectItem key={size} value={size.toString()} className="text-xs">
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
+
+      <div className="order-1 sm:order-2 w-full sm:w-auto flex justify-center sm:justify-end">
+        <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
-          totalItems={totalItems}
-          itemsPerPage={itemsPerPage}
+          onPageChange={onPageChange}
+          siblingCount={1}
+          showEdges={totalPages > 5}
           className="text-xs sm:text-sm"
         />
-      )}
-
-      <Pagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={onPageChange}
-        siblingCount={1}
-        showEdges={totalPages > 5}
-        className="text-xs sm:text-sm"
-      />
+      </div>
     </div>
   )
 }

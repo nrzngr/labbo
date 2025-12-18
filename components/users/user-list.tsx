@@ -8,6 +8,7 @@ import { UserItemCard } from './user-item-card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { supabase } from '@/lib/supabase'
 import { Search, Plus, Users } from 'lucide-react'
+import { TablePagination } from '@/components/ui/pagination'
 
 
 interface User {
@@ -25,16 +26,19 @@ interface User {
 export function UserList() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRole, setFilterRole] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalItems, setTotalItems] = useState(0)
   const [viewingUser, setViewingUser] = useState<User | null>(null)
 
   const queryClient = useQueryClient()
 
   const { data: users, isLoading } = useQuery({
-    queryKey: ['users', searchTerm, filterRole],
+    queryKey: ['users', searchTerm, filterRole, page, pageSize],
     queryFn: async () => {
       let query = supabase
         .from('users')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
 
       if (searchTerm) {
@@ -45,8 +49,15 @@ export function UserList() {
         query = query.eq('role', filterRole as 'admin' | 'lab_staff' | 'dosen' | 'mahasiswa')
       }
 
-      const { data, error } = await query
+      const from = (page - 1) * pageSize
+      const to = from + pageSize - 1
+      query = query.range(from, to)
+
+      const { data, error, count } = await query
       if (error) throw error
+
+      if (count !== null) setTotalItems(count)
+
       return data as User[]
     }
   })
@@ -128,10 +139,8 @@ export function UserList() {
             </div>
 
             {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="h-48 rounded-2xl bg-gray-100 animate-pulse" />
-                ))}
+              <div className="flex justify-center py-20">
+                <div className="animate-spin h-8 w-8 border-4 border-[#ff007a] border-t-transparent rounded-full" />
               </div>
             ) : (
               <>
@@ -144,23 +153,100 @@ export function UserList() {
                     <p className="text-gray-500 mt-1 max-w-sm mx-auto">Coba ubah kata kunci pencarian atau filter peran untuk menemukan pengguna.</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {users?.map((user) => (
-                      <UserItemCard
-                        key={user.id}
-                        user={user}
-                        onView={setViewingUser}
-                        onDelete={handleDelete}
-                        // Admin check: simplified for now, assuming currentUser has rights to see this page implies management
-                        // Ideally pass down actual current user role
-                        canManage={true}
-                        isDeleting={deleteMutation.isPending}
-                      />
-                    ))}
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[800px]">
+                      <thead>
+                        <tr className="border-b border-gray-100">
+                          <th className="py-4 px-6 text-left w-[300px]">
+                            <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Nama</span>
+                          </th>
+                          <th className="py-4 px-6 text-center w-[150px]">
+                            <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Peran</span>
+                          </th>
+                          <th className="py-4 px-6 text-left w-[200px]">
+                            <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Departemen</span>
+                          </th>
+                          <th className="py-4 px-6 text-left w-[150px]">
+                            <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>ID</span>
+                          </th>
+                          <th className="py-4 px-6 text-center w-[100px]">
+                            <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Aksi</span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {users?.map((user) => (
+                          <tr
+                            key={user.id}
+                            className="group hover:bg-pink-50/10 transition-colors"
+                          >
+                            <td className="py-4 px-6">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff007a] to-[#ff4d9e] flex items-center justify-center flex-shrink-0 text-white text-xs font-bold">
+                                  {user.full_name?.charAt(0) || 'U'}
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                    {user.full_name}
+                                  </span>
+                                  <span className="text-[12px] text-gray-400" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                    {user.email}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6 text-center">
+                              {getRoleBadge(user.role)}
+                            </td>
+                            <td className="py-4 px-6">
+                              <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                {user.department || '-'}
+                              </span>
+                            </td>
+                            <td className="py-4 px-6">
+                              <span className="text-[12px] font-mono text-gray-500" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                {user.nim || user.nip || '-'}
+                              </span>
+                            </td>
+                            <td className="py-4 px-6 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => setViewingUser(user)}
+                                  className="p-2 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg transition-colors"
+                                  title="Detail"
+                                >
+                                  <Search className="w-4 h-4" />
+                                </button>
+                                {/* Only show delete if allowed */}
+                                <button
+                                  onClick={() => handleDelete(user.id)}
+                                  disabled={deleteMutation.isPending}
+                                  className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors disabled:opacity-50"
+                                  title="Hapus"
+                                >
+                                  <Plus className="w-4 h-4 transform rotate-45" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </>
             )}
+            {/* Pagination */}
+            <div className="border-t border-gray-100 p-4">
+              <TablePagination
+                currentPage={page}
+                totalPages={Math.ceil(totalItems / pageSize)}
+                onPageChange={setPage}
+                totalItems={totalItems}
+                itemsPerPage={pageSize}
+                onPageSizeChange={setPageSize}
+              />
+            </div>
           </ModernCardContent>
         </ModernCard>
       </div>

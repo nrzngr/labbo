@@ -171,7 +171,7 @@ export function Sidebar({ isCollapsed = false, toggleSidebar }: SidebarProps) {
 
   const NavContent = ({ mobile = false }) => (
     <div className={cn(
-      "relative flex h-full min-h-0 flex-col overflow-x-hidden border-r border-[#f1d6e6]/70 bg-white/85 backdrop-blur-xl shadow-[0_24px_50px_rgba(17,24,39,0.08)] transition-all duration-300 ease-in-out",
+      "relative flex h-full min-h-0 flex-col overflow-hidden border-r border-[#f1d6e6]/70 bg-white/85 backdrop-blur-xl shadow-[0_24px_50px_rgba(17,24,39,0.08)] transition-all duration-300 ease-in-out",
       mobile ? "rounded-none border-none w-full" : isCollapsed ? "w-[80px]" : "w-72 xl:w-[21rem] rounded-r-[36px]"
     )}>
       {/* Background accents only if expanded or mobile */}
@@ -187,7 +187,7 @@ export function Sidebar({ isCollapsed = false, toggleSidebar }: SidebarProps) {
 
       {/* Header / Logo */}
       <div className={cn(
-        "relative z-10 flex items-center border-b border-[#f1d6e6]/70 transition-all duration-300",
+        "flex-none z-20 flex items-center border-b border-[#f1d6e6]/70 transition-all duration-300 bg-white/50 backdrop-blur-sm",
         isCollapsed && !mobile ? "justify-center h-20 px-2" : "h-[4.5rem] justify-between px-4"
       )}>
         <Link
@@ -233,7 +233,7 @@ export function Sidebar({ isCollapsed = false, toggleSidebar }: SidebarProps) {
 
       {/* Expand Button - Shown when collapsed (below logo) */}
       {!mobile && toggleSidebar && isCollapsed && (
-        <div className="flex justify-center py-3 border-b border-[#f1d6e6]/70">
+        <div className="flex-none z-20 flex justify-center py-3 border-b border-[#f1d6e6]/70 bg-white/50 backdrop-blur-sm">
           <button
             onClick={toggleSidebar}
             className="p-2 rounded-xl bg-gray-50 hover:bg-[#ff007a]/10 text-gray-400 hover:text-[#ff007a] transition-all"
@@ -244,7 +244,7 @@ export function Sidebar({ isCollapsed = false, toggleSidebar }: SidebarProps) {
         </div>
       )}
 
-      <nav className="relative z-10 flex-1 min-h-0 px-3 py-4 overflow-y-auto pointer-events-auto custom-scrollbar overflow-x-hidden">
+      <nav className="flex-1 min-h-0 px-3 py-4 overflow-y-auto custom-scrollbar relative z-10 pointer-events-auto">
         <div className="space-y-1">
           {filteredNavItems.map((item) => {
             const isActive = pathname === item.href
@@ -291,7 +291,7 @@ export function Sidebar({ isCollapsed = false, toggleSidebar }: SidebarProps) {
       </nav>
 
       <div className={cn(
-        "relative z-10 border-t border-[#f1d6e6]/70 bg-white/70 backdrop-blur-xl pointer-events-auto transition-all",
+        "flex-none relative z-10 border-t border-[#f1d6e6]/70 bg-white/70 backdrop-blur-xl pointer-events-auto transition-all mt-auto",
         isCollapsed && !mobile ? "p-2" : "px-4 py-4"
       )}>
         <div className={cn(

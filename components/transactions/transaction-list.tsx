@@ -36,15 +36,32 @@ interface Transaction {
   } | null
 }
 
+import { TablePagination } from '@/components/ui/pagination'
+
 export function TransactionList() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [viewingTransaction, setViewingTransaction] = useState<Transaction | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
 
   const { data: transactions, isLoading, error } = useQuery({
-    queryKey: ['transactions', searchTerm, filterStatus],
+    queryKey: ['transactions', searchTerm, filterStatus, currentPage, pageSize],
     queryFn: async () => {
-      // Use explicit foreign key references to avoid join issues
+      // First get basic query for count and pagination
+      let baseQuery = supabase
+        .from('borrowing_transactions')
+        .select('*', { count: 'exact', head: true })
+
+      if (filterStatus) {
+        baseQuery = baseQuery.eq('status', filterStatus as any)
+      }
+
+      // We cannot easily do deep string search in count query without joining again or denormalizing
+      // For now, let's keep search client side for small datasets or assume basic filtering
+      // To strictly support server side search with relations, we'd need RPC or View
+
+      // Actual data fetch
       let query = supabase
         .from('borrowing_transactions')
         .select(`
@@ -57,13 +74,29 @@ export function TransactionList() {
           status,
           notes,
           created_at,
-          user:user_profiles!borrowing_transactions_user_id_fkey(full_name, email, role, nim),
+          user:users!borrowing_transactions_user_id_fkey(full_name, email, role, nim),
           equipment:equipment!borrowing_transactions_equipment_id_fkey(name, serial_number)
         `)
         .order('created_at', { ascending: false })
 
       if (filterStatus) {
         query = query.eq('status', filterStatus as any)
+      }
+
+      // If search term is present, we might need to filter after fetch if we don't want to complicate query
+      // OR better, do a best-effort server side filter if possible.
+      // Since relationships are involved, text search is tricky.
+      // Let's implement pagination on the fetched set if searching to keep it consistent, 
+      // or just paginate normally and filter results (which might result in empty pages).
+      // A common pattern with Supabase for complex search is to just paginate the main table.
+
+      const { count } = await baseQuery
+
+      // If we are searching, we unfortunately might need to fetch more to filter.
+      // But for "server-side pagination" requested, we should apply range.
+      // Let's apply range logic.
+      if (!searchTerm) {
+        query = query.range((currentPage - 1) * pageSize, currentPage * pageSize - 1)
       }
 
       const { data, error } = await query
@@ -73,20 +106,34 @@ export function TransactionList() {
         throw error
       }
 
-      // Apply client-side search filter
       let result = (data || []) as Transaction[]
+      let totalCount = count || 0
 
+      // Client-side filtering for search term if present
       if (searchTerm) {
         const search = searchTerm.toLowerCase()
-        result = result.filter(t =>
-          t.user?.full_name?.toLowerCase().includes(search) ||
-          t.user?.email?.toLowerCase().includes(search) ||
-          t.equipment?.name?.toLowerCase().includes(search) ||
-          t.equipment?.serial_number?.toLowerCase().includes(search)
-        )
+        const allDataForSearch = await supabase
+          .from('borrowing_transactions')
+          .select(`
+              *,
+              user:users!borrowing_transactions_user_id_fkey(full_name, email),
+              equipment:equipment!borrowing_transactions_equipment_id_fkey(name, serial_number)
+           `)
+          .order('created_at', { ascending: false })
+
+        if (allDataForSearch.data) {
+          const filtered = (allDataForSearch.data as unknown as Transaction[]).filter(t =>
+            t.user?.full_name?.toLowerCase().includes(search) ||
+            t.user?.email?.toLowerCase().includes(search) ||
+            t.equipment?.name?.toLowerCase().includes(search) ||
+            t.equipment?.serial_number?.toLowerCase().includes(search)
+          )
+          totalCount = filtered.length
+          result = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+        }
       }
 
-      return result
+      return { data: result, totalCount }
     },
     staleTime: 0,
     refetchOnWindowFocus: true,
@@ -95,7 +142,7 @@ export function TransactionList() {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('id-ID', {
       day: 'numeric',
-      month: 'short',
+      month: 'long',
       year: 'numeric'
     })
   }
@@ -127,7 +174,7 @@ export function TransactionList() {
           <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between mb-4 sm:mb-6">
             <div>
               <h2 className="text-xl font-bold text-gray-900">Daftar Transaksi</h2>
-              <p className="text-sm text-gray-500">{transactions?.length || 0} transaksi ditemukan</p>
+              <p className="text-sm text-gray-500">{transactions?.totalCount || 0} transaksi ditemukan</p>
             </div>
           </div>
 
@@ -159,26 +206,146 @@ export function TransactionList() {
           </div>
         </div>
 
-        {/* Transaction List */}
-        <div className="p-6 bg-gray-50/50 min-h-[400px]">
-          {transactions && transactions.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4">
-              {transactions.map((transaction) => (
-                <div key={transaction.id} onClick={() => setViewingTransaction(transaction)} className="cursor-pointer">
-                  <TransactionItemCard transaction={transaction} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                <Package className="w-8 h-8 text-gray-400" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-1">Tidak Ada Transaksi</h3>
-              <p className="text-gray-500 text-sm">Coba ubah filter atau kata kunci pencarian Anda.</p>
-            </div>
-          )}
+        {/* Transaction Table */}
+        <div className="overflow-x-auto min-h-[400px]">
+          <table className="w-full min-w-[1000px]">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="py-4 px-6 w-[50px]">
+                  <div className="w-[18px] h-[18px] border-[1.5px] border-[#FD1278] rounded-[5px] flex items-center justify-center cursor-pointer">
+                    {/* Header Checkbox (static for now) */}
+                  </div>
+                </th>
+                <th className="py-4 px-6 text-left">
+                  <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Barang</span>
+                </th>
+                <th className="py-4 px-6 text-center w-[100px]">
+                  <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Jumlah</span>
+                </th>
+                <th className="py-4 px-6 text-center w-[150px]">
+                  <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Tanggal Pinjam</span>
+                </th>
+                <th className="py-4 px-6 text-center w-[150px]">
+                  <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Tanggal Kembali</span>
+                </th>
+                <th className="py-4 px-6 text-center w-[150px]">
+                  <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Status</span>
+                </th>
+                <th className="py-4 px-6 text-center w-[150px]">
+                  <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Keterangan</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {transactions?.data && transactions.data.length > 0 ? (
+                transactions.data.map((transaction) => {
+                  // Determine Status Display
+                  let statusDotColor = '#FFEE35'; // Default Yellow (Masih Dipinjam)
+                  let statusText = 'Masih Dipinjam';
+
+                  if (transaction.status === 'returned') {
+                    statusDotColor = '#3AFB57'; // Green
+                    statusText = 'Dikembalikan';
+                  } else if (transaction.status === 'overdue' || (transaction.status === 'active' && new Date(transaction.expected_return_date) < new Date())) {
+                    statusDotColor = '#FF6666'; // Red
+                    statusText = 'Telat';
+                  }
+
+                  // Determine Keterangan
+                  let keteranganText = 'AMAN';
+                  if (statusText === 'Telat') {
+                    keteranganText = 'DIKENAKAN DENDA';
+                  }
+
+                  return (
+                    <tr
+                      key={transaction.id}
+                      onClick={() => setViewingTransaction(transaction)}
+                      className="group hover:bg-pink-50/10 transition-colors cursor-pointer"
+                    >
+                      <td className="py-4 px-6">
+                        <div className="w-[18px] h-[18px] border-[1.125px] border-[#FD1278] rounded-[5px] flex items-center justify-center bg-[#F9FBFC] group-hover:bg-white transition-colors">
+                          {/* Row Checkbox */}
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="flex flex-col">
+                          <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                            {transaction.equipment?.name || 'Unknown Item'}
+                          </span>
+                          <span className="text-[12px] text-gray-400" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                            {transaction.equipment?.serial_number}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                          1
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <div className="flex flex-col items-center">
+                          <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                            {formatDate(transaction.borrow_date)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <div className="flex flex-col items-center">
+                          <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                            {formatDate(transaction.expected_return_date)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="flex items-center justify-center gap-2">
+                          <div
+                            className="w-[12px] h-[12px] rounded-full shadow-sm"
+                            style={{ backgroundColor: statusDotColor }}
+                          />
+                          <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                            {statusText}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                          {keteranganText}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })
+              ) : (
+                <tr>
+                  <td colSpan={7} className="py-20 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                        <Package className="w-8 h-8 text-gray-300" />
+                      </div>
+                      <h3 className="text-lg font-bold text-gray-900 mb-1" style={{ fontFamily: 'Satoshi, sans-serif' }}>Tidak Ada Transaksi</h3>
+                      <p className="text-gray-400 text-sm" style={{ fontFamily: 'Satoshi, sans-serif' }}>Belum ada data peminjaman yang ditemukan.</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
+
+        {/* Pagination */}
+        {transactions && transactions.totalCount > 0 && (
+          <div className="p-4 border-t border-gray-100 bg-white">
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={Math.ceil(transactions.totalCount / pageSize)}
+              onPageChange={setCurrentPage}
+              totalItems={transactions.totalCount}
+              itemsPerPage={pageSize}
+              onPageSizeChange={setPageSize}
+            />
+          </div>
+        )}
       </div>
 
       {/* Detail Dialog */}

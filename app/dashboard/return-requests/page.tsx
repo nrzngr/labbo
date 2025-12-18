@@ -18,6 +18,7 @@ import {
     FileText
 } from 'lucide-react'
 import { BORROWING_CONFIG, calculatePenalty, formatPenalty, getOverdueDays } from '@/lib/borrowing-config'
+import { TablePagination } from '@/components/ui/pagination'
 
 
 interface ReturnRequest {
@@ -53,6 +54,9 @@ export default function ReturnRequestsPage() {
     const queryClient = useQueryClient()
     const [filter, setFilter] = useState<string>('all')
     const [searchTerm, setSearchTerm] = useState('')
+    const [page, setPage] = useState(1)
+    const [pageSize, setPageSize] = useState(10)
+    const [totalItems, setTotalItems] = useState(0)
     const [selectedRequest, setSelectedRequest] = useState<ReturnRequest | null>(null)
     const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
     const [returnCondition, setReturnCondition] = useState('')
@@ -71,7 +75,7 @@ export default function ReturnRequestsPage() {
 
     // Fetch active borrowings that need return processing
     const { data: requests, isLoading, refetch } = useQuery({
-        queryKey: ['return-requests', filter, searchTerm],
+        queryKey: ['return-requests', filter, searchTerm, page, pageSize],
         queryFn: async () => {
             let query = supabase
                 .from('borrowing_transactions')
@@ -80,7 +84,7 @@ export default function ReturnRequestsPage() {
           return_requested, return_requested_at, return_notes, return_proof_url, created_at,
           user:users!borrowing_transactions_user_id_fkey(full_name, email, nim, department),
           equipment:equipment!borrowing_transactions_equipment_id_fkey(id, name, serial_number, condition, location)
-        `)
+        `, { count: 'exact' })
                 .in('status', ['active', 'overdue'] as any)
                 .order('return_requested', { ascending: false })
                 .order('expected_return_date', { ascending: true })
@@ -91,22 +95,20 @@ export default function ReturnRequestsPage() {
                 query = query.lt('expected_return_date', new Date().toISOString().split('T')[0])
             }
 
-            const { data, error } = await query
-            if (error) throw error
-
-            // Filter by search term
-            let filtered = (data as unknown as ReturnRequest[]) || []
             if (searchTerm) {
-                const search = searchTerm.toLowerCase()
-                filtered = filtered.filter(r =>
-                    r.user?.full_name?.toLowerCase().includes(search) ||
-                    r.user?.nim?.toLowerCase().includes(search) ||
-                    r.equipment?.name?.toLowerCase().includes(search) ||
-                    r.equipment?.serial_number?.toLowerCase().includes(search)
-                )
+                query = query.or(`user.full_name.ilike.%${searchTerm}%,user.nim.ilike.%${searchTerm}%,equipment.name.ilike.%${searchTerm}%`)
             }
 
-            return filtered
+            const from = (page - 1) * pageSize
+            const to = from + pageSize - 1
+            query = query.range(from, to)
+
+            const { data, count, error } = await query
+            if (error) throw error
+
+            if (count !== null) setTotalItems(count)
+
+            return (data as unknown as ReturnRequest[]) || []
         },
         enabled: canManage
     })
@@ -336,148 +338,150 @@ export default function ReturnRequestsPage() {
                 </div>
             </div>
 
-            {/* Requests List */}
-            {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-[#ff007a]" />
-                </div>
-            ) : requests && requests.length > 0 ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {requests.map((request) => {
-                        const overdueStatus = getOverdueStatus(request.expected_return_date)
-
-                        return (
-                            <div
-                                key={request.id}
-                                className={`bg-white rounded-2xl border overflow-hidden shadow-sm hover:shadow-lg transition-all ${overdueStatus ? 'border-red-200' : request.return_requested ? 'border-blue-200' : 'border-gray-100'
-                                    }`}
-                            >
-                                {/* Status Header */}
-                                {(overdueStatus || request.return_requested) && (
-                                    <div className={`px-4 py-2 ${overdueStatus ? 'bg-red-500' : 'bg-blue-500'}`}>
-                                        <div className="flex items-center gap-2 text-white text-sm font-medium">
-                                            {overdueStatus ? (
-                                                <>
-                                                    <AlertTriangle className="w-4 h-4" />
-                                                    Terlambat {overdueStatus.days} hari • {formatPenalty(overdueStatus.penalty)}
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Clock className="w-4 h-4" />
-                                                    Menunggu Verifikasi Pengembalian
-                                                </>
-                                            )}
+            {/* Return Requests Table */}
+            <div className="bg-white rounded-[20px] overflow-hidden shadow-sm border border-gray-100 min-h-[400px]">
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[1000px]">
+                        <thead>
+                            <tr className="border-b border-gray-100">
+                                <th className="py-4 px-6 text-left w-[250px]">
+                                    <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Peminjam</span>
+                                </th>
+                                <th className="py-4 px-6 text-left w-[250px]">
+                                    <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Peralatan</span>
+                                </th>
+                                <th className="py-4 px-6 text-center w-[150px]">
+                                    <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Tgl Pinjam</span>
+                                </th>
+                                <th className="py-4 px-6 text-center w-[150px]">
+                                    <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Batas Kembali</span>
+                                </th>
+                                <th className="py-4 px-6 text-center w-[200px]">
+                                    <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Status</span>
+                                </th>
+                                <th className="py-4 px-6 text-center w-[100px]">
+                                    <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Aksi</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={6} className="py-20 text-center">
+                                        <div className="flex justify-center">
+                                            <Loader2 className="w-8 h-8 animate-spin text-[#ff007a]" />
                                         </div>
-                                    </div>
-                                )}
+                                    </td>
+                                </tr>
+                            ) : requests && requests.length > 0 ? (
+                                requests.map((request) => {
+                                    const overdueStatus = getOverdueStatus(request.expected_return_date)
 
-                                <div className="p-5">
-                                    {/* User & Equipment Info */}
-                                    <div className="flex gap-4 mb-4">
-                                        {/* User */}
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff007a] to-[#ff4d9e] flex items-center justify-center">
-                                                    <User className="w-5 h-5 text-white" />
+                                    let statusDotColor = '#FFEE35'; // Default
+                                    let statusText = 'Dipinjam';
+
+                                    if (request.return_requested) {
+                                        statusDotColor = '#3B82F6'; // Blue for requested
+                                        statusText = 'Menunggu Verifikasi';
+                                    } else if (overdueStatus) {
+                                        statusDotColor = '#FF6666'; // Red for overdue
+                                        statusText = `Telat ${overdueStatus.days} Hari`;
+                                    }
+
+                                    return (
+                                        <tr
+                                            key={request.id}
+                                            className="group hover:bg-pink-50/10 transition-colors"
+                                        >
+                                            <td className="py-4 px-6">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff007a] to-[#ff4d9e] flex items-center justify-center flex-shrink-0 text-white text-xs font-bold">
+                                                        {request.user?.full_name?.charAt(0) || 'U'}
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                            {request.user?.full_name}
+                                                        </span>
+                                                        <span className="text-[12px] text-gray-400" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                            {request.user?.nim}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <h3 className="font-semibold text-gray-900">{request.user?.full_name}</h3>
-                                                    <p className="text-xs text-gray-500">{request.user?.nim} • {request.user?.department}</p>
+                                            </td>
+                                            <td className="py-4 px-6">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                        {request.equipment?.name}
+                                                    </span>
+                                                    <span className="text-[12px] text-gray-400 font-mono" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                        {request.equipment?.serial_number}
+                                                    </span>
                                                 </div>
+                                            </td>
+                                            <td className="py-4 px-6 text-center">
+                                                <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                    {formatDate(request.borrow_date)}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-6 text-center">
+                                                <div className="flex flex-col items-center">
+                                                    <span className={`text-[14px] font-medium ${overdueStatus ? 'text-red-500' : 'text-[#6E6E6E]'}`} style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                        {formatDate(request.expected_return_date)}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-6">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <div
+                                                        className="w-[12px] h-[12px] rounded-full shadow-sm"
+                                                        style={{ backgroundColor: statusDotColor }}
+                                                    />
+                                                    <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                        {statusText}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-6 text-center">
+                                                <button
+                                                    onClick={() => handleConfirmReturn(request)}
+                                                    className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg transition-colors flex items-center gap-2 mx-auto"
+                                                    title="Konfirmasi Pengembalian"
+                                                >
+                                                    <CheckCircle className="w-4 h-4" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    )
+                                })
+                            ) : (
+                                <tr>
+                                    <td colSpan={6} className="py-20 text-center">
+                                        <div className="flex flex-col items-center justify-center">
+                                            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                                <Package className="w-8 h-8 text-gray-300" />
                                             </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Equipment */}
-                                    <div className="bg-gray-50 rounded-xl p-3 mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <Package className="w-5 h-5 text-gray-400" />
-                                            <div>
-                                                <p className="font-medium text-gray-900">{request.equipment?.name}</p>
-                                                <p className="text-xs text-gray-500 font-mono">{request.equipment?.serial_number}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Dates */}
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className="flex-1 text-center bg-gray-50 rounded-lg p-2">
-                                            <p className="text-[10px] text-gray-500 uppercase">Pinjam</p>
-                                            <p className="text-sm font-semibold text-gray-900">{formatDate(request.borrow_date)}</p>
-                                        </div>
-                                        <ChevronRight className="w-4 h-4 text-gray-300" />
-                                        <div className={`flex-1 text-center rounded-lg p-2 ${overdueStatus ? 'bg-red-100' : 'bg-gray-50'}`}>
-                                            <p className="text-[10px] text-gray-500 uppercase">Batas Kembali</p>
-                                            <p className={`text-sm font-semibold ${overdueStatus ? 'text-red-600' : 'text-gray-900'}`}>
-                                                {formatDate(request.expected_return_date)}
+                                            <h3 className="text-lg font-bold text-gray-900 mb-1" style={{ fontFamily: 'Satoshi, sans-serif' }}>Tidak Ada Peminjaman Aktif</h3>
+                                            <p className="text-gray-400 text-sm" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+                                                Semua peralatan sudah dikembalikan atau tidak ada data.
                                             </p>
                                         </div>
-                                    </div>
-
-                                    {/* Student's Notes & Proof - Show actual content */}
-                                    {(request.return_notes || request.return_proof_url) && (
-                                        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl space-y-3">
-                                            <div className="flex items-center gap-2 text-blue-800 font-semibold text-sm">
-                                                <FileText className="w-4 h-4" />
-                                                Catatan dari Mahasiswa
-                                            </div>
-
-                                            {/* Notes content */}
-                                            {request.return_notes && (
-                                                <p className="text-sm text-gray-800 bg-white/70 p-3 rounded-lg leading-relaxed">
-                                                    {request.return_notes}
-                                                </p>
-                                            )}
-
-                                            {/* Photo proof */}
-                                            {request.return_proof_url && (
-                                                <div>
-                                                    <p className="text-xs text-blue-700 font-medium mb-2 flex items-center gap-1">
-                                                        <Camera className="w-3.5 h-3.5" />
-                                                        Foto Bukti Pengembalian
-                                                    </p>
-                                                    <a
-                                                        href={request.return_proof_url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                    >
-                                                        <img
-                                                            src={request.return_proof_url}
-                                                            alt="Bukti pengembalian"
-                                                            className="w-full max-h-40 object-cover rounded-lg border border-blue-200 hover:opacity-90 transition-opacity cursor-pointer"
-                                                        />
-                                                    </a>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* Actions */}
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => handleConfirmReturn(request)}
-                                            className="flex-1 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2"
-                                        >
-                                            <CheckCircle className="w-4 h-4" />
-                                            Konfirmasi Pengembalian
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )
-                    })}
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
-            ) : (
-                <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-                    <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <Package className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <h3 className="font-semibold text-gray-700 mb-1">Tidak ada peminjaman aktif</h3>
-                    <p className="text-sm text-gray-500">
-                        Semua peralatan sudah dikembalikan atau tidak ada peminjaman yang sesuai filter.
-                    </p>
-                </div>
-            )}
+            </div>
+
+            {/* Pagination */}
+            <TablePagination
+                currentPage={page}
+                totalPages={Math.ceil(totalItems / pageSize)}
+                onPageChange={setPage}
+                totalItems={totalItems}
+                itemsPerPage={pageSize}
+                onPageSizeChange={setPageSize}
+            />
 
             {/* Confirm Return Dialog */}
             <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
@@ -653,6 +657,6 @@ export default function ReturnRequestsPage() {
                     </div>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     )
 }
