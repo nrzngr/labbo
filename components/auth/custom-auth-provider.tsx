@@ -19,6 +19,7 @@ import {
   isMFAEnabled
 } from '@/lib/mfa'
 import { performCompletePasswordValidation } from '@/lib/password-validation'
+import { loginSession, logoutSession } from '@/app/actions/auth-session'
 // Email service will be used only in API routes, not in client components
 
 interface User {
@@ -183,6 +184,9 @@ export function CustomAuthProvider({ children }: { children: React.ReactNode }) 
 
         localStorage.setItem('authSession', JSON.stringify(sessionData))
         setUser(typedUser)
+        console.log('Client (Demo): Calling loginSession server action')
+        await loginSession(typedUser)
+        console.log('Client (Demo): loginSession completed')
 
         return { success: true }
       }
@@ -269,6 +273,9 @@ export function CustomAuthProvider({ children }: { children: React.ReactNode }) 
 
       localStorage.setItem('authSession', JSON.stringify(sessionData))
       setUser(typedUser)
+      console.log('Client: Calling loginSession server action')
+      await loginSession(typedUser)
+      console.log('Client: loginSession completed')
 
       // Check if MFA is enabled for this user
       if (typedUser.mfa_enabled) {
@@ -341,12 +348,14 @@ export function CustomAuthProvider({ children }: { children: React.ReactNode }) 
 
   const logout = async () => {
     try {
-      localStorage.removeItem('authSession')
+      localStorage.clear()
       setUser(null)
+      await logoutSession()
     } catch (error) {
       console.error('Logout error:', error)
-      localStorage.removeItem('authSession')
+      localStorage.clear()
       setUser(null)
+      await logoutSession()
     }
   }
 

@@ -1,23 +1,24 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { format, addDays, addWeeks, addMonths, startOfWeek } from 'date-fns'
-import { ModernCard } from '@/components/ui/modern-card'
+import { format } from 'date-fns'
+import { id } from 'date-fns/locale'
 import { ModernButton } from '@/components/ui/modern-button'
-import { ModernInput } from '@/components/ui/modern-input'
 import { ModernBadge } from '@/components/ui/modern-badge'
 import {
   Calendar,
   Clock,
   Wrench,
-  AlertTriangle,
-  CheckCircle,
   Plus,
   Edit,
   Trash2,
   Repeat,
-  Users
+  Users,
+  Search,
+  Filter,
+  AlertTriangle
 } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface Equipment {
   id: string
@@ -94,7 +95,7 @@ export function MaintenanceScheduler({ equipmentId }: MaintenanceSchedulerProps)
         setSchedules(data.schedules || [])
       }
     } catch (error) {
-      setError('Failed to load maintenance schedules')
+      setError('Gagal memuat jadwal pemeliharaan')
     } finally {
       setIsLoading(false)
     }
@@ -149,10 +150,10 @@ export function MaintenanceScheduler({ equipmentId }: MaintenanceSchedulerProps)
         resetForm()
       } else {
         const data = await response.json()
-        setError(data.error || 'Failed to save maintenance schedule')
+        setError(data.error || 'Gagal menyimpan jadwal pemeliharaan')
       }
     } catch (error) {
-      setError('Network error. Please try again.')
+      setError('Masalah jaringan. Silakan coba lagi.')
     } finally {
       setIsLoading(false)
     }
@@ -178,7 +179,7 @@ export function MaintenanceScheduler({ equipmentId }: MaintenanceSchedulerProps)
   }
 
   const handleDelete = async (scheduleId: string) => {
-    if (!confirm('Are you sure you want to delete this maintenance schedule?')) {
+    if (!confirm('Apakah Anda yakin ingin menghapus jadwal pemeliharaan ini?')) {
       return
     }
 
@@ -190,10 +191,10 @@ export function MaintenanceScheduler({ equipmentId }: MaintenanceSchedulerProps)
       if (response.ok) {
         await fetchMaintenanceSchedules()
       } else {
-        setError('Failed to delete maintenance schedule')
+        setError('Gagal menghapus jadwal pemeliharaan')
       }
     } catch (error) {
-      setError('Network error. Please try again.')
+      setError('Masalah jaringan. Silakan coba lagi.')
     }
   }
 
@@ -214,259 +215,250 @@ export function MaintenanceScheduler({ equipmentId }: MaintenanceSchedulerProps)
     })
   }
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityConfig = (priority: string) => {
     switch (priority) {
-      case 'urgent':
-        return 'bg-red-100 text-red-800'
-      case 'high':
-        return 'bg-orange-100 text-orange-800'
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'low':
-        return 'bg-green-100 text-green-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
+      case 'urgent': return { label: 'Mendesak', color: 'bg-red-50 text-red-600 border-red-200' }
+      case 'high': return { label: 'Tinggi', color: 'bg-orange-50 text-orange-600 border-orange-200' }
+      case 'medium': return { label: 'Sedang', color: 'bg-yellow-50 text-yellow-600 border-yellow-200' }
+      case 'low': return { label: 'Rendah', color: 'bg-green-50 text-green-600 border-green-200' }
+      default: return { label: 'Sedang', color: 'text-gray-600 border-gray-200' }
     }
   }
 
-  const getStatusColor = (status: string) => {
+  const getStatusConfig = (status: string) => {
     switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800'
-      case 'in_progress':
-        return 'bg-blue-100 text-blue-800'
-      case 'scheduled':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'cancelled':
-        return 'bg-gray-100 text-gray-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
+      case 'completed': return { label: 'Selesai', color: 'bg-green-50 text-green-600 border-green-200' }
+      case 'in_progress': return { label: 'Proses', color: 'bg-blue-50 text-blue-600 border-blue-200' }
+      case 'scheduled': return { label: 'Terjadwal', color: 'bg-yellow-50 text-yellow-600 border-yellow-200' }
+      case 'cancelled': return { label: 'Batal', color: 'bg-gray-100 text-gray-500 border-gray-200' }
+      default: return { label: status, color: 'text-gray-600' }
     }
   }
 
-  const getTypeColor = (type: string) => {
+  const getTypeLabel = (type: string) => {
     switch (type) {
-      case 'preventive':
-        return 'bg-blue-100 text-blue-800'
-      case 'corrective':
-        return 'bg-red-100 text-red-800'
-      case 'calibration':
-        return 'bg-green-100 text-green-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
+      case 'preventive': return 'Pencegahan'
+      case 'corrective': return 'Perbaikan'
+      case 'calibration': return 'Kalibrasi'
+      default: return type
     }
   }
 
   const renderMaintenanceForm = () => (
-    <ModernCard variant="default" padding="lg">
+    <div className="bg-white rounded-[20px] p-6 sm:p-8 shadow-sm border border-gray-100">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold">
-          {editingSchedule ? 'Edit Maintenance Schedule' : 'Schedule Maintenance'}
+        <h2 className="text-xl font-bold text-gray-900" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+          {editingSchedule ? 'Edit Jadwal Pemeliharaan' : 'Jadwal Pemeliharaan Baru'}
         </h2>
-        <ModernButton
+        <button
           onClick={() => {
             setShowForm(false)
             setEditingSchedule(null)
             resetForm()
           }}
-          variant="outline"
-          size="sm"
+          className="text-gray-400 hover:text-gray-600 transition-colors"
         >
-          Cancel
-        </ModernButton>
+          <span className="sr-only">Tutup</span>
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800">
+        <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4" />
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Equipment *
-            </label>
-            <select
-              value={formData.equipment_id}
-              onChange={(e) => setFormData(prev => ({ ...prev, equipment_id: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-              disabled={!!equipmentId}
-            >
-              <option value="">Select Equipment</option>
-              {equipment.map((eq) => (
-                <option key={eq.id} value={eq.id}>
-                  {eq.name} ({eq.serial_number})
-                </option>
-              ))}
-            </select>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Peralatan *</label>
+            <div className="relative">
+              <select
+                value={formData.equipment_id}
+                onChange={(e) => setFormData(prev => ({ ...prev, equipment_id: e.target.value }))}
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:ring-4 focus:ring-[#ff007a]/10 outline-none transition-all appearance-none"
+                required
+                disabled={!!equipmentId}
+              >
+                <option value="">Pilih Peralatan</option>
+                {equipment.map((eq) => (
+                  <option key={eq.id} value={eq.id}>
+                    {eq.name} ({eq.serial_number})
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Type *
-            </label>
-            <select
-              value={formData.type}
-              onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as any }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            >
-              <option value="preventive">Preventive</option>
-              <option value="corrective">Corrective</option>
-              <option value="calibration">Calibration</option>
-            </select>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Tipe Pemeliharaan *</label>
+            <div className="relative">
+              <select
+                value={formData.type}
+                onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as any }))}
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:ring-4 focus:ring-[#ff007a]/10 outline-none transition-all appearance-none"
+                required
+              >
+                <option value="preventive">Pencegahan (Preventive)</option>
+                <option value="corrective">Perbaikan (Corrective)</option>
+                <option value="calibration">Kalibrasi</option>
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Title *
-          </label>
-          <ModernInput
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">Judul Kegiatan *</label>
+          <input
             value={formData.title}
             onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-            placeholder="Enter maintenance title"
+            placeholder="Contoh: Pembersihan Lensa Rutin"
+            className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:ring-4 focus:ring-[#ff007a]/10 outline-none transition-all"
             required
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Description
-          </label>
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">Deskripsi Detail</label>
           <textarea
             value={formData.description}
             onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            placeholder="Describe the maintenance work"
+            placeholder="Jelaskan langkah-langkah atau detail pekerjaan..."
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:ring-4 focus:ring-[#ff007a]/10 outline-none transition-all resize-none"
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Date *
-            </label>
-            <ModernInput
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Tanggal *</label>
+            <input
               type="date"
               value={formData.scheduled_date}
               onChange={(e) => setFormData(prev => ({ ...prev, scheduled_date: e.target.value }))}
+              className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:ring-4 focus:ring-[#ff007a]/10 outline-none transition-all"
               required
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Time *
-            </label>
-            <ModernInput
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Waktu *</label>
+            <input
               type="time"
               value={formData.scheduled_time}
               onChange={(e) => setFormData(prev => ({ ...prev, scheduled_time: e.target.value }))}
+              className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:ring-4 focus:ring-[#ff007a]/10 outline-none transition-all"
               required
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Duration (hours)
-            </label>
-            <ModernInput
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Durasi (jam)</label>
+            <input
               type="number"
               min="1"
               value={formData.estimated_duration}
               onChange={(e) => setFormData(prev => ({ ...prev, estimated_duration: parseInt(e.target.value) || 1 }))}
+              className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:ring-4 focus:ring-[#ff007a]/10 outline-none transition-all"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Priority *
-            </label>
-            <select
-              value={formData.priority}
-              onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as any }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
-            </select>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Prioritas *</label>
+            <div className="relative">
+              <select
+                value={formData.priority}
+                onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as any }))}
+                className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:ring-4 focus:ring-[#ff007a]/10 outline-none transition-all appearance-none"
+                required
+              >
+                <option value="low">Rendah</option>
+                <option value="medium">Sedang</option>
+                <option value="high">Tinggi</option>
+                <option value="urgent">Mendesak</option>
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Assigned To
-            </label>
-            <ModernInput
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">Ditugaskan Kepada</label>
+            <input
               value={formData.assigned_to}
               onChange={(e) => setFormData(prev => ({ ...prev, assigned_to: e.target.value }))}
-              placeholder="Technician name or ID"
+              placeholder="Nama Teknisi atau ID"
+              className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:ring-4 focus:ring-[#ff007a]/10 outline-none transition-all"
             />
           </div>
         </div>
 
         {/* Recurrence Options */}
-        <div className="border-t pt-4">
-          <h3 className="font-semibold mb-3">Recurrence (Optional)</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Repeat
-              </label>
-              <select
-                value={formData.recurrence_type}
-                onChange={(e) => setFormData(prev => ({ ...prev, recurrence_type: e.target.value as any }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="none">Does not repeat</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-              </select>
+        <div className="pt-6 border-t border-gray-100">
+          <h3 className="font-bold text-gray-900 mb-4" style={{ fontFamily: 'Satoshi, sans-serif' }}>Pengulangan (Opsional)</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Ulangi</label>
+              <div className="relative">
+                <select
+                  value={formData.recurrence_type}
+                  onChange={(e) => setFormData(prev => ({ ...prev, recurrence_type: e.target.value as any }))}
+                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:ring-4 focus:ring-[#ff007a]/10 outline-none transition-all appearance-none"
+                >
+                  <option value="none">Tidak berulang</option>
+                  <option value="daily">Harian</option>
+                  <option value="weekly">Mingguan</option>
+                  <option value="monthly">Bulanan</option>
+                  <option value="yearly">Tahunan</option>
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+              </div>
             </div>
 
             {formData.recurrence_type !== 'none' && (
               <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Every
-                  </label>
-                  <div className="flex gap-2">
-                    <ModernInput
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Setiap</label>
+                  <div className="flex gap-2 items-center">
+                    <input
                       type="number"
                       min="1"
                       value={formData.recurrence_interval}
                       onChange={(e) => setFormData(prev => ({ ...prev, recurrence_interval: parseInt(e.target.value) || 1 }))}
-                      className="flex-1"
+                      className="flex-1 px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:ring-4 focus:ring-[#ff007a]/10 outline-none transition-all"
                     />
-                    <span className="flex items-center text-sm text-gray-600">
-                      {formData.recurrence_type === 'daily' && 'day(s)'}
-                      {formData.recurrence_type === 'weekly' && 'week(s)'}
-                      {formData.recurrence_type === 'monthly' && 'month(s)'}
-                      {formData.recurrence_type === 'yearly' && 'year(s)'}
+                    <span className="text-sm text-gray-500 whitespace-nowrap">
+                      {formData.recurrence_type === 'daily' && 'hari'}
+                      {formData.recurrence_type === 'weekly' && 'minggu'}
+                      {formData.recurrence_type === 'monthly' && 'bulan'}
+                      {formData.recurrence_type === 'yearly' && 'tahun'}
                     </span>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    End Date (Optional)
-                  </label>
-                  <ModernInput
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">Sampai Tanggal (Opsional)</label>
+                  <input
                     type="date"
                     value={formData.recurrence_end_date}
                     onChange={(e) => setFormData(prev => ({ ...prev, recurrence_end_date: e.target.value }))}
                     min={formData.scheduled_date}
+                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#ff007a] focus:ring-4 focus:ring-[#ff007a]/10 outline-none transition-all"
                   />
                 </div>
               </>
@@ -474,159 +466,167 @@ export function MaintenanceScheduler({ equipmentId }: MaintenanceSchedulerProps)
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4">
-          <ModernButton
+        <div className="flex justify-end gap-3 pt-6">
+          <button
             type="button"
             onClick={() => {
               setShowForm(false)
               setEditingSchedule(null)
               resetForm()
             }}
-            variant="outline"
+            className="px-6 py-3 rounded-xl border-2 border-gray-100 text-gray-600 font-semibold hover:bg-gray-50 transition-colors"
           >
-            Cancel
-          </ModernButton>
-          <ModernButton
+            Batal
+          </button>
+          <button
             type="submit"
-            variant="default"
-            loading={isLoading}
             disabled={isLoading}
+            className="px-6 py-3 rounded-xl bg-[#ff007a] text-white font-semibold hover:bg-[#e6006e] transition-colors shadow-lg shadow-[#ff007a]/30 disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            {editingSchedule ? 'Update Schedule' : 'Create Schedule'}
-          </ModernButton>
+            {isLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+            {editingSchedule ? 'Simpan Perubahan' : 'Buat Jadwal'}
+          </button>
         </div>
       </form>
-    </ModernCard>
+    </div>
   )
 
   const renderScheduleList = () => (
-    <ModernCard variant="default" padding="lg">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold">Maintenance Schedules</h2>
-        <div className="flex gap-3">
-          <div className="flex bg-gray-100 rounded-lg p-1">
-            <ModernButton
-              onClick={() => setView('list')}
-              variant={view === 'list' ? 'default' : 'ghost'}
-              size="sm"
-            >
-              List
-            </ModernButton>
-            <ModernButton
-              onClick={() => setView('calendar')}
-              variant={view === 'calendar' ? 'default' : 'ghost'}
-              size="sm"
-            >
-              Calendar
-            </ModernButton>
-          </div>
-          <ModernButton
-            onClick={() => setShowForm(true)}
-            variant="default"
-            size="sm"
-            leftIcon={<Plus className="w-4 h-4" />}
-          >
-            Schedule Maintenance
-          </ModernButton>
-        </div>
+    <div className="bg-white rounded-[20px] shadow-sm border border-gray-100 overflow-hidden">
+      <div className="p-6 sm:p-8 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h2 className="text-xl font-bold text-gray-900" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+          Jadwal Pemeliharaan
+        </h2>
+
+        <button
+          onClick={() => setShowForm(true)}
+          className="px-6 py-3 rounded-xl bg-[#ff007a] text-white font-semibold hover:bg-[#e6006e] transition-colors shadow-lg shadow-[#ff007a]/30 flex items-center gap-2 group"
+        >
+          <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+          <span>Jadwalkan Pemeliharaan</span>
+        </button>
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-          <span className="ml-2 text-gray-600">Loading...</span>
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="w-12 h-12 border-4 border-[#ff007a]/20 border-t-[#ff007a] rounded-full animate-spin mb-4" />
+          <span className="text-gray-500 font-medium">Memuat data...</span>
         </div>
       ) : schedules.length === 0 ? (
-        <div className="text-center py-8">
-          <Wrench className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-600">No maintenance schedules found</p>
-          <ModernButton
+        <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+          <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+            <Wrench className="w-10 h-10 text-gray-300" />
+          </div>
+          <h3 className="text-lg font-bold text-gray-900 mb-2">Belum ada jadwal</h3>
+          <p className="text-gray-500 max-w-sm mx-auto mb-6">
+            Belum ada kegiatan pemeliharaan yang dijadwalkan. Buat jadwal pertama Anda sekarang.
+          </p>
+          <button
             onClick={() => setShowForm(true)}
-            variant="outline"
-            size="sm"
-            className="mt-3"
-            leftIcon={<Plus className="w-4 h-4" />}
+            className="px-6 py-3 rounded-xl border-2 border-[#ff007a] text-[#ff007a] font-semibold hover:bg-[#ff007a] hover:text-white transition-all"
           >
-            Schedule First Maintenance
-          </ModernButton>
+            Buat Jadwal Pertama
+          </button>
         </div>
       ) : (
-        <div className="space-y-3">
-          {schedules.map((schedule) => (
-            <div key={schedule.id} className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="font-semibold">{schedule.title}</h3>
-                    <ModernBadge variant="outline" size="sm" className={getTypeColor(schedule.type)}>
-                      {schedule.type}
-                    </ModernBadge>
-                    <ModernBadge variant="outline" size="sm" className={getPriorityColor(schedule.priority)}>
-                      {schedule.priority}
-                    </ModernBadge>
-                    <ModernBadge variant="outline" size="sm" className={getStatusColor(schedule.status)}>
-                      {schedule.status}
-                    </ModernBadge>
+        <div className="divide-y divide-gray-100">
+          {schedules.map((schedule) => {
+            const statusConfig = getStatusConfig(schedule.status)
+            const priorityConfig = getPriorityConfig(schedule.priority)
+
+            return (
+              <div key={schedule.id} className="p-6 hover:bg-gray-50/50 transition-colors group">
+                <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+                  {/* Icon Column */}
+                  <div className="hidden lg:flex flex-col items-center gap-2">
+                    <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-[#ff007a]/10 group-hover:text-[#ff007a] transition-colors">
+                      <Wrench className="w-6 h-6" />
+                    </div>
                   </div>
 
-                  <div className="space-y-1 text-sm text-gray-600">
-                    <p>Equipment: {schedule.equipment_name}</p>
-                    <p className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      {format(new Date(schedule.scheduled_date), 'MMM d, yyyy h:mm a')}
+                  {/* Content Column */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-3 mb-2">
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${getTypeColorClass(schedule.type)}`}>
+                        {getTypeLabel(schedule.type)}
+                      </span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${priorityConfig.color}`}>
+                        {priorityConfig.label}
+                      </span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${statusConfig.color}`}>
+                        {statusConfig.label}
+                      </span>
+                    </div>
+
+                    <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-[#ff007a] transition-colors">
+                      {schedule.title}
+                    </h3>
+                    <p className="text-gray-500 text-sm mb-4 font-medium">
+                      {schedule.equipment_name}
                     </p>
-                    <p className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      Estimated duration: {schedule.estimated_duration} hours
-                    </p>
-                    {schedule.assigned_to && (
-                      <p className="flex items-center gap-1">
-                        <Users className="w-4 h-4" />
-                        Assigned to: {schedule.assigned_to}
-                      </p>
-                    )}
-                    {schedule.recurrence_pattern && (
-                      <p className="flex items-center gap-1">
-                        <Repeat className="w-4 h-4" />
-                        Recurs: {schedule.recurrence_pattern.type} (every {schedule.recurrence_pattern.interval})
-                      </p>
-                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
+                      <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-50">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <span>{format(new Date(schedule.scheduled_date), 'dd MMM yyyy', { locale: id })}</span>
+                      </div>
+                      <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-50">
+                        <Clock className="w-4 h-4 text-gray-400" />
+                        <span>{schedule.estimated_duration} Jam</span>
+                      </div>
+                      {schedule.assigned_to && (
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-50">
+                          <Users className="w-4 h-4 text-gray-400" />
+                          <span>{schedule.assigned_to}</span>
+                        </div>
+                      )}
+                      {schedule.recurrence_pattern && (
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-50">
+                          <Repeat className="w-4 h-4 text-gray-400" />
+                          <span>Setiap {schedule.recurrence_pattern.interval} {schedule.recurrence_pattern.type}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {schedule.description && (
-                    <p className="text-sm text-gray-700 mt-2">{schedule.description}</p>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <ModernButton
-                    onClick={() => handleEdit(schedule)}
-                    variant="outline"
-                    size="sm"
-                    leftIcon={<Edit className="w-4 h-4" />}
-                  >
-                    Edit
-                  </ModernButton>
-                  <ModernButton
-                    onClick={() => handleDelete(schedule.id)}
-                    variant="outline"
-                    size="sm"
-                    leftIcon={<Trash2 className="w-4 h-4" />}
-                  >
-                    Delete
-                  </ModernButton>
+                  {/* Actions Column */}
+                  <div className="flex lg:flex-col gap-2 mt-4 lg:mt-0">
+                    <button
+                      onClick={() => handleEdit(schedule)}
+                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Edit"
+                    >
+                      <Edit className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(schedule.id)}
+                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Hapus"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
-    </ModernCard>
+    </div>
   )
 
   return (
-    <div className="space-y-6">
+    <div className="w-full">
       {showForm ? renderMaintenanceForm() : renderScheduleList()}
     </div>
   )
+}
+
+function getTypeColorClass(type: string) {
+  switch (type) {
+    case 'preventive': return 'bg-blue-50 text-blue-700 border-blue-200'
+    case 'corrective': return 'bg-red-50 text-red-700 border-red-200'
+    case 'calibration': return 'bg-purple-50 text-purple-700 border-purple-200'
+    default: return 'bg-gray-50 text-gray-700 border-gray-200'
+  }
 }

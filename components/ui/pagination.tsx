@@ -210,7 +210,7 @@ export function TablePagination({
 
         {onPageSizeChange && (
           <div className="flex items-center gap-2">
-            <span className="whitespace-nowrap hidden sm:inline-block">Baris per halaman:</span>
+            <span className="whitespace-nowrap hidden sm:inline-block mr-2 font-medium text-gray-500">Baris per halaman:</span>
             <Select
               value={itemsPerPage.toString()}
               onValueChange={(value) => {
@@ -218,7 +218,7 @@ export function TablePagination({
                 onPageChange(1) // Reset to first page when changing page size
               }}
             >
-              <SelectTrigger className="h-8 w-[70px] border-gray-200 bg-white px-2 text-xs">
+              <SelectTrigger className="h-9 w-[70px] border-gray-200 bg-white px-3 text-xs rounded-lg hover:border-[#ff007a] hover:bg-gray-50 transition-colors focus:ring-2 focus:ring-[#ff007a]/20">
                 <SelectValue placeholder={itemsPerPage.toString()} />
               </SelectTrigger>
               <SelectContent side="top">

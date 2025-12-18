@@ -4,12 +4,12 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ModernButton } from '@/components/ui/modern-button'
 import { ModernInput } from '@/components/ui/modern-input'
-import { ModernCard } from '@/components/ui/modern-card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ModernBadge } from '@/components/ui/modern-badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { supabase } from '@/lib/supabase'
-import { Search, Filter, Plus, Eye, AlertCircle, Wrench } from 'lucide-react'
+import { Search, Filter, Eye, AlertCircle, Wrench, Calendar, DollarSign, User } from 'lucide-react'
+import { format } from 'date-fns'
+import { id } from 'date-fns/locale'
 
 interface MaintenanceRecord {
   id: string
@@ -42,10 +42,9 @@ export function MaintenanceList() {
 
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ['maintenance-records'] })
-    queryClient.invalidateQueries({ queryKey: ['equipment'] })
   }, [queryClient])
 
-  const { data: maintenanceRecords, isLoading, refetch, error } = useQuery({
+  const { data: maintenanceRecords, isLoading } = useQuery({
     queryKey: ['maintenance-records', searchTerm, filterStatus],
     queryFn: async () => {
       let query = supabase
@@ -62,35 +61,12 @@ export function MaintenanceList() {
 
       const { data, error } = await query
 
-      if (error) {
-        throw error
-      }
+      if (error) throw error
       return data as unknown as MaintenanceRecord[]
-    },
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    }
   })
 
-  const { data: equipment } = useQuery({
-    queryKey: ['equipment'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('equipment')
-        .select('*')
-        .order('name')
-
-
-      if (error) {
-        throw error
-      }
-      return data as Equipment[]
-    },
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
-  })
-
+  // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       await supabase.from('maintenance_records').delete().eq('id', id)
@@ -101,332 +77,169 @@ export function MaintenanceList() {
   })
 
   const handleDelete = async (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus catatan pemeliharaan ini?')) {
+    if (confirm('Apakah Anda yakin ingin menghapus catatan ini?')) {
       deleteMutation.mutate(id)
     }
   }
 
-  const isOverdue = (nextMaintenanceDate: string) => {
-    return new Date(nextMaintenanceDate) < new Date()
-  }
-
-  const isUpcoming = (nextMaintenanceDate: string) => {
-    const nextDate = new Date(nextMaintenanceDate)
-    const today = new Date()
-    const daysUntil = Math.ceil((nextDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-    return daysUntil <= 30 && daysUntil > 0
-  }
+  const isOverdue = (nextDate: string) => new Date(nextDate) < new Date()
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
+    return format(new Date(dateString), 'dd MMM yyyy', { locale: id })
   }
 
-  const getMaintenanceStatusBadge = (nextMaintenanceDate: string) => {
-    if (isOverdue(nextMaintenanceDate)) {
-      return <ModernBadge variant="destructive">Terlambat</ModernBadge>
-    } else if (isUpcoming(nextMaintenanceDate)) {
-      return <ModernBadge variant="outline">Akan Datang</ModernBadge>
-    } else {
-      return <ModernBadge variant="secondary">Terjadwal</ModernBadge>
+  const getStatusBadge = (nextDate: string) => {
+    if (isOverdue(nextDate)) {
+      return <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-50 text-red-600 border border-red-200">Terlambat</span>
     }
-  }
-
-  const stats = {
-    total: maintenanceRecords?.length || 0,
-    overdue: maintenanceRecords?.filter(r => isOverdue(r.next_maintenance_date)).length || 0,
-    upcoming: maintenanceRecords?.filter(r => isUpcoming(r.next_maintenance_date)).length || 0,
-    totalCost: maintenanceRecords?.reduce((sum, r) => sum + (r.cost || 0), 0) || 0
+    return <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-50 text-green-600 border border-green-200">Aman</span>
   }
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+    <div className="bg-white rounded-[20px] shadow-sm border border-gray-100 overflow-hidden">
+      <div className="p-6 sm:p-8 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black">PEMELIHARAAN</h1>
+          <h2 className="text-xl font-bold text-gray-900" style={{ fontFamily: 'Satoshi, sans-serif' }}>
+            Riwayat Pemeliharaan
+          </h2>
+          <p className="text-gray-500 text-sm mt-1">Daftar lengkap aktivitas pemeliharaan yang telah dilakukan</p>
         </div>
-        <ModernButton
-          variant="outline"
-          className="w-full sm:w-auto opacity-50 cursor-not-allowed"
-          title="Fitur dalam pengembangan"
-          leftIcon={<Plus className="w-4 h-4" />}
-        >
-          CATAT PEMELIHARAAN
-        </ModernButton>
-      </div>
 
-      <div className="grid gap-4 sm:gap-6 lg:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <ModernCard variant="default">
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <span className="text-xs sm:text-sm font-medium">TOTAL CATATAN</span>
-            <Wrench className="w-4 h-4" />
+        <div className="flex gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              placeholder="Cari..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-[#ff007a]/20 focus:border-[#ff007a]"
+            />
           </div>
-          <div className="text-2xl sm:text-3xl font-black mb-2">{stats.total}</div>
-          <div className="text-xs sm:text-sm text-gray-600">Semua aktivitas pemeliharaan</div>
-        </ModernCard>
-
-        <ModernCard variant="default">
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <span className="text-xs sm:text-sm font-medium">TERLAMBAT</span>
-            <AlertCircle className="w-4 h-4" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-black mb-2 text-red-600">{stats.overdue}</div>
-          <div className="text-xs sm:text-sm text-gray-600">Memerlukan perhatian segera</div>
-        </ModernCard>
-
-        <ModernCard variant="default">
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <span className="text-xs sm:text-sm font-medium">AKAN DATANG</span>
-            <Wrench className="w-4 h-4" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-black mb-2">{stats.upcoming}</div>
-          <div className="text-xs sm:text-sm text-gray-600">Jatuh tempo dalam 30 hari</div>
-        </ModernCard>
-
-        <ModernCard variant="default">
-          <div className="flex items-center justify-between mb-3 sm:mb-4">
-            <span className="text-xs sm:text-sm font-medium">TOTAL BIAYA</span>
-            <span className="text-lg sm:text-xl">Rp</span>
-          </div>
-          <div className="text-2xl sm:text-3xl font-black mb-2">Rp{stats.totalCost.toLocaleString('id-ID')}</div>
-          <div className="text-xs sm:text-sm text-gray-600">Biaya pemeliharaan</div>
-        </ModernCard>
-      </div>
-
-      {stats.overdue > 0 && (
-        <ModernCard variant="default" className="bg-red-50 border-red-200">
-          <div className="flex items-center mb-2">
-            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 text-red-600" />
-            <span className="font-bold text-sm sm:text-base text-red-800">PEMELIHARAAN TERLAMBAT</span>
-          </div>
-          <p className="text-xs sm:text-sm text-red-700">
-            Anda memiliki {stats.overdue} catatan pemeliharaan yang terlambat.
-            Harap jadwalkan pemeliharaan sesegera mungkin.
-          </p>
-        </ModernCard>
-      )}
-
-      <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 lg:space-x-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 w-4 h-4 z-10" />
-          <ModernInput
-            placeholder="Cari catatan pemeliharaan..."
-            className="pl-10 h-12"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
         </div>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-3 sm:px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent min-w-[120px] sm:min-w-[150px] h-12 text-sm bg-white"
-        >
-          <option value="">Semua Status</option>
-          <option value="overdue">Terlambat</option>
-          <option value="upcoming">Akan Datang</option>
-          <option value="scheduled">Terjadwal</option>
-        </select>
       </div>
 
       {isLoading ? (
-        <ModernCard variant="default" padding="lg" className="text-center">
-          <div className="text-base sm:text-lg">Memuat data pemeliharaan...</div>
-        </ModernCard>
+        <div className="flex justify-center items-center py-12">
+          <div className="w-8 h-8 border-2 border-[#ff007a]/20 border-t-[#ff007a] rounded-full animate-spin" />
+        </div>
+      ) : maintenanceRecords?.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500">Tidak ada data riwayat pemeliharaan.</p>
+        </div>
       ) : (
-        <ModernCard variant="default" padding="none" className="overflow-hidden">
-          <div className="hidden lg:block overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="text-left p-4 font-medium">Peralatan</th>
-                  <th className="text-left p-4 font-medium">Tanggal Pemeliharaan</th>
-                  <th className="text-left p-4 font-medium">Deskripsi</th>
-                  <th className="text-left p-4 font-medium">Dilakukan Oleh</th>
-                  <th className="text-left p-4 font-medium">Biaya</th>
-                  <th className="text-left p-4 font-medium">Pemeliharaan Berikutnya</th>
-                  <th className="text-left p-4 font-medium">Status</th>
-                  <th className="text-right p-4 font-medium">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {maintenanceRecords?.map((record) => (
-                  <tr key={record.id} className="border-t hover:bg-gray-50/50">
-                    <td className="p-4">
-                      <div>
-                        <div className="font-medium">{record.equipment?.name || 'Peralatan Tidak Diketahui'}</div>
-                        <div className="text-sm text-gray-600 font-mono">{record.equipment?.serial_number}</div>
-                      </div>
-                    </td>
-                    <td className="p-4">{formatDate(record.maintenance_date)}</td>
-                    <td className="p-4">
-                      <div className="max-w-xs truncate" title={record.description}>
-                        {record.description}
-                      </div>
-                    </td>
-                    <td className="p-4">{record.performed_by}</td>
-                    <td className="p-4">Rp{record.cost?.toLocaleString('id-ID') || '0'}</td>
-                    <td className="p-4">{formatDate(record.next_maintenance_date)}</td>
-                    <td className="p-4">{getMaintenanceStatusBadge(record.next_maintenance_date)}</td>
-                    <td className="p-4 text-right">
-                      <div className="flex justify-end space-x-2">
-                        <ModernButton
-                          onClick={() => setViewingRecord(record)}
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hover:text-blue-600 hover:bg-blue-50"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </ModernButton>
-                        <ModernButton
-                          onClick={() => handleDelete(record.id)}
-                          disabled={deleteMutation.isPending}
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hover:text-red-600 hover:bg-red-50"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </ModernButton>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="lg:hidden">
-            <div className="divide-y">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50/50 text-xs font-bold text-gray-500 uppercase tracking-wider">
+              <tr>
+                <th className="px-6 py-4 text-left">Peralatan</th>
+                <th className="px-6 py-4 text-left">Tanggal</th>
+                <th className="px-6 py-4 text-left">Deskripsi</th>
+                <th className="px-6 py-4 text-left">Teknisi</th>
+                <th className="px-6 py-4 text-left">Status</th>
+                <th className="px-6 py-4 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
               {maintenanceRecords?.map((record) => (
-                <div key={record.id} className="p-4 space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-base sm:text-lg truncate">{record.equipment?.name}</h3>
-                      <p className="text-sm text-gray-600 font-mono truncate">{record.equipment?.serial_number}</p>
-                    </div>
-                    <div className="flex space-x-1 ml-2">
-                      {getMaintenanceStatusBadge(record.next_maintenance_date)}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
+                <tr key={record.id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-6 py-4">
                     <div>
-                      <span className="font-medium text-sm">Deskripsi:</span>
-                      <p className="text-sm truncate">{record.description}</p>
+                      <div className="font-bold text-gray-900">{record.equipment?.name}</div>
+                      <div className="text-xs text-gray-500 font-mono">{record.equipment?.serial_number}</div>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="font-medium">Tanggal:</span>
-                        <p>{formatDate(record.maintenance_date)}</p>
-                      </div>
-                      <div>
-                        <span className="font-medium">Oleh:</span>
-                        <p>{record.performed_by}</p>
-                      </div>
-                      <div>
-                        <span className="font-medium">Biaya:</span>
-                        <p>Rp{record.cost?.toLocaleString('id-ID') || '0'}</p>
-                      </div>
-                      <div>
-                        <span className="font-medium">Berikutnya:</span>
-                        <p>{formatDate(record.next_maintenance_date)}</p>
-                      </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-gray-400" />
+                      {formatDate(record.maintenance_date)}
                     </div>
-                  </div>
-
-                  <div className="flex justify-end space-x-2 pt-2 border-t">
-                    <ModernButton
-                      onClick={() => setViewingRecord(record)}
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 gap-2 hover:text-blue-600 hover:bg-blue-50"
-                    >
-                      <Eye className="w-4 h-4" />
-                      Detail
-                    </ModernButton>
-                    <ModernButton
-                      onClick={() => handleDelete(record.id)}
-                      disabled={deleteMutation.isPending}
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 gap-2 hover:text-red-600 hover:bg-red-50"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      Hapus
-                    </ModernButton>
-                  </div>
-                </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-700 max-w-xs truncate">{record.description}</div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <User className="w-4 h-4 text-gray-400" />
+                      {record.performed_by}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    {getStatusBadge(record.next_maintenance_date)}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => setViewingRecord(record)}
+                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
               ))}
-            </div>
-          </div>
-
-          {maintenanceRecords?.length === 0 && (
-            <div className="text-center py-8 sm:py-12 px-4">
-              <Wrench className="mx-auto w-12 h-12 sm:w-16 sm:h-16 mb-3 sm:mb-4" />
-              <p className="font-bold text-base sm:text-lg mb-2">Tidak ada catatan pemeliharaan ditemukan</p>
-              <p className="text-xs sm:text-sm text-gray-600">Mulai dengan mencatat aktivitas pemeliharaan pertama Anda</p>
-            </div>
-          )}
-        </ModernCard>
+            </tbody>
+          </table>
+        </div>
       )}
 
-      {viewingRecord && (
-        <Dialog open={!!viewingRecord} onOpenChange={() => setViewingRecord(null)}>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold">DETAIL PEMELIHARAAN</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <div className="text-sm font-medium mb-2">PERALATAN</div>
-                  <div className="font-bold">{viewingRecord.equipment?.name}</div>
-                  <div className="text-sm text-gray-600 font-mono">{viewingRecord.equipment?.serial_number}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium mb-2">TANGGAL PEMELIHARAAN</div>
-                  <div>{formatDate(viewingRecord.maintenance_date)}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium mb-2">DILAKUKAN OLEH</div>
-                  <div>{viewingRecord.performed_by}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium mb-2">BIAYA</div>
-                  <div>Rp{viewingRecord.cost?.toLocaleString('id-ID') || '0'}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium mb-2">PEMELIHARAAN BERIKUTNYA</div>
-                  <div>{formatDate(viewingRecord.next_maintenance_date)}</div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium mb-2">STATUS</div>
-                  <div>{getMaintenanceStatusBadge(viewingRecord.next_maintenance_date)}</div>
-                </div>
-              </div>
-
+      {/* Detail Dialog */}
+      <Dialog open={!!viewingRecord} onOpenChange={() => setViewingRecord(null)}>
+        <DialogContent className="sm:max-w-[600px] rounded-2xl bg-white p-0 overflow-hidden">
+          <DialogHeader className="p-6 bg-gray-50/50 border-b border-gray-100">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <Wrench className="w-5 h-5 text-[#ff007a]" />
+              Detail Pemeliharaan
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-6 space-y-6">
+            <div className="grid grid-cols-2 gap-6">
               <div>
-                <div className="text-sm font-medium mb-2">DESKRIPSI</div>
-                <div>{viewingRecord.description}</div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Peralatan</label>
+                <div className="font-bold text-lg">{viewingRecord?.equipment?.name}</div>
+                <div className="text-sm text-gray-500 font-mono">{viewingRecord?.equipment?.serial_number}</div>
               </div>
-
-              {viewingRecord.notes && (
-                <div>
-                  <div className="text-sm font-medium mb-2">CATATAN</div>
-                  <div>{viewingRecord.notes}</div>
-                </div>
-              )}
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Tanggal</label>
+                <div className="font-medium">{viewingRecord && formatDate(viewingRecord.maintenance_date)}</div>
+              </div>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
+
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Teknisi</label>
+                <div className="font-medium flex items-center gap-2">
+                  <User className="w-4 h-4 text-gray-400" />
+                  {viewingRecord?.performed_by}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Biaya</label>
+                <div className="font-medium flex items-center gap-2 text-green-600">
+                  <DollarSign className="w-4 h-4" />
+                  Rp{viewingRecord?.cost?.toLocaleString('id-ID')}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Deskripsi</label>
+              <div className="bg-gray-50 p-4 rounded-xl text-gray-700 text-sm leading-relaxed">
+                {viewingRecord?.description}
+              </div>
+            </div>
+
+            {viewingRecord?.notes && (
+              <div>
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-2">Catatan Tambahan</label>
+                <div className="text-sm text-gray-600">
+                  {viewingRecord.notes}
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

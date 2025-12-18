@@ -125,20 +125,8 @@ export default function MyBorrowingsPage() {
     enabled: !!user
   })
 
-  const extendBorrowingMutation = useMutation({
-    mutationFn: async ({ transactionId, newReturnDate }: { transactionId: string, newReturnDate: string }) => {
-      const { error } = await supabase
-        .from('borrowing_transactions')
-        .update({ expected_return_date: newReturnDate })
-        .eq('id', transactionId)
-
-      if (error) throw error
-      return { success: true }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['my-borrowings'] })
-    }
-  })
+  // NOTE: Direct extension mutation removed - all extensions must go through approval flow
+  // See requestExtensionMutation below for proper implementation
 
   const cancelBorrowingMutation = useMutation({
     mutationFn: async (transactionId: string) => {
@@ -386,7 +374,7 @@ export default function MyBorrowingsPage() {
         {/* Pending */}
         <div className="group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:shadow-amber-500/5 transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30">
+            <div className="w-12 h-12 rounded-full bg-[#ff007a] flex-shrink-0 flex items-center justify-center shadow-lg shadow-[#ff007a]/30">
               <HourglassIcon className="w-6 h-6 text-white" />
             </div>
             <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-3 py-1 rounded-full">MENUNGGU</span>
@@ -398,7 +386,7 @@ export default function MyBorrowingsPage() {
         {/* Active */}
         <div className="group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+            <div className="w-12 h-12 rounded-full bg-[#ff007a] flex-shrink-0 flex items-center justify-center shadow-lg shadow-[#ff007a]/30">
               <Package className="w-6 h-6 text-white" />
             </div>
             <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">AKTIF</span>
@@ -410,7 +398,7 @@ export default function MyBorrowingsPage() {
         {/* Overdue */}
         <div className="group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:shadow-red-500/5 transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/30">
+            <div className="w-12 h-12 rounded-full bg-[#ff007a] flex-shrink-0 flex items-center justify-center shadow-lg shadow-[#ff007a]/30">
               <AlertTriangle className="w-6 h-6 text-white" />
             </div>
             <span className="text-xs font-semibold text-red-600 bg-red-50 px-3 py-1 rounded-full">TERLAMBAT</span>
@@ -422,7 +410,7 @@ export default function MyBorrowingsPage() {
         {/* Returned */}
         <div className="group bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-lg hover:shadow-emerald-500/5 transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+            <div className="w-12 h-12 rounded-full bg-[#ff007a] flex-shrink-0 flex items-center justify-center shadow-lg shadow-[#ff007a]/30">
               <CheckCircle className="w-6 h-6 text-white" />
             </div>
             <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">SELESAI</span>
@@ -477,16 +465,16 @@ export default function MyBorrowingsPage() {
                   <th className="py-4 px-6 text-left w-[300px]">
                     <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Peralatan</span>
                   </th>
-                  <th className="py-4 px-6 text-center w-[150px]">
+                  <th className="py-4 px-6 text-center w-[180px] whitespace-nowrap">
                     <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Tgl Pinjam</span>
                   </th>
-                  <th className="py-4 px-6 text-center w-[150px]">
+                  <th className="py-4 px-6 text-center w-[180px] whitespace-nowrap">
                     <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Batas</span>
                   </th>
-                  <th className="py-4 px-6 text-center w-[150px]">
+                  <th className="py-4 px-6 text-center w-[140px] whitespace-nowrap">
                     <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Status</span>
                   </th>
-                  <th className="py-4 px-6 text-center w-[200px]">
+                  <th className="py-4 px-6 text-center w-[220px] whitespace-nowrap">
                     <span className="text-[12px] font-medium uppercase text-[#A09FA2] tracking-wider" style={{ fontFamily: 'Satoshi, sans-serif' }}>Aksi</span>
                   </th>
                 </tr>
@@ -528,12 +516,12 @@ export default function MyBorrowingsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-6 text-center">
+                      <td className="py-4 px-6 text-center whitespace-nowrap">
                         <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
                           {formatDate(transaction.borrow_date)}
                         </span>
                       </td>
-                      <td className="py-4 px-6 text-center">
+                      <td className="py-4 px-6 text-center whitespace-nowrap">
                         <div className="flex flex-col items-center">
                           <span className="text-[14px] font-medium text-[#6E6E6E]" style={{ fontFamily: 'Satoshi, sans-serif' }}>
                             {formatDate(transaction.expected_return_date)}
@@ -580,7 +568,7 @@ export default function MyBorrowingsPage() {
                             <>
                               <button
                                 onClick={() => handleExtendBorrowing(transaction.id)}
-                                disabled={extendBorrowingMutation.isPending}
+                                disabled={requestExtensionMutation.isPending}
                                 className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors disabled:opacity-50"
                                 title="Perpanjang"
                               >

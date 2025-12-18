@@ -1,10 +1,35 @@
 'use server'
 
-import { createClient } from '@/lib/supabase'
+import { createAdminClient } from '@/lib/supabase-admin'
+import { createClient } from '@/lib/supabase-server'
 import { cookies } from 'next/headers'
 import { emailService } from '@/lib/email-service'
 import { revalidatePath } from 'next/cache'
 import { getLimitsForRole, calculatePenalty, formatPenalty } from '@/lib/borrowing-config'
+
+// Helper to get user from session cookie
+// Helper to get user from session cookie
+async function getSessionUser() {
+    const cookieStore = await cookies()
+    const sessionCookie = cookieStore.get('session')
+
+    if (!sessionCookie) {
+        console.log('getSessionUser [borrowing.ts]: No session cookie found')
+        return null
+    }
+
+    try {
+        const session = JSON.parse(sessionCookie.value)
+        console.log('getSessionUser [borrowing.ts]: Session found', {
+            id: session.user?.id,
+            role: session.user?.role
+        })
+        return session.user
+    } catch (e) {
+        console.error('getSessionUser [borrowing.ts]: Failed to parse session cookie', e)
+        return null
+    }
+}
 
 export async function submitBorrowRequest(formData: {
     equipmentId: string
@@ -13,26 +38,18 @@ export async function submitBorrowRequest(formData: {
     purpose: string
     quantity: number
 }) {
-    const cookieStore = await cookies()
-    const supabase = createClient()
-
-    // 1. Get User from Session
-    const sessionCookie = cookieStore.get('session')
-    if (!sessionCookie) {
+    const user = await getSessionUser()
+    if (!user || !user.id) {
         throw new Error('Tidak terautentikasi')
     }
 
-    let user: any
-    try {
-        const session = JSON.parse(sessionCookie.value)
-        user = session.user
-    } catch (e) {
-        throw new Error('Sesi tidak valid')
-    }
-
-    if (!user || !user.id) {
-        throw new Error('User tidak ditemukan')
-    }
+    // Use Admin Client for DB operations to bypass RLS if needed, 
+    // or standard client if RLS allows public writes (but usually safe to use Admin here if we verified user)
+    // However, for consistency with the rest of the app which uses Anon key, 
+    // let's try to stick to Anon key if possible, BUT confirmReturn definitely needs Admin.
+    // For submit, usually users can insert their own rows.
+    // Let's use Admin client to be safe against RLS issues, since we trust our manual auth check.
+    const supabase = createAdminClient()
 
     // 2. Refresh User Data (Check Ban Status & Role)
     const { data: userData, error: userError } = await supabase
@@ -133,24 +150,14 @@ export async function submitBorrowRequest(formData: {
 }
 
 export async function approveBorrowRequest(requestId: string, notes: string) {
-    const cookieStore = await cookies()
-    const supabase = createClient()
+    const user = await getSessionUser()
+    if (!user) throw new Error('Tidak terautentikasi')
 
-    // 1. Auth Check
-    const sessionCookie = cookieStore.get('session')
-    if (!sessionCookie) throw new Error('Tidak terautentikasi')
-
-    let user: any
-    try {
-        const session = JSON.parse(sessionCookie.value)
-        user = session.user
-    } catch {
-        throw new Error('Sesi tidak valid')
-    }
-
-    if (!user || (user.role !== 'admin' && user.role !== 'lab_staff')) {
+    if (user.role !== 'admin' && user.role !== 'lab_staff') {
         throw new Error('Tidak memiliki izin')
     }
+
+    const supabase = createAdminClient()
 
     // 2. Fetch Transaction
     const { data: rawTransaction, error: fetchError } = await supabase
@@ -238,24 +245,14 @@ export async function approveBorrowRequest(requestId: string, notes: string) {
 }
 
 export async function rejectBorrowRequest(requestId: string, reason: string) {
-    const cookieStore = await cookies()
-    const supabase = createClient()
+    const user = await getSessionUser()
+    if (!user) throw new Error('Tidak terautentikasi')
 
-    // 1. Auth Check
-    const sessionCookie = cookieStore.get('session')
-    if (!sessionCookie) throw new Error('Tidak terautentikasi')
-
-    let user: any
-    try {
-        const session = JSON.parse(sessionCookie.value)
-        user = session.user
-    } catch {
-        throw new Error('Sesi tidak valid')
-    }
-
-    if (!user || (user.role !== 'admin' && user.role !== 'lab_staff')) {
+    if (user.role !== 'admin' && user.role !== 'lab_staff') {
         throw new Error('Tidak memiliki izin')
     }
+
+    const supabase = createAdminClient()
 
     // 2. Fetch Transaction for email detail
     const { data: rawTransaction, error: fetchError } = await supabase
@@ -315,24 +312,18 @@ export async function confirmReturn(data: {
     notes: string
     hasDamage: boolean
 }) {
-    const cookieStore = await cookies()
-    const supabase = createClient()
-
-    // 1. Auth Check
-    const sessionCookie = cookieStore.get('session')
-    if (!sessionCookie) throw new Error('Tidak terautentikasi')
-
-    let user: any
-    try {
-        const session = JSON.parse(sessionCookie.value)
-        user = session.user
-    } catch {
-        throw new Error('Sesi tidak valid')
+    // 1. Auth Check - Manual Session
+    const user = await getSessionUser()
+    if (!user) {
+        throw new Error('Tidak terautentikasi')
     }
 
-    if (!user || (user.role !== 'admin' && user.role !== 'lab_staff')) {
+    if (user.role !== 'admin' && user.role !== 'lab_staff') {
         throw new Error('Tidak memiliki izin')
     }
+
+    // Use Admin Client to ensure we can update tables regardless of RLS
+    const supabase = createAdminClient()
 
     // 2. Fetch Transaction
     const { data: rawTransaction, error: fetchError } = await supabase

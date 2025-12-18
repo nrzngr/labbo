@@ -94,15 +94,15 @@ export default function TransactionsPage() {
       {/* Highlight Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
         {[
-          { label: 'Sedang Dipinjam', value: stats.active, icon: Activity, color: 'text-blue-500', bg: 'bg-blue-50' },
-          { label: 'Dikembalikan (Bulan Ini)', value: stats.returned, icon: ArrowDownLeft, color: 'text-green-500', bg: 'bg-green-50' },
-          { label: 'Terlambat', value: stats.overdue, icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-50' },
-          { label: 'Transaksi Hari Ini', value: stats.today, icon: Clock, color: 'text-purple-500', bg: 'bg-purple-50' },
+          { label: 'Sedang Dipinjam', value: stats.active, icon: Activity },
+          { label: 'Dikembalikan (Bulan Ini)', value: stats.returned, icon: ArrowDownLeft },
+          { label: 'Terlambat', value: stats.overdue, icon: AlertTriangle },
+          { label: 'Transaksi Hari Ini', value: stats.today, icon: Clock },
         ].map((stat, idx) => (
           <div key={idx} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
             <div className="flex items-start justify-between mb-4">
-              <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
-                <stat.icon className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-full bg-[#ff007a] flex-shrink-0 flex items-center justify-center shadow-lg shadow-[#ff007a]/30">
+                <stat.icon className="w-6 h-6 text-white" />
               </div>
               {loading && <div className="w-4 h-4 rounded-full border-2 border-gray-200 border-t-gray-400 animate-spin" />}
             </div>
