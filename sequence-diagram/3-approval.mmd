@@ -1,0 +1,34 @@
+sequenceDiagram
+    autonumber
+    actor Admin as Admin / Staff Lab
+    participant Sys as Sistem Labbo
+    participant DB as Database (Supabase)
+    participant Email as Layanan Email
+    actor Mhs as Mahasiswa
+
+    Admin->>Sys: Buka Dashboard Request
+    Sys->>DB: Fetch Pending Requests
+    DB-->>Sys: List Request
+    Sys-->>Admin: Tampilkan Daftar Request
+
+    Admin->>Sys: Review Request & Klik "Setujui"
+    
+    note right of Admin: Pengecekan Ulang Stok Otomatis
+
+    Sys->>DB: Lock Row & Cek Stok Terkini
+    
+    alt Stok Masih Tersedia
+        Sys->>DB: Update Transaksi (Status: 'active')
+        Sys->>DB: Kurangi Stok Peralatan (Decrement Stock)
+        
+        par Notifikasi User
+            Sys->>DB: Insert In-App Notification
+            Sys->>Email: Kirim Email "Peminjaman Disetujui"
+            Email-->>Mhs: Email Masuk
+        end
+        
+        Sys-->>Admin: Tampilkan "Berhasil Disetujui"
+    else Stok Habis (Race Condition)
+        DB-->>Sys: Gagal (Stok Berubah)
+        Sys-->>Admin: Alert "Stok tidak lagi mencukupi"
+    end

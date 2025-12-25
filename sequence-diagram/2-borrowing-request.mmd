@@ -1,0 +1,35 @@
+sequenceDiagram
+    autonumber
+    actor Mhs as Mahasiswa
+    participant Sys as Sistem Labbo
+    participant DB as Database (Supabase)
+    participant Email as Layanan Email
+    actor Admin as Admin / Staff Lab
+
+    Mhs->>Sys: Pilih Peralatan & Klik "Pinjam"
+    Sys->>DB: Cek Data User (Status Ban & Limit)
+    
+    break Jika User Diblokir atau Limit Habis
+        DB-->>Sys: Return Error Status
+        Sys-->>Mhs: Tampilkan Pesan Error
+    end
+
+    Mhs->>Sys: Input Detail (Jumlah, Tanggal Kembali, Keperluan)
+    Sys->>DB: Cek Ketersediaan Stok (Stock Check)
+
+    alt Stok Cukup
+        Sys->>DB: Insert Transaksi (Status: 'pending')
+        DB-->>Sys: Transaksi Berhasil Disimpan
+        
+        par Notifikasi Admin
+            Sys->>DB: Ambil List Admin
+            DB-->>Sys: Data Email Admin
+            Sys->>Email: Kirim Email Notifikasi Permintaan Baru
+            Email-->>Admin: Email Masuk
+        end
+        
+        Sys-->>Mhs: Tampilkan Konfirmasi "Menunggu Persetujuan"
+    else Stok Tidak Cukup
+        DB-->>Sys: Info Stok Kurang
+        Sys-->>Mhs: Tampilkan Error "Stok Tidak Tersedia"
+    end

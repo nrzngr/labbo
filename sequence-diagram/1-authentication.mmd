@@ -1,0 +1,33 @@
+sequenceDiagram
+    autonumber
+    actor User as Pengguna
+    participant FE as Frontend (Browser)
+    participant BE as Backend (Next.js Server Actions)
+    participant DB as Database (Supabase)
+
+    Note over User, DB: Proses Login
+    User->>FE: Input Email & Password
+    FE->>BE: POST /login (credentials)
+    BE->>DB: Validasi Kredensial (Hash Check)
+    
+    alt Kredensial Valid
+        DB-->>BE: Data User & Role
+        BE->>BE: Generate Session Token
+        BE->>FE: Set HTTP-Only Cookie ('session')
+        FE-->>User: Redirect ke Dashboard
+    else Kredensial Tidak Valid
+        DB-->>BE: Error (Invalid Login)
+        BE-->>FE: Return Error Message
+        FE-->>User: Tampilkan "Login Gagal"
+    end
+
+    Note over User, DB: Validasi Sesi (Middleware)
+    User->>FE: Akses Halaman Terlindungi
+    FE->>BE: Request dengan Cookie Session
+    BE->>BE: Verifikasi Token & Expiry
+    
+    alt Sesi Valid
+        BE-->>FE: Render Halaman
+    else Sesi Invalid / Expired
+        BE-->>FE: Redirect ke /login
+    end

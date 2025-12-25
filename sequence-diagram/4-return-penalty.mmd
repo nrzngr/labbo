@@ -1,0 +1,38 @@
+sequenceDiagram
+    autonumber
+    actor Admin as Admin / Staff Lab
+    participant Sys as Sistem Labbo
+    participant DB as Database (Supabase)
+    participant Email as Layanan Email
+    actor Mhs as Mahasiswa
+
+    Note over Admin, Mhs: Proses Pengembalian di Lab
+
+    Mhs->>Admin: Menyerahkan Barang
+    Admin->>Sys: Scan QR / Input ID Transaksi
+    Sys->>DB: Fetch Transaction & Equipment Details
+    DB-->>Sys: Data Transaksi & Equipment
+    
+    Sys-->>Admin: Tampilkan Form Konfirmasi (Kondisi & Notes)
+    Admin->>Sys: Input Kondisi (Baik/Rusak), Notes & Submit
+
+    Note right of Sys: Logika Backend (confirmReturn)
+
+    Sys->>Sys: Hitung Denda (calculatePenalty)
+    note right of Sys: Denda = Max(0, Hari Terlambat * Rp 5.000)
+    
+    Sys->>DB: Update Transaksi (Status='returned', Penalty, Condition)
+    DB-->>Sys: Success
+    
+    Sys->>DB: Refetch Stok Equipment Terkini
+    DB-->>Sys: Current Stock
+    Sys->>DB: Update Equipment (Stock + Qty, Status='available')
+    DB-->>Sys: Success
+
+    par Notifikasi
+        Sys->>DB: Insert In-App Notification (Info Denda/Kondisi)
+        Sys->>Email: Kirim Email Bukti Pengembalian
+        Email-->>Mhs: Email Masuk (Receipt)
+    end
+    
+    Sys-->>Admin: Tampilkan "Pengembalian Berhasil"

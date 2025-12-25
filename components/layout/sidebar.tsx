@@ -245,7 +245,7 @@ export function Sidebar({ isCollapsed = false, toggleSidebar }: SidebarProps) {
       )}
 
       <nav className="flex-1 min-h-0 px-3 py-4 overflow-y-auto custom-scrollbar relative z-10 pointer-events-auto">
-        <div className="space-y-1">
+        <div className="space-y-1 pb-10">
           {filteredNavItems.map((item) => {
             const isActive = pathname === item.href
             return (
@@ -292,7 +292,7 @@ export function Sidebar({ isCollapsed = false, toggleSidebar }: SidebarProps) {
 
       <div className={cn(
         "flex-none relative z-10 border-t border-[#f1d6e6]/70 bg-white/70 backdrop-blur-xl pointer-events-auto transition-all mt-auto",
-        isCollapsed && !mobile ? "p-2" : "px-4 py-4"
+        isCollapsed && !mobile ? "p-2" : "px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
       )}>
         <div className={cn(
           "rounded-[20px] bg-white/85 shadow-[0_18px_36px_rgba(255,0,122,0.1)] transition-all overflow-hidden",
@@ -323,7 +323,10 @@ export function Sidebar({ isCollapsed = false, toggleSidebar }: SidebarProps) {
             variant={isCollapsed && !mobile ? "ghost" : "outline"}
             size="sm"
             fullWidth={!isCollapsed}
-            className={cn("mt-3 pointer-events-auto", isCollapsed && !mobile ? "w-10 h-10 p-0 text-red-500 hover:bg-red-50" : "")}
+            className={cn(
+              "mt-3 pointer-events-auto", 
+              isCollapsed && !mobile ? "w-10 h-10 p-0 text-red-500 hover:bg-red-50" : ""
+            )}
             onClick={handleSignOut}
             leftIcon={<LogOut className="h-4 w-4" />}
           >

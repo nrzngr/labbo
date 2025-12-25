@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Sidebar } from '@/components/layout/sidebar'
+import { FloatingBottomNav } from '@/components/layout/floating-bottom-nav'
 import { cn } from '@/lib/utils'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -43,7 +44,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             <div
                 className={cn(
-                    "relative w-full flex-1 min-w-0 flex flex-col pt-16 lg:pt-0 transition-all duration-300 ease-in-out",
+                    "relative w-full flex-1 min-w-0 flex flex-col pt-16 lg:pt-0 pb-[88px] lg:pb-0 transition-all duration-300 ease-in-out",
                     isCollapsed ? "lg:pl-[80px]" : "lg:pl-72 xl:pl-[21rem]"
                 )}
             >
@@ -53,6 +54,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
                 </main>
             </div>
+
+            <FloatingBottomNav />
         </div>
     )
 }
