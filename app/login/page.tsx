@@ -10,18 +10,18 @@ function LoginContent() {
   const { user, loading, isAuthenticated } = useCustomAuth()
   const searchParams = useSearchParams()
   const [isRedirecting, setIsRedirecting] = useState(false)
+  const redirectTo = searchParams.get('redirect') || undefined
   const message = searchParams.get('message')
 
   useEffect(() => {
     if (isAuthenticated && !loading && !isRedirecting) {
       setIsRedirecting(true)
-      if (user?.role === 'student') {
-        window.location.href = '/dashboard/student'
-      } else {
-        window.location.href = '/dashboard'
-      }
+      // Use redirect param if provided, otherwise role-based default
+      // Complexity: Time O(1) | Space O(1)
+      const target = redirectTo || (user?.role === 'student' ? '/dashboard/student' : '/dashboard')
+      window.location.href = target
     }
-  }, [isAuthenticated, loading, isRedirecting, user])
+  }, [isAuthenticated, loading, isRedirecting, user, redirectTo])
 
 
   if (loading) {
@@ -46,7 +46,7 @@ function LoginContent() {
     )
   }
 
-  return <CustomLoginForm />
+  return <CustomLoginForm redirectTo={redirectTo} />
 }
 
 export default function LoginPage() {

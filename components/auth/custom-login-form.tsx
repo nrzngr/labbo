@@ -19,7 +19,7 @@ interface DemoAccount {
   created_at?: string
 }
 
-export function CustomLoginForm() {
+export function CustomLoginForm({ redirectTo }: { redirectTo?: string } = {}) {
   const { login, loading, user } = useCustomAuth()
   const router = useRouter()
   const [formData, setFormData] = useState({
@@ -64,22 +64,41 @@ export function CustomLoginForm() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
+    event.stopPropagation()
     setError('')
     setIsSubmitting(true)
 
+    // Track if we should redirect
+    let shouldRedirect = false
+    let redirectTarget = ''
+
     try {
+      console.log('[Login] Starting login with redirectTo:', redirectTo)
       const result = await login(formData.email, formData.password)
-      if (result.success) {
-        const target = user?.role === 'student' ? '/dashboard/student' : '/dashboard'
-        setTimeout(() => router.push(target), 400)
+      console.log('[Login] Result:', result)
+      
+      if (result?.success) {
+        // Only set redirect flag, don't redirect yet
+        shouldRedirect = true
+        redirectTarget = redirectTo || '/dashboard'
+        console.log('[Login] Success! Will redirect to:', redirectTarget)
       } else {
-        setError(result.error || 'Login gagal')
+        console.log('[Login] Failed:', result?.error)
+        setError(result?.error || 'Login gagal')
+        setIsSubmitting(false)
+        return // Early return, don't redirect
       }
     } catch (submitError) {
-      console.error(submitError)
+      console.error('[Login] Error:', submitError)
       setError('Terjadi kesalahan. Silakan coba lagi.')
-    } finally {
       setIsSubmitting(false)
+      return // Early return, don't redirect
+    }
+
+    // Only redirect if login was successful
+    if (shouldRedirect && redirectTarget) {
+      console.log('[Login] Executing redirect to:', redirectTarget)
+      window.location.href = redirectTarget
     }
   }
 

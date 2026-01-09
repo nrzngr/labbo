@@ -2,27 +2,17 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect, useMemo, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-// Inner component that uses useSearchParams (requires Suspense boundary)
-function NavbarInner() {
-  const searchParams = useSearchParams();
+export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const { scrollY } = useScroll();
   
   const width = useTransform(scrollY, [0, 100], ["100%", "80%"]);
   const top = useTransform(scrollY, [0, 100], ["0px", "20px"]);
   const borderRadius = useTransform(scrollY, [0, 100], ["0px", "9999px"]);
-
-  // Construct login href preserving redirect param if present
-  // Complexity: Time O(1) | Space O(1)
-  const loginHref = useMemo(() => {
-    const redirect = searchParams.get('redirect');
-    return redirect ? `/login?redirect=${encodeURIComponent(redirect)}` : '/login';
-  }, [searchParams]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -40,7 +30,7 @@ function NavbarInner() {
           "pointer-events-auto transition-all duration-300 px-6 py-4 flex items-center justify-between",
           isScrolled 
             ? "bg-white/80 backdrop-blur-xl border border-white/20 shadow-lg text-slate-800" 
-            : "bg-transparent border-transparent text-slate-800"
+            : "bg-transparent border-transparent text-slate-800" // Always dark text for white background
         )}
       >
         <div className="flex items-center gap-2">
@@ -54,13 +44,13 @@ function NavbarInner() {
           <Link href="#testimonials" className="text-sm font-medium text-slate-600 hover:text-pink-600 transition-colors">
             Testimoni
           </Link>
-          <Link href={loginHref} className="text-sm font-medium text-slate-600 hover:text-pink-600 transition-colors">
+          <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-pink-600 transition-colors">
             Masuk
           </Link>
         </div>
 
         <div className="flex items-center gap-4">
-          <Link href={loginHref} className="md:hidden text-sm font-medium text-slate-600 hover:text-pink-600 transition-colors">
+            <Link href="/login" className="md:hidden text-sm font-medium text-slate-600 hover:text-pink-600 transition-colors">
             Masuk
           </Link>
           <button className="group relative px-6 py-2 bg-pink-600 overflow-hidden rounded-full shadow-md hover:shadow-lg transition-all text-white text-sm font-medium">
@@ -70,22 +60,5 @@ function NavbarInner() {
         </div>
       </motion.nav>
     </div>
-  );
-}
-
-// Exported wrapper with Suspense boundary for useSearchParams
-export const Navbar = () => {
-  return (
-    <Suspense fallback={
-      <div className="fixed top-0 left-0 right-0 z-50 flex justify-center w-full pointer-events-none">
-        <nav className="pointer-events-auto transition-all duration-300 px-6 py-4 flex items-center justify-between w-full bg-transparent">
-          <div className="flex items-center gap-2">
-            <Image src="/logo.svg" alt="Labbo Logo" width={64} height={64} className="w-12 h-12 md:w-16 md:h-16" />
-          </div>
-        </nav>
-      </div>
-    }>
-      <NavbarInner />
-    </Suspense>
   );
 };

@@ -150,9 +150,12 @@ export function CustomAuthProvider({ children }: { children: React.ReactNode }) 
         return { success: false, error: 'Invalid email or password' }
       }
 
-      // Set user state and create HTTP-only cookie session
-      setUser(dbUser)
+      // CRITICAL ORDER: Create HTTP-only cookie session FIRST, THEN set user state
+      // This prevents a race condition where React re-renders and triggers redirect
+      // before the session cookie is set, causing middleware to reject the request
+      // Complexity: Time O(1) | Space O(1)
       await loginSession(dbUser)
+      setUser(dbUser)
 
       // Check if MFA is enabled for this user
       if (dbUser.mfa_enabled) {
